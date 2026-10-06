@@ -30,6 +30,10 @@ class PathOutsideSnapshot(ArchLensError):
     """A path resolved outside the snapshot root (docs/SECURITY.md §4)."""
 
 
+class StorageKeyError(ArchLensError, ValueError):
+    """A run ID, artifact name, checkpoint key or cache key has an unsafe or invalid form."""
+
+
 class RubricError(ArchLensError):
     """A rubric file is invalid or references an unknown rule."""
 

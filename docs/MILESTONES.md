@@ -30,7 +30,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M0.3 Settings and config.** `Settings` (env prefix `ARCHLENS_`), loaders for
   `config/models.yaml`, `config/pricing.yaml`, `config/tools.yaml`; `archlens.errors`.
   AC: invalid/missing config gives a typed error naming the field.
-- [ ] **M0.4 CI.** `.github/workflows/ci.yml` (pinned SHAs, `permissions: contents: read`),
+- [x] **M0.4 CI.** `.github/workflows/ci.yml` (pinned SHAs, `permissions: contents: read`),
   `.github/dependabot.yml` (github-actions, pip, docker).
   AC: workflow green on GitHub.
 - [x] **M0.5 💰 Budget and model access.** Record credit expiry; deploy `infra/budget.bicep`
@@ -38,7 +38,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (ask first); put endpoint/key in `.env`.
   AC: budget visible in Cost Management; deployments for evaluator, verifier and embed roles exist;
   quota tier recorded in the log.
-- [ ] **M0.6 Storage (local).** `storage/base.py` Protocols (artifact store, run-state store,
+- [x] **M0.6 Storage (local).** `storage/base.py` Protocols (artifact store, run-state store,
   cache store, checkpoint store) + `storage/local.py` (filesystem + SQLite under
   `ARCHLENS_DATA_DIR`) + a reusable contract test suite.
   AC: contract suite green against the local backend; the suite is parameterized so the Azure
@@ -83,6 +83,17 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   the env var or YAML path. Resolved: config files reject unknown keys (catches typos; these are
   our files, not model output); added `ARCHLENS_CONFIG_DIR` (default `config`); a deployment
   without a price is a ConfigError because the budget guard would otherwise under-count. Spend: $0.
+- 2026-10-06 — M0.4: public repo https://github.com/eray-akalin/archlens; `ci.yml` (read-only
+  token, checkout v7.0.1 and setup-uv v10.2.0 pinned to SHAs, `uv sync --locked`, ruff, pyright,
+  pytest) — first run green (37523670755). Dependabot for github-actions, uv (native ecosystem
+  rather than pip) and docker (no Dockerfile until M4.1). Pre-publish scan of all commits: no
+  subscription/tenant/object IDs, keys or `.env`. Spend: $0.
+- 2026-10-06 — M0.6: async `ArtifactStore`, `RunStateStore`, `CacheStore`, `CheckpointStore`
+  protocols + local backend (atomic file writes, SQLite cache with TTL checked against an
+  injectable clock so Cosmos can match it). Contract suite parameterized via `BACKENDS` in
+  `tests/unit/storage/conftest.py`. Resolved: identifiers are validated (artifact names come from
+  API URLs — path-traversal boundary); per-metric checkpoints use `evaluate/<metric>` keys;
+  `open_storage(azure)` is a ConfigError until M4.2. Spend: $0.
 
 ---
 
