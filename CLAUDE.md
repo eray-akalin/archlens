@@ -43,7 +43,7 @@ uv sync                                   # install
 uv run ruff check . && uv run ruff format --check .
 uv run pyright
 uv run pytest                             # unit + offline integration; never hits the network
-uv run pytest -m scanners                 # needs scanner binaries installed
+uv run pytest -m scanners                 # needs scanners (scripts/install_tools.sh); queries OSV
 ARCHLENS_LIVE_TESTS=1 uv run pytest -m live   # real LLM calls; costs money; only when asked
 uv run archlens assess <path-or-url> --out runs/   # full pipeline
 uv run archlens facts <path>              # fact layer only, no LLM
@@ -70,7 +70,8 @@ Commands for modules that don't exist yet are the target interface; build toward
 6. **All LLM calls go through `archlens.llm.client`.** No direct `openai` imports elsewhere. Every
    call is recorded (`LLMCallRecord`) with model, prompt version, tokens, cost.
 7. **Tests never touch the network.** Use the record/replay cassettes and `FakeLLM`. Tests that
-   need real calls are marked `live` and skipped by default.
+   need real calls are marked `live` and skipped by default. Sole exception: the opt-in `scanners`
+   suite may query the OSV API with package names (ADR-014).
 8. **Money is a resource.** Before any command that calls a real LLM in bulk (eval, multi-repo
    assess) run its `--dry-run`, show the projected cost, and wait for confirmation. Never run
    `azd up`, `azd down`, or `az` commands that create or delete resources without asking.

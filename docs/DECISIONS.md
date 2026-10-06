@@ -75,3 +75,10 @@ non-interacting defects share one variant, since every run evaluates all metrics
 ~41 runs (~$15) and a fraction of the labeling work.
 *Cost:* generalization evidence is limited to one extra stack, and the README must state the scope.
 The harness supports adding repos later without code changes.
+
+### ADR-014 — The opt-in `scanners` suite may query the OSV API
+`pytest -m scanners` runs the real tools on tiny_service; osv-scanner sends package names and
+versions (never code) to the public OSV API. The default suite and CI stay fully offline, and no
+test ever calls an LLM or Azure without the `live` guard. *Why:* an offline vulnerability database
+for every ecosystem the eval set touches is hundreds of MB to download and refresh, while the
+suite is opt-in and never runs in CI. *Accepted by the user on 2026-10-06.*

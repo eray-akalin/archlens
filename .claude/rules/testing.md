@@ -7,7 +7,8 @@ paths:
 
 # Tests and evaluation
 
-- Markers: `unit` (default), `integration` (offline, multiple stages), `scanners` (needs binaries),
+- Markers: `unit` (default), `integration` (offline, multiple stages), `scanners` (needs binaries
+  from `scripts/install_tools.sh`; may query the OSV API — ADR-014),
   `live` (real LLM, costs money). Default `pytest` run excludes `scanners` and `live`.
 - `tests/conftest.py` skips every `live` test unless the process environment has
   `ARCHLENS_LIVE_TESTS=1` (read from `os.environ` only — never from `.env` or Settings), so

@@ -180,7 +180,8 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   impact LOW under the DATA_MODEL mapping; secret facts carry span columns (DATA_MODEL table
   updated); `ARCHLENS_TOOLS_DIR` added. Deviation to review: the opt-in `pytest -m scanners`
   suite needs the OSV API (package names only) — CLAUDE.md rule 7 says tests never touch the
-  network; the default suite and CI stay fully offline. Spend: $0.
+  network; the default suite and CI stay fully offline — **accepted by the user, ADR-014**.
+  Spend: $0.
 
 ---
 
