@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path' | grep -E '\\.py$' | xargs -r uv run ruff format --quiet || true"
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.py) uv run --project \"$CLAUDE_PROJECT_DIR\" --no-sync ruff format --quiet --force-exclude \"$f\";; esac; } || true"
           }
         ]
       }
