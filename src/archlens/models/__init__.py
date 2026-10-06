@@ -3,6 +3,7 @@
 from archlens.models.base import SCHEMA_VERSION, Contract, MutableContract
 from archlens.models.enums import (
     SCORABLE_VERDICTS,
+    SEVERITY_RANK,
     CheckType,
     Confidence,
     EvidencePolicy,
@@ -10,6 +11,7 @@ from archlens.models.enums import (
     Severity,
     Verdict,
     VerificationStatus,
+    severity_rank,
 )
 from archlens.models.evidence import MAX_EVIDENCE_SPAN, CodeEvidence, Evidence, ScanEvidence
 from archlens.models.facts import Fact, FactSet, ToolRunRecord, ToolStatus
@@ -47,6 +49,7 @@ __all__ = [
     "MAX_EVIDENCE_SPAN",
     "SCHEMA_VERSION",
     "SCORABLE_VERDICTS",
+    "SEVERITY_RANK",
     "AbsenceProbe",
     "AppliesWhen",
     "AssessmentReport",
@@ -96,4 +99,5 @@ __all__ = [
     "VerificationStep",
     "finding_id",
     "is_scorable",
+    "severity_rank",
 ]

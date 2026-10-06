@@ -487,15 +487,19 @@ def parse_response[T: BaseModel](
     if response.tool_calls:
         return LLMResult(None, response.tool_calls, message, records)
     if response.refusal:
-        raise InvalidModelOutput(f"refused: {response.refusal}", content=response.content)
+        raise InvalidModelOutput(
+            f"refused: {response.refusal}", content=response.content, records=records
+        )
     if response.finish_reason == "length":
         raise InvalidModelOutput(
-            "output truncated at max_completion_tokens", content=response.content
+            "output truncated at max_completion_tokens", content=response.content, records=records
         )
     if response.content is None:
-        raise InvalidModelOutput("empty response")
+        raise InvalidModelOutput("empty response", records=records)
     try:
         parsed = response_format.model_validate_json(response.content)
     except ValidationError as exc:
-        raise InvalidModelOutput(str(exc)[:1000], content=response.content) from exc
+        raise InvalidModelOutput(
+            str(exc)[:1000], content=response.content, records=records
+        ) from exc
     return LLMResult(parsed, (), message, records)

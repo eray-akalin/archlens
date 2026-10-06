@@ -228,7 +228,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   seen-lines ledger keyed by `session_id`; `untrusted.wrap`.
   AC: limit tests; ledger records exactly the lines shown (incl. prompt facts); boundary token
   can't be smuggled.
-- [ ] **M2.4 Evaluator.** Prompts with front matter + lock test; session loop with tools and
+- [x] **M2.4 Evaluator.** Prompts with front matter + lock test; session loop with tools and
   structured output; post-processing rules; self-consistency.
   AC: FakeLLM-scripted session test with tool calls; one test per post-processing rule (LLM.md §4),
   incl. evidence-less `pass` → `unknown`.
@@ -301,6 +301,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   files with 100 ms per file and 10 s total; `find_symbol` is case-insensitive over plain or
   qualified names; `fact_path` prefers code evidence (`route.path` is a URL). Deps: `regex`,
   dev `types-regex`. Tests: 648 offline (+47), scanners 3/3. Spend: $0.
+- 2026-10-07 — M2.4: `llm/{prompts,session}.py`, `evaluate/{llm_session,consistency,deterministic}.py`,
+  `prompts/evaluator.{system,metric,repo}.md` + `prompts.lock`, `archlens prompts lock`.
+  `run_tool_session` (generic loop over `complete()`, reused by the skeptic in M2.5): sequential
+  tool calls, final no-tools turn at the tool/context budget, refused over-budget calls, one
+  retry on invalid output, budget/provider failures → outcome errors (cassette misses propagate).
+  `Evaluator.evaluate`: facts ≤ `max_facts` (severity, then path round-robin), static-first
+  messages (system → rubric → tools → wrapped profile + facts), facts' evidence lines marked in the
+  ledger before turn 1, LLM.md §4 post-processing. AC: FakeLLM-scripted tiny_service session with
+  two tool calls; one test per post-processing rule incl. evidence-less `pass` → `unknown`; lock
+  test (`tests/unit/test_prompts_lock.py`) + CLI. Resolved: a third prompt `evaluator.repo.md`
+  holds the repo-specific part (versioned like the others) and the run number, so consistency
+  reruns never share an exact-cache key; the session's `prompt_version` joins the three versions
+  with `;`; `LLMClientProtocol` keeps only `complete`/`embed` (LLM.md §1 updated); model `unknown`
+  → `reason="model_unknown"`; a failed rerun keeps the first result with low confidence;
+  `InvalidModelOutput` now carries the call records so `llm_call_ids` stay complete; claims
+  trimmed to 300 chars / 5 citations; `severity_rank` moved to `models.enums`. Deps: `jinja2`.
+  Tests: 689 offline (+41). Spend: $0.
 
 ---
 

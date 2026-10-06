@@ -15,8 +15,10 @@
   `response_format=<PydanticModel>`) and strict function tools (`openai.pydantic_function_tool`).
   Chosen for portability across OpenAI-compatible providers (ADR-004).
 - Async (`AsyncOpenAI`). One client instance per run, shared.
-- Protocol `LLMClientProtocol` with `complete(...)`, `run_tool_session(...)`, `embed(...)`;
-  `FakeLLM` implements the same protocol for tests.
+- Protocol `LLMClientProtocol` with `complete(...)` and `embed(...)`; `FakeLLM` implements the
+  same protocol for tests. The tool loop is `archlens.llm.session.run_tool_session(llm, ...)`, a
+  function over `complete()` shared by the evaluator and the skeptic, so a fake needs nothing
+  more.
 
 Every call returns its parsed output plus an `LLMCallRecord` (DATA_MODEL §8), appended to the run.
 
@@ -39,12 +41,16 @@ The available deployments depend on the subscription's quota tier — treat name
 ## 3. Prompts
 
 - Files in `prompts/` (Jinja2), one per role/purpose: `evaluator.system.md`,
-  `evaluator.metric.md`, `verifier.entailment.md`, `skeptic.system.md`, `synth.narrative.md`,
-  `synth.qa.md`.
+  `evaluator.metric.md` (rubric text), `evaluator.repo.md` (repo-specific part),
+  `verifier.entailment.md`, `skeptic.system.md`, `synth.narrative.md`, `synth.qa.md`.
 - Front matter: `id`, `version` (semver), `role`. `prompt_version` string =
-  `"{id}@{version}+{sha256(body)[:8]}"`.
-- `prompts/prompts.lock` stores `id → {version, sha}`; `tests/unit/test_prompts_lock.py` fails if
-  a body changes without a version bump. `archlens prompts lock` updates the file after a bump.
+  `"{id}@{version}+{sha256(body)[:8]}"`; a call built from several prompts uses their versions
+  joined with `;` (the evaluator's starts with `evaluator.system@…`).
+- `prompts/prompts.lock` (JSON) stores `id → {version, sha256}`; `tests/unit/test_prompts_lock.py`
+  fails if a body changes without a version bump. `archlens prompts lock` updates the file after a
+  bump and refuses while a changed body still has its old version.
+- Repository content reaches a template only as a variable (already wrapped), never as template
+  source.
 - **Static-first layout** (keeps provider prompt caching effective — identical prefix ≥ 1024
   tokens is cached automatically):
   1. system prompt (role, rules, output contract)
@@ -104,11 +110,18 @@ ledger before the first turn. Each session (evaluator, self-consistency rerun, s
 
 Budgets per session (config): `max_tool_calls: 14`, `max_context_tokens: 60000`. When either is
 reached the client sends a final turn: "Tool budget exhausted; answer now with what you have" and
-requests the structured output.
+requests the structured output (no tools offered). Calls beyond the budget within one turn get an
+"exhausted" tool message instead of running.
 
 Loop: `chat.completions.parse(messages, tools, response_format=MetricEvaluationOutput)`; while the
-response has tool calls, execute them (concurrently when independent) and continue; stop when the
-model returns parsed content.
+response has tool calls, execute them one at a time in the model's order (keeps search logs and
+the ledger reproducible) and continue; stop when the model returns parsed content. Budget,
+provider and repeated output failures end the session with all its checks `unknown`
+(`reason="budget"`, `"llm_error"`, `"invalid_output"`).
+
+The repo-specific message (`evaluator.repo.md`) holds the wrapped profile summary, the selected
+facts and the evaluation run number, so a self-consistency rerun never hits the exact cache of
+the first run.
 
 Post-processing (deterministic) turns each `LLMCheckOutput` into a `CheckResult` with raw
 `citations` (no validation yet — that is the verifier's mechanical step):
@@ -119,10 +132,14 @@ Post-processing (deterministic) turns each `LLMCheckOutput` into a `CheckResult`
    - `not_applicable` on an `na_allowed` check.
    Any other verdict with empty citations — including every `pass` — becomes `unknown`
    (`reason="no_evidence"`).
+4. Claims are trimmed to 300 characters and citations to the first 5 (trimmed, not rejected);
+   a model's own `unknown` gets `reason="model_unknown"`.
 
 Self-consistency: for checks with `self_consistency: 2`, run a second session restricted to those
 checks (shares the cached prefix, so it is cheap). Same verdict → keep the first result.
 Different verdicts → `unknown`, `confidence="low"`, `reason="inconsistent"`, both claims kept.
+A rerun that failed (budget, provider, invalid output) is not a disagreement: the first result
+stands with `confidence="low"`.
 
 ## 5. Structured output contract
 

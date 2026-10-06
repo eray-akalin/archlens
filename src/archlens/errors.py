@@ -3,6 +3,11 @@
 Stage-level errors fail a run; check-level problems become `unknown` verdicts instead of raising.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from archlens.models import LLMCallRecord
+
 
 class ArchLensError(Exception):
     """Base class for every error ArchLens raises on purpose."""
@@ -70,9 +75,16 @@ class ProviderError(LLMError):
 class InvalidModelOutput(LLMError):
     """The model's answer doesn't validate against the response schema (or was cut off/refused)."""
 
-    def __init__(self, message: str, *, content: str | None = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        content: str | None = None,
+        records: "tuple[LLMCallRecord, ...]" = (),
+    ):
         super().__init__(message)
         self.content = content
+        self.records = records  # the calls that produced the unusable answer (cost was incurred)
 
 
 class CassetteMiss(LLMError):

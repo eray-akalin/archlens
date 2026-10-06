@@ -14,10 +14,11 @@ import typer
 
 from archlens import __version__
 from archlens.config import load_config, load_settings
-from archlens.errors import ArchLensError
+from archlens.errors import ArchLensError, ConfigError
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.ingest import ingest
+from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, update_lock
 from archlens.models.schemas import export_schemas
 from archlens.profile import build_profile
 
@@ -140,9 +141,17 @@ def schema_export(
 
 
 @prompts_app.command("lock")
-def prompts_lock() -> None:
+def prompts_lock(
+    directory: Annotated[Path, typer.Option(help="Prompt directory.")] = DEFAULT_PROMPTS_DIR,
+) -> None:
     """Update prompts/prompts.lock after a prompt version bump."""
-    _not_implemented("M2.4")
+    try:
+        lock = update_lock(directory)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for prompt_id, entry in lock.items():
+        typer.echo(f"{prompt_id}@{entry['version']}+{entry['sha256'][:8]}")
 
 
 @app.command()

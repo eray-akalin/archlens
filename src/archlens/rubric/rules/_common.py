@@ -5,11 +5,18 @@ from collections.abc import Callable, Iterable
 from pydantic import JsonValue
 
 from archlens import __version__
-from archlens.models import Evidence, Fact, RuleOutcome, ScanEvidence, Severity
+from archlens.models import (
+    SEVERITY_RANK,
+    Evidence,
+    Fact,
+    RuleOutcome,
+    ScanEvidence,
+    Severity,
+    severity_rank,
+)
 from archlens.rubric.context import RuleContext
 
 MAX_EVIDENCE = 20  # evidence items per outcome; claims state the full counts
-SEVERITY_RANK: dict[Severity, int] = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
 
 def missing_data(ctx: RuleContext, tool: str) -> RuleOutcome | None:
@@ -62,11 +69,6 @@ def fact_evidence(facts: Iterable[Fact], limit: int = MAX_EVIDENCE) -> list[Evid
             if len(out) >= limit:
                 return out
     return out
-
-
-def severity_rank(severity: Severity | None) -> int:
-    """Rank for comparisons; an unknown severity ranks below `info`."""
-    return -1 if severity is None else SEVERITY_RANK[severity]
 
 
 def attr_str(fact: Fact, key: str) -> str | None:

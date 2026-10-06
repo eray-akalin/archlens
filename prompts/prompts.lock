@@ -1,0 +1,14 @@
+{
+  "evaluator.metric": {
+    "version": "1.0.0",
+    "sha256": "3e22249a51b6ea0190bb0256482559b1c8dd9af41ec0a4f9e1f21541594613b7"
+  },
+  "evaluator.repo": {
+    "version": "1.0.0",
+    "sha256": "a1f543e3300c6e7509c571d3c3b86b2b56360e4873ceee2c785f1cb7700dbd68"
+  },
+  "evaluator.system": {
+    "version": "1.0.0",
+    "sha256": "7be43cc8c1945467dc6aca0e41a5cb3d47e2653aa1b74f6de2f203f85c36826f"
+  }
+}

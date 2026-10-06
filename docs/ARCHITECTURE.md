@@ -147,7 +147,7 @@ src/archlens/
   score/                 scorer.py
   report/                builder.py, synth.py, render_md.py, render_html.py, sarif.py, pr.py, templates/
   llm/                   client.py, fake.py, cassette.py, ratelimit.py, cache.py, cost.py,
-                         prompts.py, untrusted.py
+                         prompts.py, session.py (tool loop), untrusted.py
   security/              redact.py, url_policy.py
   orchestrator/          pipeline.py, checkpoint.py, context.py
   storage/               base.py (Protocols), local.py, azure.py
