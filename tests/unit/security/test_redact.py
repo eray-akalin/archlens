@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import time
 
 import pytest
 from hypothesis import given
@@ -163,3 +164,11 @@ def test_injected_fixture_secrets_never_survive(tiny_service: MaterializedRepo) 
     out = Redactor().redact_excerpt("app/settings_local.py", text)
     for value in tiny_service.secret_values:
         assert value not in out
+
+
+def test_generic_pattern_is_linear_on_long_identifier_runs() -> None:
+    """A quadratic pattern took ~0.7 s per 12 KB line (hours for a 2 MB one-line file)."""
+    hostile = ("a" * 30_000 + "\n") + ("password" * 4_000 + "\n")
+    started = time.monotonic()
+    assert redact(hostile) == hostile
+    assert time.monotonic() - started < 0.2

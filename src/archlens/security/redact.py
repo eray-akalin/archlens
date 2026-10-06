@@ -59,12 +59,16 @@ _PATTERNS: tuple[_Pattern, ...] = (
     _Pattern("openai-key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}")),
     _Pattern("azure-storage-key", re.compile(r"AccountKey=([A-Za-z0-9+/]{40,}={0,2})"), group=1),
     _Pattern("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")),
-    # `password = "..."`, `API_TOKEN: ...`, `aws_secret_access_key=...` with a long, random value
+    # `password = "..."`, `API_TOKEN: ...`, `aws_secret_access_key=...` with a long, random value.
+    # Linear time on hostile input: a match starts only at an identifier's first character, the
+    # keyword is checked in a lookahead, and the identifier is consumed possessively (`*+`), so a
+    # long run of identifier characters is never re-scanned from every position.
     _Pattern(
         "generic-secret",
         re.compile(
-            r"(?i)[A-Za-z0-9_.-]*(?:password|passwd|pwd|secret|token|api_?key|access_?key)"
-            r"[A-Za-z0-9_.-]*[\"']?\s*[:=]\s*[\"']?(?!«)([^\s\"'`,;)]{16,})"
+            r"(?i)(?<![A-Za-z0-9_.-])"
+            r"(?=[A-Za-z0-9_.-]*?(?:password|passwd|pwd|secret|token|api_?key|access_?key))"
+            r"[A-Za-z0-9_.-]*+[\"']?\s*[:=]\s*[\"']?(?!«)([^\s\"'`,;)]{16,})"
         ),
         group=1,
         min_entropy=_GENERIC_MIN_ENTROPY,

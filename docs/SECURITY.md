@@ -67,6 +67,8 @@ Regex probes and `search_code` regex mode use the `regex` module with a timeout 
 
 - Inputs: gitleaks `secret` facts (exact spans) + a fallback pattern set (private-key blocks,
   common cloud key prefixes, `password=`/`token=` assignments with long high-entropy values).
+  Fallback patterns must run in linear time on hostile input (a regression test feeds long
+  identifier runs).
 - Redaction replaces the value with `«redacted:<rule_id>:<first 4 chars of sha256>»`.
 - Applied to: every snippet before hashing/storage, every tool result before it enters a prompt,
   every log line from adapters, report rendering, telemetry attributes.
