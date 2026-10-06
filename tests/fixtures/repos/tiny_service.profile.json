@@ -1,0 +1,40 @@
+{
+  "languages": {
+    "python": 123
+  },
+  "frameworks": [
+    "fastapi",
+    "psycopg",
+    "sqlalchemy"
+  ],
+  "package_managers": [
+    "pip"
+  ],
+  "ci_systems": [
+    "github_actions"
+  ],
+  "test_frameworks": [
+    "pytest"
+  ],
+  "flags": {
+    "has_http_api": true,
+    "has_database": true,
+    "has_message_consumer": false,
+    "has_outbound_http": true,
+    "has_dockerfile": true,
+    "has_compose": true,
+    "has_k8s": false,
+    "has_iac": false,
+    "has_ci": true,
+    "has_deploy_step": true,
+    "has_tests": true,
+    "lang_python": true,
+    "lang_js_ts": false,
+    "lang_dotnet": false,
+    "lang_java": false,
+    "lang_go": false
+  },
+  "entrypoints": [
+    "app/main.py"
+  ]
+}

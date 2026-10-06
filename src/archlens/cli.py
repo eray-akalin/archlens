@@ -15,9 +15,11 @@ import typer
 from archlens import __version__
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError
+from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.ingest import ingest
 from archlens.models.schemas import export_schemas
+from archlens.profile import build_profile
 
 app = typer.Typer(
     name="archlens",
@@ -95,6 +97,9 @@ def facts(
             tools_dir=settings.tools_dir,
             scanners=not no_scanners,
         )
+        # The clone is deleted with `tmp`: anything that reads files must run inside this block.
+        reader = SnippetReader(ingested.root, result.redactor)
+        profile = build_profile(ingested.snapshot, result.facts, reader)
     run_dir = out / ingested.snapshot.commit_sha[:12]
     run_dir.mkdir(parents=True, exist_ok=True)
     fact_set = result.facts
@@ -104,6 +109,7 @@ def facts(
     (run_dir / "tool_runs.json").write_text(
         json.dumps([r.model_dump() for r in fact_set.tool_runs], indent=2) + "\n"
     )
+    (run_dir / "profile.json").write_text(profile.model_dump_json(indent=2) + "\n")
     counts = Counter(f.kind for f in fact_set.facts)
     typer.echo(
         f"{len(ingested.snapshot.files)} files, {len(fact_set.facts)} facts → {run_dir}/facts.jsonl"
@@ -112,6 +118,7 @@ def facts(
         detail = f" ({run.error})" if run.error else ""
         typer.echo(f"  {run.status:8} {run.tool:14} {run.fact_count:5} facts{detail}")
     typer.echo("  by kind: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    typer.echo("  flags: " + ", ".join(flag for flag, on in profile.flags.items() if on))
 
 
 @app.command("eval")

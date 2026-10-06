@@ -124,7 +124,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `file_metrics` (incl. public/documented function counts), log/print calls, doc files.
   AC: per-extractor tests; `archlens facts tests/fixtures/repos/tiny_service` writes `facts.jsonl`
   containing every fact kind DEFECTS.md relies on.
-- [ ] **M1.6 Profile.** Detectors and all flags in RUBRICS.md §2, computed from snapshot + facts.
+- [x] **M1.6 Profile.** Detectors and all flags in RUBRICS.md §2, computed from snapshot + facts.
   AC: table-driven detector tests; tiny_service profile matches a checked-in expected profile.
 - [ ] **M1.7 Index.** Chunker, FTS5, sqlite-vec, RRF search, embedding cache via the M0.6 cache
   store (embedding function injected; deterministic fake embeddings until M2.1).
@@ -192,6 +192,14 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   a fully `==`-pinned requirements file and a pom.xml with explicit versions count as locked;
   `pip install ruff` classifies as `lint` (harmless; documented leniency); attribute additions
   recorded in the DATA_MODEL table; E501 relaxed for tests (one-line input literals). Spend: $0.
+- 2026-10-07 — M1.6: `profile/{detectors,__init__}.py` — every RUBRICS §2 flag always present;
+  frameworks, package managers, CI systems, test frameworks, entrypoints; `archlens facts` also
+  writes `profile.json`. Expected profile checked in at `tests/fixtures/repos/tiny_service.profile.json`
+  (outside the fixture so it's never part of the assessed repo). Resolved: has_database means an
+  ORM/driver import or dependency (redis-only projects don't count, so DATA-* don't apply to them);
+  connection-string config detection is left to the LLM checks; global `fetch(` / `new HttpClient`
+  are matched as text since they need no import; lang_java covers Java/Kotlin/Scala; language
+  shares use code files only (no YAML/JSON/Markdown, vendored or generated). Spend: $0.
 
 ---
 
