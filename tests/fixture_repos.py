@@ -4,6 +4,7 @@ The committed fixture holds no secret and no vulnerable pin, so this repository 
 gitleaks, push protection and Dependabot alerts; both are injected into the copy instead.
 """
 
+import re
 import secrets
 import shutil
 import string
@@ -31,3 +32,22 @@ def materialize_tiny_service(dest: Path) -> MaterializedRepo:
     )
     (dest / "requirements.txt").write_text("PyYAML==5.3\n")
     return MaterializedRepo(root=dest, secret_values=(key_id, secret_key))
+
+
+@dataclass(frozen=True)
+class AnswerKeyRow:
+    id: str  # D01 (defect) or C01 (control)
+    check: str
+    expected: str  # expected verdict
+    location: str
+    marker: str
+
+
+def answer_key() -> list[AnswerKeyRow]:
+    """Rows of tiny_service/DEFECTS.md (defects and controls) in file order."""
+    rows: list[AnswerKeyRow] = []
+    for line in (TINY_SERVICE / ANSWER_KEY).read_text().splitlines():
+        if re.match(r"^\| [DC]\d{2} \|", line):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            rows.append(AnswerKeyRow(*cells[:5]))
+    return rows

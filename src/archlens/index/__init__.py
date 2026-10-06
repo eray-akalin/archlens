@@ -8,9 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from wcmatch import glob
-
 from archlens.evidence import SnippetReader
+from archlens.globs import glob_match
 from archlens.index import store
 from archlens.index.chunker import Chunk, chunk_file
 from archlens.index.embed import Embedder
@@ -20,7 +19,6 @@ __all__ = ["IndexStats", "SearchHit", "build_index", "search"]
 
 RRF_K = 60
 SearchMode = Literal["hybrid", "bm25", "vector"]
-GLOB_FLAGS = glob.GLOBSTAR | glob.BRACE | glob.DOTGLOB
 
 
 @dataclass(frozen=True)
@@ -93,7 +91,7 @@ async def search(
     hits: list[SearchHit] = []
     for chunk_id in ordered:
         chunk = chunks[chunk_id]
-        if path_glob is not None and not glob.globmatch(chunk.path, path_glob, flags=GLOB_FLAGS):
+        if path_glob is not None and not glob_match(chunk.path, path_glob):
             continue
         preview = "\n".join(chunk.text.splitlines()[:3])
         hits.append(

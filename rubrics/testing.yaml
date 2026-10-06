@@ -1,0 +1,88 @@
+metric: testing
+title: Testing
+version: 1.0.0
+weight: 1.0
+description: >
+  Whether the codebase has an automated test suite of meaningful size, whether CI runs it, whether
+  coverage is measured, and whether the tests actually assert behaviour.
+applies_when: {}
+scope_globs: ["**/*"]
+
+checks:
+  - id: TEST-01
+    title: A test suite is present
+    type: deterministic
+    severity: high
+    rule: tests.present
+    params:
+      min_test_files: 1
+    rationale: >
+      Without automated tests every change is verified by hand, so regressions reach production.
+    remediation: >
+      Add a test framework (pytest, jest, xUnit, JUnit, go test) and start with tests for the
+      most critical paths.
+
+  - id: TEST-02
+    title: Test code is proportionate to source code
+    type: deterministic
+    severity: medium
+    rule: tests.ratio
+    params:
+      pass_at: 0.3
+      partial_at: 0.1
+    rationale: >
+      A very low test-to-source ratio usually means large parts of the code are never exercised
+      by tests.
+    remediation: >
+      Add tests for untested modules, starting with business logic and request handlers.
+
+  - id: TEST-03
+    title: Tests are executed in CI
+    type: deterministic
+    severity: high
+    applies_when: {any: [has_ci]}   # missing CI is penalized by CI-01
+    rule: ci.runs_tests
+    rationale: >
+      Tests that CI does not run stop being run at all and silently rot.
+    remediation: >
+      Add a CI step that runs the test suite on every push and pull request.
+
+  - id: TEST-04
+    title: Test coverage is measured
+    type: deterministic
+    severity: low
+    rule: tests.coverage_configured
+    rationale: >
+      Coverage data shows which code paths are never tested and keeps that gap visible.
+    remediation: >
+      Configure a coverage tool (coverage.py/pytest-cov, jest --coverage, coverlet, JaCoCo) and
+      run it in CI.
+
+  - id: TEST-05
+    title: Tests contain meaningful assertions
+    type: llm
+    severity: medium
+    applies_when: {any: [has_tests]}
+    fact_kinds: [test_file]
+    evidence_policy: positive_required
+    guidance: |
+      Sample at most 5 test files from the `test_file` facts: prefer those covering request
+      handlers, business logic or data access over trivial ones, and use their `test_count` and
+      `assert_count` to spot outliers. Read the test functions in each sampled file.
+      A meaningful assertion checks a specific outcome: a returned value, a response status AND
+      body, a raised exception type, persisted state, or a call made to a collaborator with
+      specific arguments. Assertions like `assert True`, `assert response`, `assert x is not None`
+      alone, or tests with no assertion at all are not meaningful.
+      - pass: most tests you read (at least two thirds) make meaningful assertions; cite one
+        representative assertion from at least two different files.
+      - partial: a mix — some tests assert specific outcomes, but at least one third of the tests
+        you read only check truthiness or assert nothing; cite one example of each kind.
+      - fail: most tests you read assert nothing meaningful; cite the weak assertions (or the
+        test bodies that lack one).
+      Evidence: cite the assertion lines (or the whole short test function) you judged. Do not
+      judge a test by its name.
+    rationale: >
+      Tests without real assertions pass regardless of behaviour, giving false confidence.
+    remediation: >
+      Assert on concrete results (values, status codes and bodies, raised errors, side effects)
+      instead of truthiness.

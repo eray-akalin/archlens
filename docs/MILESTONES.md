@@ -220,7 +220,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: unit tests for each component, incl. a cache hit across two runs with different boundaries;
   one `live` smoke test (structured output from the evaluator deployment) recorded as a cassette and
   replayed offline.
-- [ ] **M2.2 Rubrics.** Loader + schema validation + rule registry + `RuleContext`;
+- [x] **M2.2 Rubrics.** Loader + schema validation + rule registry + `RuleContext`;
   `security.yaml` (exists), `testing.yaml`, `cicd.yaml`; all deterministic rules these need.
   AC: loader rejects unknown keys/rules and missing absence probes (for `absence_allowed` and
   `na_allowed`); every rule has pass/fail/NA/unknown-on-error tests.
@@ -264,6 +264,26 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   Resolved: **ADR-016** (chars/3.5 estimates, no tiktoken); openai 3.x uses `httpx2`; Entra uses the
   sync `DefaultAzureCredential` in a thread (the aio one needs aiohttp); the tool-call loop lives
   in M2.4 on top of `complete()` (FakeLLM already scripts tool calls). Spend: $0.0004.
+- 2026-10-07 — M2.2: `rubric/{context,registry,loader}.py` + `rubric/rules/{secrets,vulns,sast,files,tests,ci}.py`
+  (13 rules), `rubrics/testing.yaml` and `rubrics/cicd.yaml`. `@rule("<family>.<name>")` takes the
+  `Params` model from the `params` annotation (`RuleParams`: frozen, unknown keys rejected);
+  `run_rule` wraps the outcome into a `CheckResult` and turns an unknown rule, invalid params or a
+  crashing rule into `unknown`. Loader rejects invalid YAML, unknown keys, unknown rules, invalid
+  params, missing absence probes and metric ≠ file stem (`RubricError`); unknown flags are only
+  logged. AC: 163 new tests — pass/fail/NA/unknown (error, timeout, never ran) per rule; offline
+  tiny_service run matches DEFECTS.md (D07, D17, D18, D20–D22, C03, C04; scanner checks
+  `unknown`), and `-m scanners` matches D01, D02, D04 with CI-03 pass; a test keeps the shipped
+  YAML in sync with the §3 catalogue (weight, IDs, type, severity, rule, applies_when).
+  Resolved: a tool with no run record → `unknown` (`tool_not_run`); `RuleContext.read_text` reads
+  only listed readable files (never symlinks or unlisted paths such as `.git/`) and returns None
+  above `max_bytes`; `evidence()` uses the verifier's `SnippetReader` so hashes match; evidence
+  capped at 20 items per outcome (claims carry full counts); a CI step counts for every stage its
+  command matches (`ruff check . && pytest` lints *and* tests); a job-level `write-all` fails
+  CI-04 even under a restrictive top level; TEST-05 gets `applies_when: has_tests` (catalogue
+  updated; no tests is penalized by TEST-01); `AppliesWhen.holds(flags)` (unknown flag = False);
+  `GLOB_FLAGS` moved to `archlens/globs.py` so rules don't import the index; the DEFECTS.md parser
+  moved to `tests/fixture_repos.answer_key()`. tiny_service also gets TEST-02 fail (ratio 0.08),
+  not in the answer key. Spend: $0.
 
 ---
 

@@ -128,6 +128,7 @@ src/archlens/
   cli.py                 Typer app: assess, facts, eval, schema, prompts, serve, worker
   config.py              Settings (pydantic-settings, prefix ARCHLENS_)
   errors.py              Typed exceptions
+  globs.py               Path globs (wcmatch GLOBSTAR | BRACE | DOTGLOB), shared by rules and tools
   models/                Pydantic contracts (DATA_MODEL.md) + SCHEMA_VERSION
   ingest/                clone.py, snapshot.py, limits.py, filters.py
   profile/               detectors.py, flags.py
@@ -137,7 +138,8 @@ src/archlens/
     runner.py            runs adapters concurrently, builds FactSet
   index/                 chunker.py, store.py (FTS5 + sqlite-vec), search.py (RRF)
   tools/                 paths.py (jail), repo_tools.py (LLM-facing tools), seen.py (seen-lines ledger)
-  rubric/                schema.py, loader.py, registry.py, context.py (RuleContext), rules/<family>.py
+  rubric/                loader.py, registry.py, context.py (RuleContext), rules/<family>.py
+                         (the YAML schema models live in models/rubric.py)
   evaluate/              deterministic.py, llm_session.py, consistency.py
   verify/                mechanical.py, entailment.py, absence.py, skeptic.py, pipeline.py
   score/                 scorer.py

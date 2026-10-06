@@ -6,6 +6,7 @@ absence probes where evidence-less verdicts are allowed); fields that don't appl
 are tolerated and ignored. Registry checks (unknown rule names, params) belong to the loader.
 """
 
+from collections.abc import Mapping
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -31,6 +32,14 @@ class AppliesWhen(Contract):
     all: list[str] = Field(default_factory=list[str])
     any: list[str] = Field(default_factory=list[str])
     none: list[str] = Field(default_factory=list[str])
+
+    def holds(self, flags: Mapping[str, bool]) -> bool:
+        """Evaluate against profile flags; a flag missing from `flags` counts as False."""
+        return (
+            all(flags.get(f, False) for f in self.all)
+            and (not self.any or any(flags.get(f, False) for f in self.any))
+            and not any(flags.get(f, False) for f in self.none)
+        )
 
 
 class CheckSpec(Contract):

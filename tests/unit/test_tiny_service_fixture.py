@@ -1,12 +1,17 @@
 """Keeps tiny_service/DEFECTS.md honest: every row points at a real line and a real check."""
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-from tests.fixture_repos import ANSWER_KEY, TINY_SERVICE, MaterializedRepo
+from tests.fixture_repos import (
+    ANSWER_KEY,
+    TINY_SERVICE,
+    AnswerKeyRow,
+    MaterializedRepo,
+    answer_key,
+)
 
 RUBRICS_DOC = Path(__file__).parents[2] / "docs" / "RUBRICS.md"
 METRIC_PREFIXES = {
@@ -24,25 +29,7 @@ METRIC_PREFIXES = {
 VERDICTS = {"pass", "partial", "fail", "not_applicable", "unknown"}
 
 
-@dataclass(frozen=True)
-class Row:
-    id: str
-    check: str
-    expected: str
-    location: str
-    marker: str
-
-
-def _rows() -> list[Row]:
-    rows: list[Row] = []
-    for line in (TINY_SERVICE / ANSWER_KEY).read_text().splitlines():
-        if re.match(r"^\| [DC]\d{2} \|", line):
-            cells = [c.strip() for c in line.strip("|").split("|")]
-            rows.append(Row(*cells[:5]))
-    return rows
-
-
-ROWS = _rows()
+ROWS = answer_key()
 DEFECTS = [r for r in ROWS if r.id.startswith("D")]
 
 
@@ -64,7 +51,7 @@ def test_checks_exist_in_the_catalogue() -> None:
 
 
 @pytest.mark.parametrize("row", ROWS, ids=[r.id for r in ROWS])
-def test_location_points_at_marker(row: Row, tiny_service: MaterializedRepo) -> None:
+def test_location_points_at_marker(row: AnswerKeyRow, tiny_service: MaterializedRepo) -> None:
     if row.location == "absent":
         assert row.marker == ""
         return

@@ -1,0 +1,142 @@
+metric: cicd
+title: CI/CD
+version: 1.0.0
+weight: 1.0
+description: >
+  Whether the repository has a CI pipeline that builds, lints and tests every change, whether its
+  workflows are correct and hardened (least-privilege tokens, pinned actions), and whether
+  deployments are gated and authenticate without long-lived plaintext credentials.
+applies_when: {}
+scope_globs:
+  - ".github/**"
+  - ".gitlab-ci.yml"
+  - "**/azure-pipelines.{yml,yaml}"
+  - ".azure-pipelines/**"
+  - ".circleci/**"
+  - "**/Jenkinsfile"
+
+checks:
+  - id: CI-01
+    title: A CI pipeline exists
+    type: deterministic
+    severity: high
+    rule: ci.present
+    rationale: >
+      Without CI, nothing guarantees that a change builds, passes tests or meets lint rules before
+      it is merged.
+    remediation: >
+      Add a CI workflow (GitHub Actions, GitLab CI, Azure Pipelines, ...) that runs on every push
+      and pull request.
+
+  - id: CI-02
+    title: The pipeline runs build, lint and tests
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_ci]}
+    rule: ci.stages
+    params:
+      required: [build, lint, test]
+    rationale: >
+      Each missing stage lets a class of defects (broken builds, style and type errors,
+      regressions) through unnoticed.
+    remediation: >
+      Add the missing build, lint or test steps to the pipeline.
+
+  - id: CI-03
+    title: Workflows are free of actionlint errors
+    type: deterministic
+    severity: low
+    applies_when: {any: [has_ci]}
+    rule: ci.actionlint_clean
+    params:
+      max_errors: 0
+    rationale: >
+      Workflow errors (bad expressions, unknown inputs, script injection) make jobs fail or
+      behave differently than intended.
+    remediation: >
+      Run actionlint locally or in CI and fix every reported problem.
+
+  - id: CI-04
+    title: Workflow tokens use least-privilege permissions
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_ci]}
+    rule: ci.permissions_restricted
+    rationale: >
+      Without an explicit `permissions` block the GITHUB_TOKEN may have write access to the
+      repository, which a compromised step can abuse.
+    remediation: >
+      Set `permissions: contents: read` at the workflow level and grant extra scopes only to the
+      jobs that need them.
+
+  - id: CI-05
+    title: Third-party actions are pinned to a commit SHA
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_ci]}
+    rule: ci.actions_pinned
+    params:
+      allow_owners: [actions, github]
+    rationale: >
+      Tags can be moved by the action's owner; a compromised tag runs attacker code with the
+      workflow's secrets.
+    remediation: >
+      Reference third-party actions by full commit SHA (with the version in a comment) and let
+      Dependabot update them.
+
+  - id: CI-06
+    title: Deployments are gated
+    type: llm
+    severity: medium
+    applies_when: {any: [has_deploy_step]}
+    fact_kinds: [ci_workflow, ci_step]
+    evidence_policy: positive_required
+    guidance: |
+      Deploy steps are `ci_step` facts with `run_kind: deploy` (pushing images, publishing
+      packages, kubectl/helm/terraform apply, cloud deploy actions). For each workflow that
+      contains one, read the job and the workflow's triggers (`on:`).
+      A deploy is gated when its job uses a deployment `environment:` (environments can require
+      approvals), or the job/workflow only runs for protected refs (an `if:` on
+      `refs/heads/main` or tags, `on: push: branches: [main]`, `on: release`, `on: push: tags`),
+      or it runs only by manual `workflow_dispatch`.
+      - pass: every deploy job is gated by at least one of these; cite the `environment:`,
+        `if:` or trigger lines.
+      - partial: some deploy jobs are gated and others are not; cite a gated and an ungated one.
+      - fail: a deploy job runs on any push or pull request without an environment or ref
+        condition; cite the deploy job and the workflow trigger.
+      Evidence: cite the job definition and the lines that gate (or fail to gate) it.
+    rationale: >
+      Ungated deployments let any pushed commit, including unreviewed branches, reach production.
+    remediation: >
+      Deploy only from protected branches or tags, through a deployment environment with required
+      reviewers.
+
+  - id: CI-07
+    title: Cloud and registry credentials come from OIDC or a secret store
+    type: llm
+    severity: high
+    applies_when: {any: [has_deploy_step]}
+    fact_kinds: [ci_workflow, ci_step, secret]
+    evidence_policy: positive_required
+    guidance: |
+      Read the steps that log in to a cloud provider or registry, or deploy (login actions such
+      as docker/login-action, azure/login, aws-actions/configure-aws-credentials,
+      google-github-actions/auth, and `run:` commands with credentials). Check how credentials
+      are supplied: OIDC (`permissions: id-token: write` with a federated identity / role to
+      assume), `${{ secrets.NAME }}`, the built-in `${{ secrets.GITHUB_TOKEN }}` /
+      `${{ github.token }}`, or a vault action are acceptable; a literal password, token or key
+      written in the workflow is not.
+      - pass: every credential used by those steps comes from OIDC or the secret store; cite the
+        login or deploy step.
+      - partial: credentials come from the secret store but are exposed in a way that can leak
+        them (echoed, passed on a command line instead of stdin, written to a file that is
+        uploaded as an artifact); cite the exposing line.
+      - fail: any credential is a literal value in the workflow or in a script it calls; cite it.
+        (Values already shown as «redacted:...» were literal secrets.)
+      Evidence: cite the lines where each credential is supplied.
+    rationale: >
+      Plaintext credentials in workflows are readable by everyone with repository access and live
+      on in git history.
+    remediation: >
+      Switch to OIDC federation for cloud logins, or store credentials as encrypted CI secrets
+      and reference them via `${{ secrets.* }}`.

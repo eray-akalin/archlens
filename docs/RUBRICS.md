@@ -133,7 +133,7 @@ Type: **D** = deterministic, **L** = LLM. Severity: C/H/M/L.
 | TEST-02 | Test-to-source LOC ratio | D | M | `tests.ratio` |
 | TEST-03 | Tests executed in CI | D | H | `ci.runs_tests`; `applies_when: {any: [has_ci]}` (missing CI is penalized by CI-01) |
 | TEST-04 | Coverage measured | D | L | `tests.coverage_configured` |
-| TEST-05 | Tests contain meaningful assertions (sampled) | L | M | `fact_kinds: [test_file]`; evaluator samples ≤ 5 test files |
+| TEST-05 | Tests contain meaningful assertions (sampled) | L | M | `fact_kinds: [test_file]`; `applies_when: {any: [has_tests]}` (no tests is penalized by TEST-01); evaluator samples ≤ 5 test files |
 
 ### cicd — CI/CD (weight 1.0)
 | ID | Check | Type | Sev | Rule / notes |
@@ -221,6 +221,7 @@ and a Pydantic `Params` model. Signature: `(ctx: RuleContext, params: P) -> Rule
 Missing-data semantics, shared by all rules:
 - the tool a rule depends on has `status="skipped"` (no input files) → `not_applicable`;
 - `status="error"`/`"timeout"` → `unknown` with that reason — never `pass` on missing data;
+  a tool with no run record at all (e.g. scanners disabled) → `unknown` (`tool_not_run`);
 - the rule's subject is absent (e.g. no workflows for `ci.*`, no Dockerfile for `docker.*`) →
   `not_applicable` (applicability is also expressed in the YAML; the rule is a second guard).
 
@@ -242,12 +243,12 @@ Default params live in each rule's `Params` model; YAML may override them.
 | `observability.present` | `modules` (default below), `route_patterns: ["/health*", "/ready*", "/live*", "/metrics"]` | import match or `route` path match |
 | `tests.present` | `min_test_files: 1` | |
 | `tests.ratio` | `pass_at: 0.3`, `partial_at: 0.1` | test LOC / non-test source LOC from `file_metrics` |
-| `tests.coverage_configured` | – | coverage config file (`.coveragerc`, `[tool.coverage]` in pyproject via `read_text`, `jest.config.*` with `coverage`, `coverlet` refs, `jacoco`), or coverage flags in `ci_step.run` |
+| `tests.coverage_configured` | – | coverage config file (`.coveragerc`, `.nycrc*`, `codecov.yml`, `[tool.coverage]`/`--cov` in pyproject/setup.cfg/tox.ini/pytest.ini via `read_text`, `jest`/`vitest` config or `package.json` with coverage, `coverlet` refs, `jacoco`/`kover`), or coverage flags/upload actions in a `ci_step`; nothing found and CI unreadable → unknown |
 | `ci.present` | – | any `ci_workflow` fact |
-| `ci.stages` | `required: [build, lint, test]` | all → pass, ≥ 1 → partial, 0 → fail |
-| `ci.runs_tests` | – | a `ci_step` with `run_kind=test` |
+| `ci.stages` | `required: [build, lint, test]` | all → pass, ≥ 1 → partial, 0 → fail; a step counts for its `run_kind` and every other kind its command matches |
+| `ci.runs_tests` | – | a `ci_step` with `run_kind=test` (or whose command matches the test pattern, e.g. `pytest && docker push`) |
 | `ci.actionlint_clean` | `max_errors: 0` | |
-| `ci.permissions_restricted` | – | top-level or every-job `permissions` set and not `write-all` |
+| `ci.permissions_restricted` | – | top-level or every-job `permissions` set and not `write-all`; a job-level `write-all` always fails |
 | `ci.actions_pinned` | `allow_owners: [actions, github]` | third-party `uses:` pinned to 40-hex SHA |
 | `docker.non_root` | – | final stage has `USER` that is not root/0 |
 | `docker.pinned_base` | – | no base image without tag or with `latest` |

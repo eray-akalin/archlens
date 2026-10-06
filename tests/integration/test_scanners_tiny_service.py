@@ -14,7 +14,8 @@ from archlens.facts.base import ScanContext
 from archlens.facts.scanners import run_scanners
 from archlens.ingest.snapshot import build_snapshot
 from archlens.models import CodeEvidence, Fact, IngestLimits
-from tests.fixture_repos import MaterializedRepo
+from tests.fixture_repos import MaterializedRepo, answer_key
+from tests.unit.rubric.helpers import deterministic_results
 
 pytestmark = pytest.mark.scanners
 REPO = Path(__file__).parents[2]
@@ -93,3 +94,22 @@ def test_facts_cli_writes_every_kind_defects_rely_on(
     kinds = {Fact.model_validate_json(line).kind for line in lines}
     assert kinds >= DEFECTS_FACT_KINDS, DEFECTS_FACT_KINDS - kinds
     assert not any(value in "\n".join(lines) for value in tiny_service.secret_values)
+
+
+def test_scanner_backed_checks_match_the_answer_key(
+    tiny_service: MaterializedRepo, tmp_path: Path
+) -> None:
+    settings = Settings(_env_file=None, config_dir=REPO / "config")  # pyright: ignore[reportCallIssue]
+    results = deterministic_results(
+        tiny_service.root,
+        tmp_path,
+        scanners=True,
+        tools=load_config(settings).tools,
+        tools_dir=settings.tools_dir,
+    )
+    expected = {row.check: row.expected for row in answer_key() if row.check in results}
+    for check_id in ("SEC-01", "SEC-02", "SEC-03"):
+        assert results[check_id].verdict == expected[check_id], results[check_id].claim
+    assert results["CI-03"].verdict == "pass", results["CI-03"].claim
+    dumped = "".join(r.model_dump_json() for r in results.values())
+    assert not any(value in dumped for value in tiny_service.secret_values)

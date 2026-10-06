@@ -158,7 +158,12 @@ class RuleContext:                   # what a deterministic rule may look at
     profile: RepoProfile
     files: list[FileEntry]           # full snapshot listing (for glob-based rules)
     def read_text(self, path: str, max_bytes: int = 200_000) -> str | None:
-        """Jailed, redacted, size-capped read for config files (coverage config, compose, k8s)."""
+        """Jailed, redacted, size-capped read for config files (coverage config, compose, k8s).
+        Only listed, readable files (no symlinks, binaries, oversized files); None otherwise."""
+    def evidence(self, path: str, start_line: int, end_line: int | None = None) -> CodeEvidence | None:
+        """Redacted, hashed snippet via the same SnippetReader the verifier uses."""
+    def tool_run(self, tool: str) -> ToolRunRecord | None:
+        """Run record of a scanner or extractor, for the missing-data semantics (RUBRICS §5)."""
 
 class RuleOutcome(BaseModel):
     verdict: Verdict
