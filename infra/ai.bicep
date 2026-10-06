@@ -1,11 +1,12 @@
 // Phase 1 (docs/AZURE.md §2): Azure OpenAI (Foundry resource) plus the deployments behind the
 // roles in config/models.yaml (skeptic and synth reuse evaluator/verifier deployments).
 // Capacity is in thousands of tokens per minute and must fit the subscription quota; quota
-// checked 2026-10-06 in swedencentral (Tier 1): gpt-5-mini 1000, gpt4.1-mini 5000,
+// checked 2026-10-06 in polandcentral (Tier 1): gpt-5-mini 1000, gpt4.1-mini 5000,
 // text-embedding-3-small 1000. Global Standard is pay-per-token: capacity itself costs nothing.
 targetScope = 'resourceGroup'
 
-param location string = resourceGroup().location
+@description('Must be allowed by the subscription policy sys.regionrestriction (docs/AZURE.md §1).')
+param location string = 'polandcentral'
 
 @description('Globally unique account name; also the endpoint subdomain.')
 param accountName string = 'archlens-ai-${uniqueString(resourceGroup().id)}'

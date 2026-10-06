@@ -4,8 +4,8 @@ Work top to bottom. A task is done when every acceptance criterion (AC) is met *
 pyright and pytest are green. Tick the box and add a line to the milestone's **Log**
 (`YYYY-MM-DD — what was done; ambiguities resolved; spend if any`). Use `/next-milestone`.
 
-**Credit expiry:** `____-__-__` (fill in from the portal — AZURE.md §0)
-**Spend so far:** `$__` (update weekly from Cost Management)
+**Credit expiry:** `2027-09-19` (Education hub, checked 2026-10-06: $99 of $100 available)
+**Spend so far:** `$0` (update weekly from Cost Management)
 
 Planned spend: development calls ~$10 · first real run ~$0.50 · first eval ~$4 · ablation ~$15 ·
 APIM Developer ~2 weeks ~$24 · Redis (optional) ~$12 · buffer ~$15.
@@ -33,7 +33,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [ ] **M0.4 CI.** `.github/workflows/ci.yml` (pinned SHAs, `permissions: contents: read`),
   `.github/dependabot.yml` (github-actions, pip, docker).
   AC: workflow green on GitHub.
-- [ ] **M0.5 💰 Budget and model access.** Record credit expiry; deploy `infra/budget.bicep`
+- [x] **M0.5 💰 Budget and model access.** Record credit expiry; deploy `infra/budget.bicep`
   ($100, alerts at $60/$85) **first**; run the quota-tier check; write and deploy `infra/ai.bicep`
   (ask first); put endpoint/key in `.env`.
   AC: budget visible in Cost Management; deployments for evaluator, verifier and embed roles exist;
@@ -66,6 +66,17 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   for strict-mode shape; `CheckSpec` already enforces type-specific fields and the absence-probe
   requirement (registry checks stay in M2.2); `RuleContext` deferred to `rubric/context.py` (M2.2)
   since it needs the jail and redaction. Spend: $0.
+- 2026-10-06 — M0.5 done: credit expires 2027-09-19. Budget `archlens-credit` deployed and read
+  back ($100, Annually from 2026-10-01, alerts 60/85, to the Azure account email). swedencentral
+  was blocked by policy `sys.regionrestriction` → account `archlens-ai-wcsizhzzhxrks` in
+  **polandcentral** (AZURE.md §1 updated; Static Web Apps unavailable in every allowed region —
+  M4.7 risk). Deployments gpt-5-mini (200), gpt-4.1-mini (100), text-embedding-3-small (100)
+  Succeeded. Local auth is **Entra** (user's choice): role *Cognitive Services OpenAI User* via
+  `developerPrincipalId`, verified with a token-free `GET /openai/v1/models`; `.env` holds only
+  base URL + `ARCHLENS_LLM_AUTH=entra` (no key). Spend: $0.
+- 2026-10-06 — Per user direction ("don't make rules too strict; give models room"): removed the
+  `CheckSpec` rejection of fields belonging to the other check type (my addition, not in
+  RUBRICS.md); only documented requirements remain.
 
 ---
 

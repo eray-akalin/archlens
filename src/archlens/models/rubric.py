@@ -1,8 +1,9 @@
 """Rubric YAML contracts (RUBRICS.md §1) and the deterministic rule outcome (DATA_MODEL.md §5).
 
-These models mirror the YAML schema exactly; unknown keys are rejected. Structural rules that need
-only the file itself are enforced here; rules that need the registry (unknown rule names, params
-validation) are enforced by the rubric loader.
+These models mirror the YAML schema exactly; unknown keys are rejected. Only the requirements
+RUBRICS.md states are enforced here (a rule for deterministic checks, guidance for LLM checks,
+absence probes where evidence-less verdicts are allowed); fields that don't apply to a check's type
+are tolerated and ignored. Registry checks (unknown rule names, params) belong to the loader.
 """
 
 from typing import Annotated, Literal, Self
@@ -14,17 +15,6 @@ from archlens.models.enums import CheckType, EvidencePolicy, Severity, Verdict
 from archlens.models.evidence import Evidence
 
 _SEMVER = r"^\d+\.\d+\.\d+$"
-_DETERMINISTIC_ONLY = frozenset({"rule", "params"})
-_LLM_ONLY = frozenset(
-    {
-        "guidance",
-        "fact_kinds",
-        "evidence_policy",
-        "absence_probes",
-        "na_allowed",
-        "self_consistency",
-    }
-)
 
 
 class AbsenceProbe(Contract):
@@ -73,16 +63,6 @@ class CheckSpec(Contract):
 
     @model_validator(mode="after")
     def _check_type_fields(self) -> Self:
-        # Compare against defaults, not model_fields_set: a serialized check carries every field.
-        foreign = _LLM_ONLY if self.type == "deterministic" else _DETERMINISTIC_ONLY
-        fields = type(self).model_fields
-        misplaced = sorted(
-            name
-            for name in foreign
-            if getattr(self, name) != fields[name].get_default(call_default_factory=True)
-        )
-        if misplaced:
-            raise ValueError(f"{self.id}: not allowed on {self.type} checks: {misplaced}")
         if self.type == "deterministic" and not self.rule:
             raise ValueError(f"{self.id}: deterministic check needs `rule`")
         if self.type == "llm":

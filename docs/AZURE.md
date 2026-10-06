@@ -35,8 +35,14 @@ everything else inside free grants. Everything is Bicep + azd; nothing exists on
 | Static Web Apps | Free | $0 | M4 |
 | Container registry | GitHub Container Registry (public image) instead of ACR | $0 | M4 |
 
-Region: one region for everything (e.g. Sweden Central or West Europe) unless model quota forces
-the Azure OpenAI resource elsewhere; Global Standard deployments route globally anyway.
+Region: one region for everything — **Poland Central**. The Azure for Students subscription has a
+policy (`sys.regionrestriction`) allowing only polandcentral, austriaeast, switzerlandnorth,
+italynorth and belgiumcentral; Azure OpenAI is offered only in the first, third and fourth, and all
+M4 services exist in each of those except **Static Web Apps (none of the allowed regions — M4.7
+needs another host)**. Poland Central is chosen for West-Europe-level pricing (checked
+2026-10-06). Global Standard deployments route globally anyway. Resource group `rg-archlens-ai`
+was created in swedencentral before the policy was found (groups are not restricted); its
+location is metadata only, so `ai.bicep` sets the resource location explicitly.
 
 ## 2. Phase 1 — budget, then models (M0.5)
 

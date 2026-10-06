@@ -59,9 +59,7 @@ def test_critical_llm_check_defaults_to_two_runs() -> None:
     ("data", "message"),
     [
         (_det(rule=None), "deterministic check needs `rule`"),
-        (_det(guidance="x"), "not allowed on deterministic checks: \\['guidance'\\]"),
         (_llm(guidance=None), "llm check needs `guidance`"),
-        (_llm(rule="files.any_exists"), "not allowed on llm checks: \\['rule'\\]"),
         (_llm(evidence_policy="absence_allowed"), "requires `absence_probes`"),
         (_llm(na_allowed=True), "requires `absence_probes`"),
         (_det(id="ex-1"), "String should match pattern"),
@@ -71,6 +69,13 @@ def test_critical_llm_check_defaults_to_two_runs() -> None:
 def test_invalid_checks_are_rejected(data: dict[str, Any], message: str) -> None:
     with pytest.raises(ValidationError, match=message):
         CheckSpec.model_validate(data)
+
+
+def test_fields_of_the_other_check_type_are_tolerated() -> None:
+    det = CheckSpec.model_validate(_det(guidance="notes for humans", fact_kinds=["route"]))
+    llm = CheckSpec.model_validate(_llm(params={"unused": True}))
+    assert det.guidance == "notes for humans"
+    assert llm.params == {"unused": True}
 
 
 def test_duplicate_check_ids_are_rejected() -> None:
