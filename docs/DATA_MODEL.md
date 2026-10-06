@@ -120,22 +120,22 @@ Initial fact kinds (extend as rules need them; document additions here):
 | `secret` | gitleaks | `rule_id`, `fingerprint`, `path`, `start_line`, `start_col`, `end_line`, `end_col` (location only, 1-based inclusive — feeds the Redactor; never the value) |
 | `vuln_dependency` | osv-scanner | `package`, `version`, `ecosystem`, `ids`, `max_severity`, `severity_source` (`cvss`/`advisory`/`default`), `cvss` |
 | `sast_finding` | semgrep | `rule_id`, `category`, `message` |
-| `dockerfile` | AST | `base_images`, `stages`, `user`, `has_healthcheck` |
+| `dockerfile` | AST | `path`, `base_images`, `external_bases` (no stage aliases/scratch), `stages`, `stage_aliases`, `final_base`, `user` (final stage), `has_healthcheck` |
 | `hadolint_finding` | hadolint | `code`, `level`, `message` |
 | `iac_finding` | checkov | `check_id`, `check_name`, `resource`, `framework` |
-| `ci_workflow` | AST (YAML) | `system`, `triggers`, `permissions`, `jobs` |
-| `ci_step` | AST (YAML) | `job`, `uses`, `run` (redacted, ≤ 500 chars), `run_kind` (`test`/`lint`/`build`/`deploy`/`other`), `pinned` |
+| `ci_workflow` | AST (YAML) | `path`, `system`, `name`, `triggers`, `permissions`, `jobs`, `job_permissions`, `environments` |
+| `ci_step` | AST (YAML) | `path`, `system`, `job`, `uses`, `run` (redacted, ≤ 500 chars), `run_kind` (`test`/`lint`/`build`/`deploy`/`other`; deploy > test > lint > build), `pinned`, `with_keys` |
 | `actionlint_finding` | actionlint | `kind`, `message` |
 | `function_metrics` | lizard | `name`, `ccn`, `nloc`, `params` |
-| `file_metrics` | AST | `loc`, `is_test`, `is_generated`, `public_functions`, `documented_functions` |
-| `deploy_config` | AST (YAML) | `kind` (`compose_service`, `k8s_workload`), `name`, `has_limits`, `has_liveness`, `has_readiness`, `has_healthcheck` |
-| `import_edge` | AST | `from_module`, `to_module`, `internal` |
-| `manifest` | AST | `type` (`pyproject`, `package.json`, ...), `has_lockfile` |
-| `dependency` | manifests | `name`, `version_spec`, `dev` |
-| `route` | AST | `method`, `path`, `handler`, `decorators`, `framework` |
-| `test_file` | AST | `framework`, `test_count`, `assert_count` |
-| `log_call` / `print_call` | AST | `logger`, `level` / `in_test` |
-| `doc_file` | filesystem | `type` (`readme`, `adr`, `openapi`, `contributing`, `changelog`) |
+| `file_metrics` | AST | `path`, `language`, `loc`, `is_test`, `is_generated`, `public_functions`, `documented_functions` (no evidence: whole-file fact) |
+| `deploy_config` | AST (YAML) | `path`, `kind` (`compose_service`, `k8s_workload`), `workload` (k8s kind), `name`, `has_limits`, `has_liveness`, `has_readiness`, `has_healthcheck` |
+| `import_edge` | AST | `from_module`, `to_module`, `internal`, `language` |
+| `manifest` | AST | `path`, `type` (`pyproject`, `requirements`, `package.json`, ...), `has_lockfile` (sibling lockfile, or every dependency pinned exactly), `dependency_count` |
+| `dependency` | manifests | `name`, `version_spec`, `dev`, `manifest` |
+| `route` | AST | `method`, `path` (router prefix applied), `handler`, `is_async`, `decorators`, `framework`, `file` |
+| `test_file` | AST | `path`, `framework`, `test_count`, `assert_count` |
+| `log_call` / `print_call` | AST | `path`, `logger`, `level`, `in_test` / `path`, `call`, `in_test` |
+| `doc_file` | filesystem | `path`, `type` (`readme`, `adr`, `architecture`, `openapi`, `contributing`, `changelog`), `loc` |
 
 Scanner severity → `Severity` mapping (in each adapter, unit-tested):
 - semgrep: `metadata.impact` when present (`HIGH`→high, `MEDIUM`→medium, `LOW`→low), else

@@ -118,7 +118,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: parser + severity-mapping test per tool from stored JSON fixtures; `pytest -m scanners` on
   tiny_service finds the planted defects; no input files → `status="skipped"`; a missing/failing
   binary → `status="error"`, not a crash.
-- [ ] **M1.5 Extractors.** imports + import graph, manifests/dependencies, CI workflows/steps
+- [x] **M1.5 Extractors.** imports + import graph, manifests/dependencies, CI workflows/steps
   (with `run_kind` classification and redacted `run`), Dockerfile, `deploy_config` (compose, k8s),
   routes (FastAPI, Flask, Django, Express, ASP.NET minimal APIs/controllers, Spring), tests,
   `file_metrics` (incl. public/documented function counts), log/print calls, doc files.
@@ -182,6 +182,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   suite needs the OSV API (package names only) — CLAUDE.md rule 7 says tests never touch the
   network; the default suite and CI stay fully offline — **accepted by the user, ADR-014**.
   Spend: $0.
+- 2026-10-07 — M1.5: ten extractors (`ast:imports|manifests|ci|docker|deploy|routes|tests|logging|
+  metrics`, `fs:docs`), `facts/runner.collect_facts`, and a working `archlens facts <path|url>
+  [--no-scanners]` → `<out>/<commit12>/facts.jsonl` + `tool_runs.json`. On tiny_service: 100 facts,
+  17 kinds, every kind DEFECTS.md relies on (verified in the scanners suite). Resolved: Python is
+  parsed with the stdlib `ast` (exact, no new dependency); JS/TS, C#, Java/Kotlin and Go use line
+  patterns for now — upgrade to tree-sitter queries if the cross-stack eval repo (M3.2) needs more
+  precision; route mount prefixes (`include_router(prefix=)`, `app.use('/x', r)`) are not applied;
+  a fully `==`-pinned requirements file and a pom.xml with explicit versions count as locked;
+  `pip install ruff` classifies as `lint` (harmless; documented leniency); attribute additions
+  recorded in the DATA_MODEL table; E501 relaxed for tests (one-line input literals). Spend: $0.
 
 ---
 

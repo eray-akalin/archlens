@@ -55,6 +55,8 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "src/archlens/cli.py" = ["T20"]
 "scripts/*" = ["T20"]
+# Tests embed small input files as one-line literals; splitting them hurts readability.
+"tests/**" = ["E501"]
 
 [tool.pyright]
 include = ["src", "tests"]

@@ -4,12 +4,19 @@ The only module that writes to stdout directly. Commands that are not implemente
 code 1 and name the milestone (docs/MILESTONES.md) that delivers them.
 """
 
+import json
+import tempfile
+from collections import Counter
 from pathlib import Path
 from typing import Annotated, NoReturn
 
 import typer
 
 from archlens import __version__
+from archlens.config import load_config, load_settings
+from archlens.errors import ArchLensError
+from archlens.facts.runner import collect_facts
+from archlens.ingest import ingest
 from archlens.models.schemas import export_schemas
 
 app = typer.Typer(
@@ -64,10 +71,47 @@ def assess(
 
 @app.command()
 def facts(
-    path: Annotated[Path, typer.Argument(help="Local repository path.")],
+    target: Annotated[str, typer.Argument(help="Local path or https Git URL.")],
+    out: Annotated[Path, typer.Option(help="Output directory.")] = Path("runs"),
+    no_scanners: Annotated[
+        bool, typer.Option("--no-scanners", help="Extractors only (no external tools).")
+    ] = False,
 ) -> None:
-    """Extract deterministic facts only (no LLM calls)."""
-    _not_implemented("M1.5")
+    """Extract deterministic facts only (no LLM calls) → <out>/<commit>/facts.jsonl."""
+    settings = load_settings()
+    config = load_config(settings)
+    with tempfile.TemporaryDirectory(prefix="archlens-") as tmp:
+        work = Path(tmp)
+        try:
+            ingested = ingest(target, workdir=work / "clone")
+        except ArchLensError as exc:
+            typer.echo(f"ingest failed: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        result = collect_facts(
+            ingested.root,
+            ingested.snapshot,
+            workdir=work / "tools",
+            tools=config.tools,
+            tools_dir=settings.tools_dir,
+            scanners=not no_scanners,
+        )
+    run_dir = out / ingested.snapshot.commit_sha[:12]
+    run_dir.mkdir(parents=True, exist_ok=True)
+    fact_set = result.facts
+    with (run_dir / "facts.jsonl").open("w", encoding="utf-8") as handle:
+        for fact in fact_set.facts:
+            handle.write(fact.model_dump_json() + "\n")
+    (run_dir / "tool_runs.json").write_text(
+        json.dumps([r.model_dump() for r in fact_set.tool_runs], indent=2) + "\n"
+    )
+    counts = Counter(f.kind for f in fact_set.facts)
+    typer.echo(
+        f"{len(ingested.snapshot.files)} files, {len(fact_set.facts)} facts → {run_dir}/facts.jsonl"
+    )
+    for run in fact_set.tool_runs:
+        detail = f" ({run.error})" if run.error else ""
+        typer.echo(f"  {run.status:8} {run.tool:14} {run.fact_count:5} facts{detail}")
+    typer.echo("  by kind: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
 
 
 @app.command("eval")

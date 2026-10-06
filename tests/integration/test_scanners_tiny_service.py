@@ -68,3 +68,28 @@ def test_planted_defects_are_found(tiny_service: MaterializedRepo, tmp_path: Pat
     assert any(f.kind == "function_metrics" and f.attributes["name"] == "list_users" for f in facts)
     dumped = json.dumps([f.model_dump() for f in facts])
     assert not any(value in dumped for value in tiny_service.secret_values)
+
+
+# Every fact kind a check in tiny_service/DEFECTS.md depends on (M1.5 acceptance criterion).
+DEFECTS_FACT_KINDS = {
+    "secret", "vuln_dependency", "sast_finding", "hadolint_finding", "function_metrics",
+    "import_edge", "manifest", "dependency", "ci_workflow", "ci_step", "dockerfile",
+    "deploy_config", "route", "test_file", "file_metrics", "print_call", "doc_file",
+}  # fmt: skip
+
+
+def test_facts_cli_writes_every_kind_defects_rely_on(
+    tiny_service: MaterializedRepo, tmp_path: Path
+) -> None:
+    from typer.testing import CliRunner
+
+    from archlens.cli import app
+
+    result = CliRunner().invoke(
+        app, ["facts", str(tiny_service.root), "--out", str(tmp_path / "out")]
+    )
+    assert result.exit_code == 0, result.output
+    lines = next((tmp_path / "out").iterdir()).joinpath("facts.jsonl").read_text().splitlines()
+    kinds = {Fact.model_validate_json(line).kind for line in lines}
+    assert kinds >= DEFECTS_FACT_KINDS, DEFECTS_FACT_KINDS - kinds
+    assert not any(value in "\n".join(lines) for value in tiny_service.secret_values)
