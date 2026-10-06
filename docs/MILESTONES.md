@@ -27,7 +27,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `SCHEMA_VERSION`, `archlens schema export` → `schemas/*.json`, drift test.
   AC: round-trip (model → JSON → model) tests for every top-level model; drift test fails when a
   model changes without re-export.
-- [ ] **M0.3 Settings and config.** `Settings` (env prefix `ARCHLENS_`), loaders for
+- [x] **M0.3 Settings and config.** `Settings` (env prefix `ARCHLENS_`), loaders for
   `config/models.yaml`, `config/pricing.yaml`, `config/tools.yaml`; `archlens.errors`.
   AC: invalid/missing config gives a typed error naming the field.
 - [ ] **M0.4 CI.** `.github/workflows/ci.yml` (pinned SHAs, `permissions: contents: read`),
@@ -77,6 +77,12 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - 2026-10-06 — Per user direction ("don't make rules too strict; give models room"): removed the
   `CheckSpec` rejection of fields belonging to the other check type (my addition, not in
   RUBRICS.md); only documented requirements remain.
+- 2026-10-06 — M0.3: `Settings` (all `.env.example` vars; secrets as `SecretStr`; comma lists;
+  empty = unset; `APPLICATIONINSIGHTS_CONNECTION_STRING` unprefixed), `load_config` for the three
+  YAML files with `ARCHLENS_MODEL_<ROLE>` overrides, `archlens.errors`. `ConfigError.field` names
+  the env var or YAML path. Resolved: config files reject unknown keys (catches typos; these are
+  our files, not model output); added `ARCHLENS_CONFIG_DIR` (default `config`); a deployment
+  without a price is a ConfigError because the budget guard would otherwise under-count. Spend: $0.
 
 ---
 
