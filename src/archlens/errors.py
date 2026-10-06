@@ -40,3 +40,36 @@ class RubricError(ArchLensError):
 
 class BudgetExceeded(ArchLensError):
     """The next LLM call would cross the run budget (docs/LLM.md §9)."""
+
+
+class LLMError(ArchLensError):
+    """An LLM call failed after retries, or its output could not be used."""
+
+
+class ProviderError(LLMError):
+    """Provider error; `retryable` covers 429, 5xx, timeouts and dropped connections."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool,
+        status: int | None = None,
+        retry_after: float | None = None,
+    ):
+        super().__init__(message)
+        self.retryable = retryable
+        self.status = status
+        self.retry_after = retry_after
+
+
+class InvalidModelOutput(LLMError):
+    """The model's answer doesn't validate against the response schema (or was cut off/refused)."""
+
+    def __init__(self, message: str, *, content: str | None = None):
+        super().__init__(message)
+        self.content = content
+
+
+class CassetteMiss(LLMError):
+    """Replay found no recorded response: a test failure, never a network call."""

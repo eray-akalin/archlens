@@ -33,7 +33,8 @@ disagree, stop and ask which one is wrong.
 - External scanners via subprocess: gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint;
   `lizard` via its Python API
 - OpenTelemetry (`azure-monitor-opentelemetry` exporter in cloud mode)
-- Utilities: `wcmatch` (globs), `regex` (timeouts), `tiktoken` (token estimates), `python-ulid`
+- Utilities: `wcmatch` (globs), `regex` (timeouts), `python-ulid`; token estimates without
+  tiktoken (ADR-016)
 - pytest, pytest-asyncio, syrupy, hypothesis, ruff (lint + format), pyright (strict on `src/`)
 
 ## Commands

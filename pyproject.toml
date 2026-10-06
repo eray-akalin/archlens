@@ -5,9 +5,12 @@ description = "Evidence-backed architecture assessment for Git repositories"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "azure-identity>=1.19",
     "lizard>=1.17",
+    "openai>=1.106",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "python-ulid>=3.0",
     "pyyaml>=6.0",
     "sqlite-vec>=0.1.6",
     "tree-sitter>=0.25",
@@ -69,7 +72,8 @@ select = [
 "src/archlens/cli.py" = ["T20"]
 "scripts/*" = ["T20"]
 # Tests embed small input files as one-line literals; splitting them hurts readability.
-"tests/**" = ["E501"]
+# ASYNC240: small blocking file reads inside async tests are fine.
+"tests/**" = ["E501", "ASYNC240"]
 
 [tool.pyright]
 include = ["src", "tests"]

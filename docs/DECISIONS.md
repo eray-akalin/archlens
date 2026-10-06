@@ -93,3 +93,9 @@ wheel. The project also sets `[tool.uv] python-preference = "only-managed"`: the
 build on the dev machine lacked loadable SQLite extensions, which sqlite-vec (ADR-005) needs, and
 CI/Docker use builds that have them.
 
+### ADR-016 — Token estimates without tiktoken
+Pre-call token estimates use characters / 3.5 (`archlens.llm.cost`), not tiktoken. *Why:* tiktoken
+downloads its encodings at runtime (same problem as ADR-015), and estimates only feed the budget
+guard and the rate limiter — recorded costs always come from the provider's reported usage. The
+ratio over-estimates code and JSON, which makes the guard more conservative, not less.
+

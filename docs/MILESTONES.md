@@ -5,7 +5,7 @@ pyright and pytest are green. Tick the box and add a line to the milestone's **L
 (`YYYY-MM-DD — what was done; ambiguities resolved; spend if any`). Use `/next-milestone`.
 
 **Credit expiry:** `2027-09-19` (Education hub, checked 2026-10-06: $99 of $100 available)
-**Spend so far:** `$0` (update weekly from Cost Management)
+**Spend so far:** `$0.0004` (LLM calls recorded by ArchLens; update weekly from Cost Management)
 
 Planned spend: development calls ~$10 · first real run ~$0.50 · first eval ~$4 · ablation ~$15 ·
 APIM Developer ~2 weeks ~$24 · Redis (optional) ~$12 · buffer ~$15.
@@ -215,7 +215,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M2 — Evaluate → verify → score → report, three metrics (weeks 1–2)
 
-- [ ] **M2.1 LLM client.** `LLMClient`, `FakeLLM`, cassettes, retries, rate limiter, exact cache
+- [x] **M2.1 LLM client.** `LLMClient`, `FakeLLM`, cassettes, retries, rate limiter, exact cache
   (boundary-normalized key), cost accounting, budget guard (LLM.md §1–2, §8–10).
   AC: unit tests for each component, incl. a cache hit across two runs with different boundaries;
   one `live` smoke test (structured output from the evaluator deployment) recorded as a cassette and
@@ -251,6 +251,19 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   noted as follow-ups.
 
 **Log**
+
+- 2026-10-07 — M2.1: `llm/{client,types,cache,cassette,cost,budget,ratelimit,untrusted,fake,embedder}.py`.
+  `LLMClient.complete` = exact cache (boundary-normalized key) → budget reservation (worst case)
+  → semaphore + TPM bucket → provider with retries (429/5xx/timeouts, `retry-after(-ms)`, jittered
+  backoff, 5 attempts, one LLMCallRecord each) → schema validation (`InvalidModelOutput` for
+  invalid/truncated/refused/empty; never cached when truncated). `OpenAIProvider` (only `openai`
+  import) is tested against a mocked HTTP transport: strict `json_schema`, strict tools, no
+  temperature for reasoning models, APIM key in its header and never as bearer. AC: cache hit
+  across two runs with different boundaries; live smoke on gpt-5-mini (337 in / 160 out, 64
+  reasoning, **$0.0004**) recorded as a cassette and replayed offline with a new boundary.
+  Resolved: **ADR-016** (chars/3.5 estimates, no tiktoken); openai 3.x uses `httpx2`; Entra uses the
+  sync `DefaultAzureCredential` in a thread (the aio one needs aiohttp); the tool-call loop lives
+  in M2.4 on top of `complete()` (FakeLLM already scripts tool calls). Spend: $0.0004.
 
 ---
 

@@ -1,0 +1,16 @@
+{
+  "deployment": "gpt-5-mini",
+  "key": "75bd747a9e26df493a488d066147ddb6ebc0a55f24f8d4abde8b5bd5635dfd45",
+  "response": {
+    "content": "{\n  \"check_id\": \"SMOKE-01\",\n  \"verdict\": \"pass\",\n  \"claim\": \"The function add returns the sum of its two arguments.\",\n  \"citations\": [\n    {\n      \"path\": \"app/math.py\",\n      \"start_line\": 1,\n      \"end_line\": 2\n    }\n  ],\n  \"confidence\": \"high\"\n}",
+    "finish_reason": "stop",
+    "refusal": null,
+    "tool_calls": [],
+    "usage": {
+      "cached_input_tokens": 0,
+      "input_tokens": 337,
+      "output_tokens": 160,
+      "reasoning_tokens": 64
+    }
+  }
+}

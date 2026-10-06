@@ -159,7 +159,8 @@ and must cite finding IDs. This is the only place a semantic cache may sit in fr
   with the constant `BOUNDARY`. Hit → no provider call, `cache_hit=True`, `cost_usd=0`.
   Stored in the run's storage backend; TTL 30 days. Bypass with `--no-cache`.
 - **Rate limiting**: async semaphore (`ARCHLENS_MAX_CONCURRENCY`) + token bucket on estimated
-  tokens (`ARCHLENS_TPM_LIMIT`). Estimate input tokens with `tiktoken` (`o200k_base`) before the call.
+  tokens (`ARCHLENS_TPM_LIMIT`). Estimate input tokens as characters / 3.5 before the call
+  (ADR-016; recorded usage always comes from the provider).
 - **Retries**: on 429/5xx/timeouts, exponential backoff with jitter, honoring `retry-after`
   headers; max 5 attempts; each attempt gets its own `LLMCallRecord` with `attempt` set.
 
