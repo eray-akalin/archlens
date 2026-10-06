@@ -117,12 +117,12 @@ Initial fact kinds (extend as rules need them; document additions here):
 
 | Kind | Source | Key attributes |
 |---|---|---|
-| `secret` | gitleaks | `rule_id`, `fingerprint` (no raw value) |
-| `vuln_dependency` | osv-scanner | `package`, `version`, `ecosystem`, `ids`, `max_severity` |
+| `secret` | gitleaks | `rule_id`, `fingerprint`, `path`, `start_line`, `start_col`, `end_line`, `end_col` (location only, 1-based inclusive — feeds the Redactor; never the value) |
+| `vuln_dependency` | osv-scanner | `package`, `version`, `ecosystem`, `ids`, `max_severity`, `severity_source` (`cvss`/`advisory`/`default`), `cvss` |
 | `sast_finding` | semgrep | `rule_id`, `category`, `message` |
 | `dockerfile` | AST | `base_images`, `stages`, `user`, `has_healthcheck` |
-| `hadolint_finding` | hadolint | `code`, `level` |
-| `iac_finding` | checkov | `check_id`, `resource`, `framework` |
+| `hadolint_finding` | hadolint | `code`, `level`, `message` |
+| `iac_finding` | checkov | `check_id`, `check_name`, `resource`, `framework` |
 | `ci_workflow` | AST (YAML) | `system`, `triggers`, `permissions`, `jobs` |
 | `ci_step` | AST (YAML) | `job`, `uses`, `run` (redacted, ≤ 500 chars), `run_kind` (`test`/`lint`/`build`/`deploy`/`other`), `pinned` |
 | `actionlint_finding` | actionlint | `kind`, `message` |

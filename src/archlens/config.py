@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     storage: Literal["local", "azure"] = "local"
     data_dir: Path = Path(".archlens")
     config_dir: Path = Path("config")
+    # Pinned rule packs and other tool data (scripts/install_tools.sh)
+    tools_dir: Path = Field(default_factory=lambda: Path.home() / ".cache" / "archlens" / "tools")
     azure_storage_account: str | None = None
     azure_cosmos_endpoint: str | None = None
     azure_queue_name: str = "assessments"

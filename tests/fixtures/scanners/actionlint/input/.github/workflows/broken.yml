@@ -1,0 +1,12 @@
+name: broken
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-dept: 1
+      - run: echo "${{ matrix.version }}"

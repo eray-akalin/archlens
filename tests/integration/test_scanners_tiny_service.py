@@ -1,0 +1,70 @@
+"""Real scanners on tiny_service find the planted defects (`pytest -m scanners`).
+
+Needs the binaries from scripts/install_tools.sh. osv-scanner queries the OSV API with package
+names and versions; nothing else leaves the machine and no LLM is called.
+"""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from archlens.config import Settings, load_config
+from archlens.facts.base import ScanContext
+from archlens.facts.scanners import run_scanners
+from archlens.ingest.snapshot import build_snapshot
+from archlens.models import CodeEvidence, Fact, IngestLimits
+from tests.fixture_repos import MaterializedRepo
+
+pytestmark = pytest.mark.scanners
+REPO = Path(__file__).parents[2]
+
+
+def at(facts: list[Fact], kind: str, path: str, line: int) -> list[Fact]:
+    return [
+        f
+        for f in facts
+        if f.kind == kind
+        and any(
+            isinstance(e, CodeEvidence) and e.path == path and e.start_line == line
+            for e in f.evidence
+        )
+    ]
+
+
+def test_planted_defects_are_found(tiny_service: MaterializedRepo, tmp_path: Path) -> None:
+    settings = Settings(_env_file=None, config_dir=REPO / "config")  # pyright: ignore[reportCallIssue]
+    config = load_config(settings)
+    root = tiny_service.root
+    ctx = ScanContext.create(
+        root,
+        build_snapshot(root, limits=IngestLimits()),
+        tmp_path / "work",
+        config.tools,
+        settings.tools_dir,
+    )
+    results = run_scanners(ctx)
+    status = {r.tool: r.status for r in results.tool_runs}
+    assert status == {
+        "gitleaks": "ok",
+        "osv-scanner": "ok",
+        "semgrep": "ok",
+        "hadolint": "ok",
+        "checkov": "skipped",  # C05: no IaC
+        "actionlint": "ok",
+        "lizard": "ok",
+    }, [r.error for r in results.tool_runs if r.error]
+    facts = results.facts
+    assert at(facts, "secret", "app/settings_local.py", 1)  # D01
+    vulns = [
+        f for f in facts if f.kind == "vuln_dependency" and f.attributes["package"] == "pyyaml"
+    ]
+    assert vulns and "critical" in {f.severity for f in vulns}  # D02
+    assert any(
+        f.severity == "high" for f in at(facts, "sast_finding", "app/api/users.py", 59)
+    )  # D04
+    assert at(facts, "sast_finding", "app/api/users.py", 34)  # the D03 query, low impact
+    assert any(f.severity == "high" for f in at(facts, "hadolint_finding", "Dockerfile", 2))  # D30
+    assert any(f.kind == "function_metrics" and f.attributes["name"] == "list_users" for f in facts)
+    dumped = json.dumps([f.model_dump() for f in facts])
+    assert not any(value in dumped for value in tiny_service.secret_values)

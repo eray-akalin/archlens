@@ -1,0 +1,42 @@
+[
+  {
+    "RuleID": "aws-access-token",
+    "Description": "Identified a pattern that may indicate AWS credentials, risking unauthorized cloud resource access and data breaches on AWS platforms.",
+    "StartLine": 1,
+    "EndLine": 1,
+    "StartColumn": 22,
+    "EndColumn": 41,
+    "Match": "REDACTED",
+    "Secret": "REDACTED",
+    "File": "__ROOT__/app/settings_local.py",
+    "SymlinkFile": "",
+    "Commit": "",
+    "Entropy": 3.6841838,
+    "Author": "",
+    "Email": "",
+    "Date": "",
+    "Message": "",
+    "Tags": [],
+    "Fingerprint": "__ROOT__/app/settings_local.py:aws-access-token:1"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 2,
+    "EndLine": 2,
+    "StartColumn": 2,
+    "EndColumn": 67,
+    "Match": "AWS_SECRET_ACCESS_KEY = \"REDACTED\"",
+    "Secret": "REDACTED",
+    "File": "__ROOT__/app/settings_local.py",
+    "SymlinkFile": "",
+    "Commit": "",
+    "Entropy": 4.653056,
+    "Author": "",
+    "Email": "",
+    "Date": "",
+    "Message": "",
+    "Tags": [],
+    "Fingerprint": "__ROOT__/app/settings_local.py:generic-api-key:2"
+  }
+]

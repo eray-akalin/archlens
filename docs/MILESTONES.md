@@ -112,7 +112,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   hardening flag; a requested SHA ends up as `commit_sha`.
 - [x] **M1.3 Jail and redaction.** `resolve_in_snapshot`, `redact`.
   AC: tests for every case in SECURITY.md §4 and §5.
-- [ ] **M1.4 Scanner adapters.** gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint,
+- [x] **M1.4 Scanner adapters.** gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint,
   lizard; severity mapping (DATA_MODEL §4); `config/tools.yaml` with pinned versions;
   `scripts/install_tools.sh` for local dev.
   AC: parser + severity-mapping test per tool from stored JSON fixtures; `pytest -m scanners` on
@@ -164,6 +164,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   mapping confirmed in M1.4); the generic `password=`/`token=` rule needs ≥ 16 chars and entropy
   ≥ 3.5, so low-entropy demo values like compose's `POSTGRES_PASSWORD: app` stay readable as
   evidence; redaction is idempotent (hypothesis). Spend: $0.
+- 2026-10-06 — M1.4: adapters for gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint
+  (subprocess, scratch cwd, env built from scratch — no ARCHLENS_*/cloud vars reach a tool) and
+  lizard (API); `facts/scanners/run_scanners` runs gitleaks first so its secret spans redact all
+  other evidence; versions pinned in `config/tools.yaml` (all match the installed ones);
+  `scripts/install_tools.sh` also pins semgrep `p/default` (1073 rules) as a local file;
+  `scripts/capture_scanner_fixtures.py` regenerates `tests/fixtures/scanners/*` from the adapters'
+  own commands (redacted, root → `__ROOT__`). Verified by experiment and recorded in docstrings:
+  a repo `.semgrepignore` with `*` hides everything from a directory scan (→ explicit file
+  targets); gitleaks columns are +1 on lines after the first (corrected); actionlint reports
+  cwd-relative paths (→ runs with cwd=<repo>, explicit config). Repo-level suppressions disabled:
+  `.gitleaks.toml`/`.gitleaksignore`/`gitleaks:allow`, `osv-scanner.toml`, `nosemgrep`,
+  `# hadolint ignore`, actionlint config; not possible: `checkov:skip` (documented). Resolved:
+  DEFECTS D04 moved to the SSRF finding (users.py:59, impact HIGH) — the SQL f-string only yields
+  impact LOW under the DATA_MODEL mapping; secret facts carry span columns (DATA_MODEL table
+  updated); `ARCHLENS_TOOLS_DIR` added. Deviation to review: the opt-in `pytest -m scanners`
+  suite needs the OSV API (package names only) — CLAUDE.md rule 7 says tests never touch the
+  network; the default suite and CI stay fully offline. Spend: $0.
 
 ---
 

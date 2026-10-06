@@ -1,0 +1,29 @@
+[
+  {
+    "message": "job \"test\" needs job \"build\" which does not exist in this workflow",
+    "filepath": ".github/workflows/broken.yml",
+    "line": 5,
+    "column": 3,
+    "kind": "job-needs",
+    "snippet": "  test:\n  ^~~~~",
+    "end_column": 7
+  },
+  {
+    "message": "input \"fetch-dept\" is not defined in action \"actions/checkout@v4\". available inputs are \"clean\", \"fetch-depth\", \"fetch-tags\", \"filter\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"show-progress\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"ssh-user\", \"submodules\", \"token\"",
+    "filepath": ".github/workflows/broken.yml",
+    "line": 11,
+    "column": 11,
+    "kind": "action",
+    "snippet": "          fetch-dept: 1\n          ^~~~~~~~~~~",
+    "end_column": 21
+  },
+  {
+    "message": "property \"version\" is not defined in object type {}",
+    "filepath": ".github/workflows/broken.yml",
+    "line": 12,
+    "column": 24,
+    "kind": "expression",
+    "snippet": "      - run: echo \"${{ matrix.version }}\"\n                       ^~~~~~~~~~~~~~",
+    "end_column": 37
+  }
+]

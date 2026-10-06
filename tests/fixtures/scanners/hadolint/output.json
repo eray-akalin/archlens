@@ -1,0 +1,26 @@
+[
+  {
+    "code": "DL3007",
+    "column": 1,
+    "file": "__ROOT__/Dockerfile",
+    "level": "warning",
+    "line": 1,
+    "message": "Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag"
+  },
+  {
+    "code": "DL4000",
+    "column": 1,
+    "file": "__ROOT__/Dockerfile",
+    "level": "error",
+    "line": 2,
+    "message": "MAINTAINER is deprecated"
+  },
+  {
+    "code": "DL3042",
+    "column": 1,
+    "file": "__ROOT__/Dockerfile",
+    "level": "warning",
+    "line": 5,
+    "message": "Avoid use of cache directory with pip. Use `pip install --no-cache-dir <package>`"
+  }
+]

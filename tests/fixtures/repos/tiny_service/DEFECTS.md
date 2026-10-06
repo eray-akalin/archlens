@@ -14,7 +14,7 @@ something missing). `tests/unit/test_tiny_service_fixture.py` checks every row.
 | D01 | SEC-01 | fail | injected:app/settings_local.py:1 | AWS_ACCESS_KEY_ID | AWS access key in source (random per test run) |
 | D02 | SEC-02 | fail | injected:requirements.txt:1 | PyYAML==5.3 | Dependency with a critical advisory (CVE-2020-14343) |
 | D03 | SEC-05 | fail | app/api/users.py:34 | text(f"SELECT | SQL built with an f-string from the `name` query parameter |
-| D04 | SEC-03 | fail | app/api/users.py:34 | text(f"SELECT | Same query, expected as a high-severity semgrep finding (confirm in M1.4) |
+| D04 | SEC-03 | fail | app/api/users.py:59 | requests.get( | semgrep `ssrf-requests` (impact HIGH); the D03 query only yields `avoid-sqlalchemy-text` with impact LOW (verified on semgrep 1.179.0) |
 | D05 | SEC-04 | partial | app/api/users.py:42 | await request.json() | PATCH applies raw JSON fields without validation; POST uses a model |
 | D06 | SEC-06 | fail | app/main.py:11 | allow_origins=["*"] | Wildcard CORS origins combined with `allow_credentials=True` |
 | D07 | SEC-07 | fail | absent | | No Dependabot or Renovate configuration |
