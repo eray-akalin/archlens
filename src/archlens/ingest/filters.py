@@ -1,0 +1,126 @@
+"""File classification for snapshots: language, binary, vendored, generated, LOC.
+
+Pure functions over a repo-relative POSIX path and the file's bytes; nothing here touches disk.
+"""
+
+import re
+from pathlib import PurePosixPath
+
+BINARY_SNIFF_BYTES = 8192
+
+_VENDORED_DIRS = frozenset(
+    {
+        "node_modules",
+        "vendor",
+        "third_party",
+        "bower_components",
+        "jspm_packages",
+        ".venv",
+        "venv",
+        "site-packages",
+        "Pods",
+        "Carthage",
+    }
+)
+_GENERATED_DIRS = frozenset({"dist", "build", "out", "__generated__", "generated"})
+_GENERATED_SUFFIXES = (
+    ".min.js",
+    ".min.css",
+    ".map",
+    "_pb2.py",
+    "_pb2_grpc.py",
+    ".pb.go",
+    ".g.dart",
+    ".designer.cs",
+)
+# Lockfiles stay in the snapshot (scanners and rules read them) but are not source code.
+LOCKFILES = frozenset(
+    {
+        "package-lock.json",
+        "npm-shrinkwrap.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "poetry.lock",
+        "uv.lock",
+        "pdm.lock",
+        "Pipfile.lock",
+        "Cargo.lock",
+        "composer.lock",
+        "Gemfile.lock",
+        "go.sum",
+        "packages.lock.json",
+        "gradle.lockfile",
+    }
+)
+_GENERATED_MARKER = re.compile(rb"(?i)(code generated .{0,80}do not edit|@generated\b)")
+
+_LANGUAGES_BY_SUFFIX = {
+    ".py": "python",
+    ".pyi": "python",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".cs": "csharp",
+    ".java": "java",
+    ".kt": "kotlin",
+    ".go": "go",
+    ".rb": "ruby",
+    ".php": "php",
+    ".rs": "rust",
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "cpp",
+    ".hpp": "cpp",
+    ".swift": "swift",
+    ".scala": "scala",
+    ".sh": "shell",
+    ".ps1": "powershell",
+    ".sql": "sql",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".json": "json",
+    ".toml": "toml",
+    ".md": "markdown",
+    ".html": "html",
+    ".css": "css",
+    ".tf": "terraform",
+    ".bicep": "bicep",
+}
+_LANGUAGES_BY_NAME = {"Dockerfile": "dockerfile", "Containerfile": "dockerfile", "Makefile": "make"}
+
+
+def detect_language(path: str) -> str | None:
+    """Language from the file name (Dockerfile, Makefile, ...) or suffix; None if unknown."""
+    p = PurePosixPath(path)
+    if p.name in _LANGUAGES_BY_NAME:
+        return _LANGUAGES_BY_NAME[p.name]
+    if p.suffix == ".Dockerfile" or p.name.startswith("Dockerfile."):
+        return "dockerfile"
+    return _LANGUAGES_BY_SUFFIX.get(p.suffix.lower())
+
+
+def is_vendored(path: str) -> bool:
+    return any(part in _VENDORED_DIRS for part in PurePosixPath(path).parts[:-1])
+
+
+def is_generated(path: str, head: bytes) -> bool:
+    """Build output, minified/compiled artifacts, lockfiles, or a 'generated' header comment."""
+    p = PurePosixPath(path)
+    if p.name in LOCKFILES or p.name.endswith(_GENERATED_SUFFIXES):
+        return True
+    if any(part in _GENERATED_DIRS for part in p.parts[:-1]):
+        return True
+    return bool(_GENERATED_MARKER.search(head[:1024]))
+
+
+def is_binary(head: bytes) -> bool:
+    """Git's heuristic: a NUL byte in the first 8 KB."""
+    return b"\0" in head[:BINARY_SNIFF_BYTES]
+
+
+def count_loc(data: bytes) -> int:
+    """Non-blank lines."""
+    return sum(1 for line in data.splitlines() if line.strip())

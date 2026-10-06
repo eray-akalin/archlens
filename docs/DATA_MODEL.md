@@ -1,7 +1,7 @@
 # Data model
 
 These Pydantic v2 models are the contracts between pipeline stages. They live in
-`src/archlens/models/`. `SCHEMA_VERSION = "1.0.0"` is stored in `AssessmentReport` and bumped on
+`src/archlens/models/`. `SCHEMA_VERSION = "1.1.0"` is stored in `AssessmentReport` and bumped on
 any change to a serialized model (semver). `archlens schema export` writes JSON Schemas to
 `schemas/`; CI fails if they drift from the models.
 
@@ -58,12 +58,15 @@ class IngestLimits(BaseModel):
 class FileEntry(BaseModel):
     path: str
     size: int
-    sha256: str
+    sha256: str                          # "" when the content was not read (too_large)
     language: str | None
     loc: int
     is_binary: bool
-    is_generated: bool
+    is_generated: bool                   # build output, minified, lockfile, "generated" header
     is_vendored: bool
+    symlink_target: str | None = None    # 1.1.0: symlinks are listed (size 0), never followed
+    too_large: bool = False              # 1.1.0: size > max_file_bytes; listed, never read
+    # property readable: not a symlink, not too_large, not binary
 
 class RepoSnapshot(BaseModel):
     repo_url: str | None

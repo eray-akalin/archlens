@@ -15,12 +15,19 @@ class IngestLimits(Contract):
 class FileEntry(Contract):
     path: str
     size: int
-    sha256: str
+    sha256: str  # "" when the content was not read (too_large)
     language: str | None
     loc: int
     is_binary: bool
     is_generated: bool
     is_vendored: bool
+    symlink_target: str | None = None  # set for symlinks: listed with size 0, never followed
+    too_large: bool = False  # size > max_file_bytes: listed, never read, scanned or indexed
+
+    @property
+    def readable(self) -> bool:
+        """True if tools may read this file's content (regular, text, within the size limit)."""
+        return self.symlink_target is None and not self.too_large and not self.is_binary
 
 
 class RepoSnapshot(Contract):

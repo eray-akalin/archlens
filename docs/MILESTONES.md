@@ -105,7 +105,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   copies the repo to a temp dir and injects a generated secret (keeps this repo clean for
   gitleaks/push protection).
   AC: `DEFECTS.md` maps every defect to a check ID and file/line.
-- [ ] **M1.2 Ingest.** Hardened clone (SECURITY.md §3, incl. requested-SHA checkout), local-path
+- [x] **M1.2 Ingest.** Hardened clone (SECURITY.md §3, incl. requested-SHA checkout), local-path
   snapshots, filters, `IngestLimits`, `RepoSnapshot`.
   AC: tests for each limit (total/file count fail; oversized file listed but not read),
   binary/vendored/generated detection, symlink listing, and that the git command lines contain every
@@ -146,6 +146,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   pinned to `--project $CLAUDE_PROJECT_DIR --no-sync --force-exclude`, and a test fails if a
   lockfile or venv appears in the fixture. Scanners installed via Homebrew: gitleaks 8.30.1,
   osv-scanner 2.6.0, semgrep 1.179.0, hadolint 2.15.1, checkov 3.3.20, actionlint 1.7.12. Spend: $0.
+- 2026-10-06 — M1.2: `ingest/{clone,snapshot,filters,limits}.py`. Clone follows SECURITY.md §3
+  plus: `--` before the URL, ref validation (no option-like refs), env built from scratch
+  (`GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null`, only PATH inherited), `core.fsmonitor=false`,
+  protocol restrictions on fetch too, credentials in URLs rejected without echoing them. Every git
+  call is recorded and checked in a test against a local `file://` origin (the `protocol` parameter
+  exists only for that). Resolved: **schema 1.1.0** — `FileEntry.symlink_target` and `too_large`
+  (+ `readable` property) since SECURITY.md requires recording link targets; local paths get a
+  content-derived 40-hex `commit_sha` and git is never run in them (a repo's `.git/config` can make
+  git execute programs); lockfiles count as `is_generated`; short SHAs are not supported as refs.
+  Spend: $0.
 
 ---
 

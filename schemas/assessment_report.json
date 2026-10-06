@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "x-schema-version": "1.0.0",
+  "x-schema-version": "1.1.0",
   "$defs": {
     "CheckResult": {
       "additionalProperties": false,
@@ -741,7 +741,7 @@
   "description": "The canonical output (`assessment.json`). Every rendering is derived from it.",
   "properties": {
     "schema_version": {
-      "default": "1.0.0",
+      "default": "1.1.0",
       "title": "Schema Version",
       "type": "string"
     },
