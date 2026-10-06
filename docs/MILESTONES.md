@@ -51,6 +51,13 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `pytester` (incl. `.env` not enabling live). Resolved: current ruff formats Python blocks inside
   Markdown → `*.md` excluded so doc samples keep their alignment; unmarked tests get `unit`
   automatically. Spend: $0.
+- 2026-10-06 — M0.5 (in progress, nothing deployed): subscription `AzureForStudents_2018-01-01`,
+  spending limit On; quota tier **Tier 1**. GlobalStandard quota in swedencentral and westeurope:
+  gpt-5-mini 1000, gpt-4.1-mini 5000 (quota name `gpt4.1-mini`), text-embedding-3-small 1000
+  (K TPM). gpt-4.1-mini is `Legacy`, retires 2027-04-14 (after the project window). Wrote
+  `infra/budget.bicep` (timeGrain `Annually` so the one-off credit accumulates instead of
+  resetting monthly) and `infra/ai.bicep` (region swedencentral; versions/capacity live in the
+  Bicep param since `config/models.yaml` has no such fields); budget what-if: 1 Create, no errors.
 
 ---
 
