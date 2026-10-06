@@ -1,0 +1,50 @@
+# Template showing every field. Files starting with "_" are ignored by the rubric loader.
+metric: example                    # must equal file name stem
+title: Example metric
+version: 0.1.0
+weight: 1.0
+description: >
+  One paragraph shown in the report.
+applies_when: {}                   # {all: [...], any: [...], none: [...]} over RepoProfile.flags
+scope_globs: ["**/*"]
+
+checks:
+  - id: EX-01
+    title: A deterministic check
+    type: deterministic
+    severity: medium                 # critical | high | medium | low | info
+    # weight: 2                      # optional override of severity default
+    # applies_when: {any: [has_dockerfile]}
+    rule: files.any_exists
+    params:
+      globs: ["SOMETHING.md"]
+    rationale: >
+      Why it matters.
+    remediation: >
+      How to fix it.
+
+  - id: EX-02
+    title: An LLM-judged check
+    type: llm
+    severity: high
+    fact_kinds: [route]
+    evidence_policy: absence_allowed  # or positive_required (default)
+    absence_probes:                   # required for absence_allowed
+      - {kind: path_glob, pattern: "**/middleware/**"}
+      - {kind: regex, pattern: "(?i)something", path_glob: "**/*.py"}
+      - {kind: symbol, pattern: "*Something*"}
+    na_allowed: false
+    self_consistency: 1               # default 2 for critical, 1 otherwise
+    guidance: |
+      What to inspect, then explicit criteria:
+      - pass: ...
+      - partial: ...
+      - fail: ...
+      Evidence: what must be cited.
+    rationale: >
+      Why it matters.
+    remediation: >
+      How to fix it.
+
+  # - id: EX-03
+  #   retired: true                  # never delete or renumber; retire instead

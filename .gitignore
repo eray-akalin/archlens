@@ -1,0 +1,32 @@
+# Secrets — never commit (SECURITY.md §8)
+.env
+.env.*
+!.env.example
+
+# ArchLens local data and run outputs
+.archlens/
+runs/
+
+# Python / tooling
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Azure Developer CLI local state (holds env values)
+.azure/
+
+# Claude Code per-user settings
+.claude/settings.local.json
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

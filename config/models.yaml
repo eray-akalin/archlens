@@ -1,0 +1,39 @@
+# Role -> deployment and call parameters. Env vars ARCHLENS_MODEL_<ROLE> override `deployment`.
+roles:
+  evaluator:
+    deployment: gpt-5-mini
+    reasoning_effort: low
+    max_completion_tokens: 6000
+  verifier:
+    deployment: gpt-4.1-mini
+    temperature: 0
+    max_completion_tokens: 400
+  skeptic:
+    deployment: gpt-5-mini
+    reasoning_effort: low
+    max_completion_tokens: 3000
+  synth:
+    deployment: gpt-4.1-mini
+    temperature: 0.2
+    max_completion_tokens: 2500
+  embed:
+    deployment: text-embedding-3-small
+
+sessions:
+  evaluator:
+    max_tool_calls: 14
+    max_context_tokens: 60000
+    max_facts: 150
+  skeptic:
+    max_tool_calls: 6
+    max_context_tokens: 20000
+
+# Used by --dry-run until >= 3 recorded runs exist; replace with measured medians.
+estimates:
+  tokens_per_metric:
+    input: 45000
+    cached_input: 10000
+    output: 7000
+  verifier_tokens_per_finding:
+    input: 1500
+    output: 120

@@ -1,0 +1,147 @@
+# Reference rubric. Every other metric file follows this shape (see docs/RUBRICS.md §1).
+metric: security
+title: Security
+version: 1.0.0
+weight: 1.5
+description: >
+  Whether the codebase avoids the most common, high-impact security failures: leaked secrets,
+  vulnerable dependencies, injection, missing input validation, and unsafe HTTP configuration.
+applies_when: {}
+scope_globs: ["**/*"]
+
+checks:
+  - id: SEC-01
+    title: No secrets committed to the repository
+    type: deterministic
+    severity: critical
+    rule: secrets.none_found
+    params:
+      exclude_globs: ["**/test*/**", "**/*example*", "**/fixtures/**"]
+    rationale: >
+      Credentials in source control are exposed to everyone with read access and persist in
+      history even after deletion.
+    remediation: >
+      Revoke and rotate the credential, remove it from history, and load it from a secret store
+      or environment variable.
+
+  - id: SEC-02
+    title: No dependencies with known critical or high vulnerabilities
+    type: deterministic
+    severity: critical
+    rule: vulns.max_severity
+    params:
+      fail_at: high
+      partial_at: medium
+    rationale: >
+      Known-vulnerable dependencies are the cheapest attack path; exploits are often public.
+    remediation: >
+      Upgrade to a fixed version listed in the advisory, or document why the vulnerable code
+      path is unreachable.
+
+  - id: SEC-03
+    title: No high-severity static-analysis findings
+    type: deterministic
+    severity: high
+    rule: sast.max_severity
+    params:
+      fail_at: high
+      partial_at: medium
+      exclude_rule_globs: []
+    rationale: >
+      High-severity SAST findings usually indicate injection, unsafe deserialization, or
+      insecure crypto.
+    remediation: >
+      Fix the flagged code paths; suppress only with an inline justification.
+
+  - id: SEC-04
+    title: Untrusted input is validated at system boundaries
+    type: llm
+    severity: high
+    applies_when: {any: [has_http_api, has_message_consumer]}
+    fact_kinds: [route, sast_finding]
+    evidence_policy: positive_required
+    guidance: |
+      Boundaries are HTTP handlers, message consumers, and CLI/file parsers that accept external
+      data. Inspect at least three handlers (prefer ones that write data or call other services).
+      - pass: inputs are validated by schema or typed models (e.g. Pydantic/FastAPI models,
+        marshmallow, zod/joi/class-validator, ASP.NET model validation with attributes, Bean
+        Validation) on the handlers you inspected, including type, required fields and bounds.
+      - partial: validation exists on some handlers but at least one inspected handler reads raw
+        request data (query/body/headers) and uses it without validation.
+      - fail: inspected handlers use raw request data without validation.
+      Evidence: cite the handler signature or validation model for each handler you judged.
+      Do not infer validation from naming alone; cite the code that performs it.
+    rationale: >
+      Unvalidated input is the root cause of most injection and logic vulnerabilities.
+    remediation: >
+      Declare request schemas at every boundary and reject requests that don't match.
+
+  - id: SEC-05
+    title: Database queries are parameterized
+    type: llm
+    severity: critical
+    applies_when: {any: [has_database]}
+    fact_kinds: [sast_finding, dependency]
+    evidence_policy: positive_required
+    self_consistency: 2
+    guidance: |
+      Look for raw SQL construction: string concatenation, f-strings, format(), template literals
+      or StringBuilder used to build SQL that includes variables. Use search_code with regex for
+      patterns like SELECT/INSERT/UPDATE/DELETE near +, f", .format(, ${, string interpolation.
+      ORM query builders and bound parameters (?, :name, %s with params tuple, @param) are safe.
+      - pass: all SQL you found uses bound parameters or an ORM; cite at least one representative
+        query.
+      - partial: string-built SQL exists but only with constants or allow-listed identifiers
+        (e.g. a validated column name); cite it and explain in the claim.
+      - fail: any query includes a variable derived from input via string building; cite it.
+    rationale: >
+      String-built SQL with user input enables SQL injection, typically leading to full data
+      compromise.
+    remediation: >
+      Use bound parameters or the ORM's query API; never interpolate input into SQL text.
+
+  - id: SEC-06
+    title: CORS and security headers are safely configured
+    type: llm
+    severity: medium
+    applies_when: {any: [has_http_api]}
+    fact_kinds: [route, dependency]
+    evidence_policy: absence_allowed
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)cors", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+      - {kind: regex, pattern: "(?i)helmet|strict-transport-security|x-content-type-options|content-security-policy", path_glob: "**/*"}
+    guidance: |
+      Find CORS configuration and security-header middleware.
+      - pass: CORS restricts origins (no wildcard together with credentials) and common security
+        headers are set (via middleware such as helmet, a reverse-proxy config in the repo, or
+        framework settings); cite the configuration.
+      - partial: CORS is restrictive but no security headers are configured, or vice versa.
+      - fail: `allow_origins=["*"]` (or equivalent) combined with credentials, or reflecting the
+        request Origin unconditionally; cite it.
+      - not_applicable: the service is not browser-facing (pure internal API with no CORS and the
+        README/config states it is internal); explain in the claim.
+      If you find no CORS or header configuration at all, answer partial with no citations; the
+      verifier will confirm the absence.
+    rationale: >
+      Permissive CORS with credentials lets any website act on behalf of logged-in users.
+    remediation: >
+      Allow-list origins explicitly and add standard security headers via middleware or proxy.
+
+  - id: SEC-07
+    title: Automated dependency updates are configured
+    type: deterministic
+    severity: low
+    rule: files.any_exists
+    params:
+      globs:
+        - ".github/dependabot.yml"
+        - ".github/dependabot.yaml"
+        - "renovate.json"
+        - "renovate.json5"
+        - ".github/renovate.json"
+        - ".renovaterc*"
+    rationale: >
+      Without automation, dependency updates lag and vulnerabilities accumulate.
+    remediation: >
+      Enable Dependabot or Renovate for every package ecosystem in the repository.

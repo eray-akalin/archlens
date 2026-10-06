@@ -1,0 +1,18 @@
+# USD per 1M tokens, keyed by deployment name.
+# VERIFY against https://azure.microsoft.com/en-us/pricing/details/azure-openai/ before eval runs;
+# values below are Global Standard list prices as last checked and may be outdated.
+currency: USD
+last_checked: 2026-09-29
+deployments:
+  gpt-5-mini:
+    input: 0.25
+    cached_input: 0.025
+    output: 2.00
+  gpt-4.1-mini:
+    input: 0.40
+    cached_input: 0.10
+    output: 1.60
+  text-embedding-3-small:
+    input: 0.02
+    cached_input: 0.02
+    output: 0.0

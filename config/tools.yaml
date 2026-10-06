@@ -1,0 +1,12 @@
+# External scanners. Versions are pinned in M1.5 (latest stable at that time) and must match the
+# Dockerfile. `checksum` is the sha256 of the release artifact for the linux-amd64 build.
+# Confirm CLI flags with `<tool> --help` for the pinned version; record the exact command in the
+# adapter docstring.
+tools:
+  gitleaks:     {version: TBD, checksum: TBD, timeout_s: 120}   # run with --redact, JSON report
+  osv-scanner:  {version: TBD, checksum: TBD, timeout_s: 180}   # lockfile/source scan, JSON output
+  semgrep:      {version: TBD, timeout_s: 300, rulesets: ["p/default"], metrics: "off"}
+  hadolint:     {version: TBD, checksum: TBD, timeout_s: 60}
+  checkov:      {version: TBD, timeout_s: 300}
+  actionlint:   {version: TBD, checksum: TBD, timeout_s: 60}
+  lizard:       {version: TBD, timeout_s: 120}                  # Python package, used via its API
