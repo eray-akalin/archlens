@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from archlens.evidence import SnippetReader
-from archlens.index import build_index, search, store
-from archlens.index.chunker import MAX_CHUNK_LINES, OVERLAP, WINDOW, chunk_file
+from archlens.index import build_index, find_symbols, search, store
+from archlens.index.chunker import MAX_CHUNK_LINES, OVERLAP, WINDOW, chunk_file, symbol_defs
 from archlens.index.embed import CachedEmbedder, FakeEmbedder, pack, tokens, unpack
 from archlens.ingest.snapshot import build_snapshot
 from archlens.models import IngestLimits
@@ -144,7 +144,7 @@ async def indexed(
     embedder = CachedEmbedder(FakeEmbedder(), open_local_storage(tmp_path / "data").cache)
     path = tmp_path / "index.sqlite"
     stats = await build_index(path, snapshot, SnippetReader(tiny_service.root), embedder)
-    assert stats.chunks > 20 and stats.files > 10
+    assert stats.chunks > 20 and stats.files > 10 and stats.symbols > stats.chunks / 2
     return path, embedder, tiny_service
 
 
@@ -208,3 +208,62 @@ async def test_index_never_stores_a_secret(
     assert store.meta(index)["model"] == "fake-hash-256"
     with sqlite3.connect(index) as conn:
         assert conn.execute("SELECT count(*) FROM chunks").fetchone()[0] > 0
+
+
+# --- symbol definitions (find_symbol, symbol absence probes) -----------------------------------
+
+
+def defs(text: str, language: str, path: str = "f") -> list[tuple[str, str, int, int]]:
+    return [
+        (d.qualified, d.kind, d.start_line, d.end_line) for d in symbol_defs(path, language, text)
+    ]
+
+
+def test_symbol_defs_include_nested_and_decorated_python() -> None:
+    source = (
+        "@app.get('/')\n"  # 1
+        "async def root():\n"
+        "    def inner():\n"  # 3
+        "        pass\n"
+        "    return 1\n"  # 5
+        "class Svc:\n"
+        "    @staticmethod\n"  # 7
+        "    def get(x):\n"
+        "        return x\n"  # 9
+    )
+    assert defs(source, "python") == [
+        ("root", "function", 1, 5),
+        ("root.inner", "function", 3, 4),
+        ("Svc", "class", 6, 9),
+        ("Svc.get", "method", 7, 9),
+    ]
+
+
+def test_symbol_defs_other_languages() -> None:
+    ts = "export class AuthMiddleware {\n  handle(req) { return 1; }\n}\nexport const helper = (a) => a;\n"
+    assert defs(ts, "typescript", "a.ts") == [
+        ("AuthMiddleware", "class", 1, 3),
+        ("AuthMiddleware.handle", "method", 2, 2),
+        ("helper", "function", 4, 4),
+    ]
+    go = "package main\ntype Server struct{}\nfunc (s *Server) Run() {}\n"
+    assert defs(go, "go", "m.go") == [("Server", "type", 2, 2), ("Run", "method", 3, 3)]
+    java = "class A {\n  A() {}\n  void run() {}\n}\n"
+    assert defs(java, "java", "A.java") == [
+        ("A", "class", 1, 4),
+        ("A.A", "constructor", 2, 2),
+        ("A.run", "method", 3, 3),
+    ]
+    assert defs("x = 1\n", "ruby", "a.rb") == []
+
+
+async def test_find_symbols_globs_are_case_insensitive(
+    indexed: tuple[Path, CachedEmbedder, MaterializedRepo],
+) -> None:
+    path, _, _ = indexed
+    found, total = await find_symbols(path, "*USER*", limit=3)
+    assert total > 3 and len(found) == 3
+    assert [d.path for d in found] == sorted(d.path for d in found)
+    exact, _ = await find_symbols(path, "search_users")
+    assert [(d.path, d.kind) for d in exact] == [("app/api/users.py", "function")]
+    assert (await find_symbols(path, "NoSuchThing*"))[1] == 0

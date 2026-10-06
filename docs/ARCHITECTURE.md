@@ -66,7 +66,8 @@ used by rubric `applies_when` (catalogue in `RUBRICS.md` §2).
 ### 2.3 Index
 Symbol-aware chunks (tree-sitter: function/class/method; fallback: 60-line windows with 10-line
 overlap). Stored in one SQLite file per snapshot: FTS5 table for BM25, `sqlite-vec` table for
-embeddings, chunk table with `path, start_line, end_line, symbol, lang`. Search = BM25 ∪ vector,
+embeddings, chunk table with `path, start_line, end_line, symbol, lang`, and a `symbols` table
+with every definition (nested ones included) for `find_symbol` and symbol absence probes. Search = BM25 ∪ vector,
 fused with reciprocal rank fusion. Embedding calls go through the LLM client (cost-tracked,
 cached by chunk hash).
 
@@ -137,7 +138,8 @@ src/archlens/
     extractors/          imports.py manifests.py ci.py docker.py routes.py tests.py logging_.py docs.py
     runner.py            runs adapters concurrently, builds FactSet
   index/                 chunker.py, store.py (FTS5 + sqlite-vec), search.py (RRF)
-  tools/                 paths.py (jail), repo_tools.py (LLM-facing tools), seen.py (seen-lines ledger)
+  tools/                 paths.py (jail), repo_tools.py (LLM-facing tools), specs.py (their
+                         argument models), seen.py (seen-lines ledger)
   rubric/                loader.py, registry.py, context.py (RuleContext), rules/<family>.py
                          (the YAML schema models live in models/rubric.py)
   evaluate/              deterministic.py, llm_session.py, consistency.py

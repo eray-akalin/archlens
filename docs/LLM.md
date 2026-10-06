@@ -77,11 +77,24 @@ Tools (all read-only, defined in `archlens.tools.repo_tools`, jailed to the snap
 
 | Tool | Args | Returns | Limits |
 |---|---|---|---|
-| `list_dir` | `path=".", depth=1` | entries with type and size | ≤ 200 entries |
-| `read_file` | `path, start_line=1, end_line=null` | line-numbered text (`  42│ code`) | ≤ 200 lines, ≤ 24 KB per call |
-| `search_code` | `query, mode="hybrid"\|"regex", path_glob=null, top_k=8` | hits: path, line range, 3-line preview | `top_k` ≤ 15 |
+| `list_dir` | `path=".", depth=1` | entries with type and size | ≤ 200 entries, depth ≤ 5 |
+| `read_file` | `path, start_line=1, end_line=null` | line-numbered text (`  42│ code`) | ≤ 200 lines, ≤ 24 KB per call; lines cut at 2000 chars |
+| `search_code` | `query, mode="hybrid"\|"regex", path_glob=null, top_k=8` | hits: path, line range, 3-line preview | `top_k` ≤ 15; regex: 100 ms per file, 10 s total |
 | `find_symbol` | `name` (glob allowed) | definitions: path, lines, kind | ≤ 20 |
-| `get_facts` | `kind, path_glob=null, limit=50` | facts JSON with evidence snippets | ≤ 100 |
+| `get_facts` | `kind, path_glob=null, limit=50` | facts JSON with evidence snippets | ≤ 100, ≤ 24 KB |
+
+Implementation notes (`archlens.tools.repo_tools`, argument models in `archlens.tools.specs`):
+- Files are reached only through the snapshot listing: symlinks, binaries and oversized files are
+  listed but never read; paths also pass `resolve_in_snapshot`.
+- Text is redacted before it is matched or shown, so regex search can't probe a secret; regex mode
+  covers readable, non-vendored files (`^`/`$` per line).
+- `find_symbol` matches the glob case-insensitively against the plain or qualified name
+  (`Class.method`) in the index's `symbols` table, which holds every definition, nested ones
+  included (chunks keep a small class whole).
+- Optional arguments are nullable in the strict schema and defaulted by the tool; out-of-range
+  values are clamped; invalid calls return `error: …` as the tool result (never an exception).
+- Lines shown = numbered rows of `read_file`, search previews and fact evidence snippets;
+  `list_dir` and `find_symbol` show locations only and add nothing to the ledger.
 
 Every tool result is wrapped as untrusted content, appended to the `SearchRecord` log, and every
 line it shows to the model is added to the **seen-lines ledger** (`archlens.tools.seen`), keyed by

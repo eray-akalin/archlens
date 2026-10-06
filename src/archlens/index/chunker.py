@@ -151,6 +151,64 @@ def _symbol_spans(root: Node, grammar: str) -> list[tuple[int, int, str | None]]
     return sorted(spans)
 
 
+_KINDS = {
+    "function_definition": "function", "function_declaration": "function",
+    "generator_function_declaration": "function", "lexical_declaration": "function",
+    "method_definition": "method", "method_declaration": "method",
+    "constructor_declaration": "constructor",
+    "class_definition": "class", "class_declaration": "class",
+    "abstract_class_declaration": "class", "interface_declaration": "interface",
+    "enum_declaration": "enum", "record_declaration": "record", "struct_declaration": "struct",
+    "type_declaration": "type",
+}  # fmt: skip
+
+
+@dataclass(frozen=True)
+class SymbolDef:
+    """A symbol definition: `name` as written, `qualified` with its enclosing symbols."""
+
+    path: str
+    name: str
+    qualified: str
+    kind: str  # function | method | constructor | class | interface | enum | record | struct | type
+    start_line: int  # 1-based inclusive (decorators included)
+    end_line: int
+
+
+def symbol_defs(path: str, language: str | None, text: str) -> list[SymbolDef]:
+    """Every symbol definition in `text`, nested ones included (unlike chunks, which keep a
+    small class whole); empty for languages without a bundled grammar."""
+    grammar = _grammar_for(language, path)
+    if grammar is None or not text.strip():
+        return []
+    kinds = _SYMBOLS[grammar]
+    js = grammar in {"javascript", "typescript", "tsx"}
+    defs: list[SymbolDef] = []
+
+    def visit(node: Node, owner: str | None, in_class: bool) -> None:
+        for child in node.named_children:
+            if not (child.type in kinds or (js and _is_arrow_const(child))):
+                visit(child, owner, in_class)
+                continue
+            target = child
+            if child.type == "decorated_definition":
+                target = child.child_by_field_name("definition") or child
+            name = _arrow_name(child) if child.type == "lexical_declaration" else _name(target)
+            kind = _KINDS.get(target.type, "symbol")
+            if kind == "function" and in_class:
+                kind = "method"
+            qualified = f"{owner}.{name}" if owner and name else name
+            if name and qualified:
+                start, end = child.start_point.row + 1, child.end_point.row + 1
+                defs.append(SymbolDef(path, name, qualified, kind, start, end))
+            is_type = kind in {"class", "interface", "enum", "record", "struct", "type"}
+            visit(target, qualified or owner, is_type)
+
+    tree = _parser(grammar).parse(text.encode("utf-8", "replace"))
+    visit(tree.root_node, None, False)
+    return sorted(defs, key=lambda d: (d.start_line, d.end_line, d.qualified))
+
+
 def _windows(start: int, end: int) -> Iterator[tuple[int, int]]:
     step = WINDOW - OVERLAP
     line = start

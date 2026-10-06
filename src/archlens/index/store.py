@@ -11,7 +11,7 @@ from pathlib import Path
 
 import sqlite_vec  # pyright: ignore[reportMissingTypeStubs]
 
-from archlens.index.chunker import Chunk
+from archlens.index.chunker import Chunk, SymbolDef
 from archlens.index.embed import pack
 
 _FTS_TOKEN = re.compile(r"\w{2,}")
@@ -43,6 +43,10 @@ def create(path: Path, *, model: str, dim: int, commit_sha: str) -> None:
                 content='chunks', content_rowid='id', tokenize='porter unicode61'
             );
             CREATE VIRTUAL TABLE chunks_vec USING vec0(embedding float[{int(dim)}]);
+            CREATE TABLE symbols (
+                path TEXT NOT NULL, name TEXT NOT NULL, qualified TEXT NOT NULL,
+                kind TEXT NOT NULL, start_line INTEGER NOT NULL, end_line INTEGER NOT NULL
+            );
             """
         )
         conn.executemany(
@@ -75,6 +79,25 @@ def insert(path: Path, chunks: list[Chunk], vectors: list[list[float]]) -> None:
             conn.execute(
                 "INSERT INTO chunks_vec (rowid, embedding) VALUES (?, ?)", (rowid, pack(vector))
             )
+
+
+def insert_symbols(path: Path, defs: list[SymbolDef]) -> None:
+    with closing(connect(path)) as conn, conn:
+        conn.executemany(
+            "INSERT INTO symbols (path, name, qualified, kind, start_line, end_line)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            [(d.path, d.name, d.qualified, d.kind, d.start_line, d.end_line) for d in defs],
+        )
+
+
+def symbols(path: Path) -> list[SymbolDef]:
+    """Every symbol definition, ordered by path and line."""
+    with closing(connect(path)) as conn:
+        rows = conn.execute(
+            "SELECT path, name, qualified, kind, start_line, end_line FROM symbols"
+            " ORDER BY path, start_line, qualified"
+        ).fetchall()
+    return [SymbolDef(r[0], r[1], r[2], r[3], int(r[4]), int(r[5])) for r in rows]
 
 
 def fts_query(query: str) -> str | None:

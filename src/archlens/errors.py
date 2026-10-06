@@ -30,6 +30,10 @@ class PathOutsideSnapshot(ArchLensError):
     """A path resolved outside the snapshot root (docs/SECURITY.md §4)."""
 
 
+class ToolArgumentError(ArchLensError):
+    """An LLM tool call can't be served as asked; the message is returned to the model."""
+
+
 class StorageKeyError(ArchLensError, ValueError):
     """A run ID, artifact name, checkpoint key or cache key has an unsafe or invalid form."""
 

@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "python-ulid>=3.0",
     "pyyaml>=6.0",
+    "regex>=2024.11",
     "sqlite-vec>=0.1.6",
     "tree-sitter>=0.25",
     "tree-sitter-c-sharp>=0.23",
@@ -40,6 +41,7 @@ dev = [
     "ruff>=0.7",
     "pyright[nodejs]>=1.1.390",
     "types-pyyaml>=6.0",
+    "types-regex>=2026.9.29.20261005",
 ]
 
 [tool.uv]

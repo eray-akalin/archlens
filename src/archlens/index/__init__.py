@@ -4,6 +4,7 @@ Search fuses BM25 and vector rankings with reciprocal rank fusion: score = Σ 1 
 """
 
 import asyncio
+import fnmatch
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -11,11 +12,11 @@ from typing import Literal
 from archlens.evidence import SnippetReader
 from archlens.globs import glob_match
 from archlens.index import store
-from archlens.index.chunker import Chunk, chunk_file
+from archlens.index.chunker import Chunk, SymbolDef, chunk_file, symbol_defs
 from archlens.index.embed import Embedder
 from archlens.models import RepoSnapshot
 
-__all__ = ["IndexStats", "SearchHit", "build_index", "search"]
+__all__ = ["IndexStats", "SearchHit", "SymbolDef", "build_index", "find_symbols", "search"]
 
 RRF_K = 60
 SearchMode = Literal["hybrid", "bm25", "vector"]
@@ -25,6 +26,7 @@ SearchMode = Literal["hybrid", "bm25", "vector"]
 class IndexStats:
     files: int
     chunks: int
+    symbols: int = 0
 
 
 @dataclass(frozen=True)
@@ -38,15 +40,18 @@ class SearchHit:
     matched_by: tuple[str, ...]  # "bm25" and/or "vector"
 
 
-def _chunks(snapshot: RepoSnapshot, reader: SnippetReader) -> list[Chunk]:
+def _parse(snapshot: RepoSnapshot, reader: SnippetReader) -> tuple[list[Chunk], list[SymbolDef]]:
     chunks: list[Chunk] = []
+    defs: list[SymbolDef] = []
     for f in snapshot.files:
         if not f.readable or f.is_vendored or f.is_generated or f.language is None:
             continue
         lines = reader.lines(f.path)
         if lines:
-            chunks += chunk_file(f.path, f.language, "\n".join(lines) + "\n", reader.redactor)
-    return chunks
+            text = "\n".join(lines) + "\n"
+            chunks += chunk_file(f.path, f.language, text, reader.redactor)
+            defs += symbol_defs(f.path, f.language, text)
+    return chunks, defs
 
 
 async def build_index(
@@ -54,13 +59,14 @@ async def build_index(
 ) -> IndexStats:
     """(Re)build the index file at `path`. `reader` carries the run's Redactor, so chunk text and
     everything sent to the embedder are redacted."""
-    chunks = await asyncio.to_thread(_chunks, snapshot, reader)
+    chunks, defs = await asyncio.to_thread(_parse, snapshot, reader)
     vectors = await embedder.embed([c.text for c in chunks]) if chunks else []
     await asyncio.to_thread(
         store.create, path, model=embedder.model, dim=embedder.dim, commit_sha=snapshot.commit_sha
     )
     await asyncio.to_thread(store.insert, path, chunks, vectors)
-    return IndexStats(files=len({c.path for c in chunks}), chunks=len(chunks))
+    await asyncio.to_thread(store.insert_symbols, path, defs)
+    return IndexStats(files=len({c.path for c in chunks}), chunks=len(chunks), symbols=len(defs))
 
 
 async def search(
@@ -108,3 +114,17 @@ async def search(
         if len(hits) == top_k:
             break
     return hits
+
+
+async def find_symbols(path: Path, pattern: str, limit: int = 20) -> tuple[list[SymbolDef], int]:
+    """Definitions whose name or qualified name matches the glob `pattern` (case-insensitive;
+    `*`, `?`, `[...]`), ordered by path and line: (first `limit`, total match count)."""
+    defs = await asyncio.to_thread(store.symbols, path)
+    wanted = pattern.lower()
+    found = [
+        d
+        for d in defs
+        if fnmatch.fnmatchcase(d.name.lower(), wanted)
+        or fnmatch.fnmatchcase(d.qualified.lower(), wanted)
+    ]
+    return found[:limit], len(found)

@@ -224,7 +224,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `security.yaml` (exists), `testing.yaml`, `cicd.yaml`; all deterministic rules these need.
   AC: loader rejects unknown keys/rules and missing absence probes (for `absence_allowed` and
   `na_allowed`); every rule has pass/fail/NA/unknown-on-error tests.
-- [ ] **M2.3 Repo tools.** `list_dir`, `read_file`, `search_code`, `find_symbol`, `get_facts`;
+- [x] **M2.3 Repo tools.** `list_dir`, `read_file`, `search_code`, `find_symbol`, `get_facts`;
   seen-lines ledger keyed by `session_id`; `untrusted.wrap`.
   AC: limit tests; ledger records exactly the lines shown (incl. prompt facts); boundary token
   can't be smuggled.
@@ -284,6 +284,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `GLOB_FLAGS` moved to `archlens/globs.py` so rules don't import the index; the DEFECTS.md parser
   moved to `tests/fixture_repos.answer_key()`. tiny_service also gets TEST-02 fail (ratio 0.08),
   not in the answer key. Spend: $0.
+- 2026-10-07 — M2.3: `tools/{repo_tools,specs,seen}.py`. `RepoTools` (per run) + `ToolSession`
+  (per `session_id`): each tool is a pure function returning the exact line ranges it shows;
+  `ToolSession.call` alone records the `SearchRecord`, marks the ledger, redacts and wraps, and
+  never raises for bad model input (`error: …` result). `show_facts` renders prompt facts and
+  marks their evidence lines before the first turn. Index gains a `symbols` table (every
+  definition, nested included) + `index.find_symbols`. AC: limit tests per tool (entries, lines,
+  bytes, top_k, symbols, facts); a scripted session parses every numbered line back out of the
+  results and requires the ledger to equal it; boundary smuggling via a file is blocked. Fixed
+  along the way: `untrusted.wrap` removed the boundary in one pass, so `half + boundary + half`
+  rejoined it — now removed until none is left; the redaction fallback `generic-secret` pattern
+  was quadratic on long identifier runs (0.7 s per 12 KB line; a 2 MB one-line file would stall
+  a run) — now linear (lookbehind + lookahead + possessive), same matches, regression test.
+  Resolved: tool args are nullable without non-null defaults (strict schemas keep `default`);
+  out-of-range args are clamped, not rejected; regex search runs on redacted text of non-vendored
+  files with 100 ms per file and 10 s total; `find_symbol` is case-insensitive over plain or
+  qualified names; `fact_path` prefers code evidence (`route.path` is a URL). Deps: `regex`,
+  dev `types-regex`. Tests: 648 offline (+47), scanners 3/3. Spend: $0.
 
 ---
 
