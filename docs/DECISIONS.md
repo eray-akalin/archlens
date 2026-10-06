@@ -82,3 +82,14 @@ versions (never code) to the public OSV API. The default suite and CI stay fully
 test ever calls an LLM or Azure without the `live` guard. *Why:* an offline vulnerability database
 for every ecosystem the eval set touches is hundreds of MB to download and refresh, while the
 suite is opt-in and never runs in CI. *Accepted by the user on 2026-10-06.*
+
+### ADR-015 — tree-sitter grammars from per-language wheels; uv-managed Python
+Grammars come from the tree-sitter org's wheels (`tree-sitter-python`, `-javascript`,
+`-typescript`, `-java`, `-c-sharp`, `-go`) pinned in `uv.lock`, instead of
+`tree-sitter-language-pack`. *Why:* language-pack 1.x downloads compiled grammars at runtime into
+the user cache — unpinned native code fetched on first use, network access from tests and CI
+(CLAUDE.md rule 7), and a container that isn't self-contained. Adding a language means adding its
+wheel. The project also sets `[tool.uv] python-preference = "only-managed"`: the python.org-style
+build on the dev machine lacked loadable SQLite extensions, which sqlite-vec (ADR-005) needs, and
+CI/Docker use builds that have them.
+

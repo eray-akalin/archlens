@@ -29,7 +29,7 @@ disagree, stop and ask which one is wrong.
 - Python 3.12, `uv` for env and deps, `src/` layout, package name `archlens`
 - Pydantic v2 + pydantic-settings, Typer (CLI), FastAPI (API), Jinja2 (reports, prompts)
 - `openai` SDK against the Azure OpenAI v1 endpoint (OpenAI-compatible; provider is config only)
-- tree-sitter (`tree-sitter-language-pack`), SQLite FTS5 + `sqlite-vec` for the code index
+- tree-sitter with per-language grammar wheels (ADR-015), SQLite FTS5 + `sqlite-vec` for the code index
 - External scanners via subprocess: gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint;
   `lizard` via its Python API
 - OpenTelemetry (`azure-monitor-opentelemetry` exporter in cloud mode)

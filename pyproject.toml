@@ -9,7 +9,16 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "pyyaml>=6.0",
+    "sqlite-vec>=0.1.6",
+    "tree-sitter>=0.25",
+    "tree-sitter-c-sharp>=0.23",
+    "tree-sitter-go>=0.23",
+    "tree-sitter-java>=0.23",
+    "tree-sitter-javascript>=0.23",
+    "tree-sitter-python>=0.23",
+    "tree-sitter-typescript>=0.23",
     "typer>=0.12",
+    "wcmatch>=10.0",
 ]
 
 [project.scripts]
@@ -29,6 +38,10 @@ dev = [
     "pyright[nodejs]>=1.1.390",
     "types-pyyaml>=6.0",
 ]
+
+[tool.uv]
+# uv-managed CPython: built with loadable SQLite extensions (sqlite-vec) and the same build CI uses.
+python-preference = "only-managed"
 
 [tool.ruff]
 line-length = 100

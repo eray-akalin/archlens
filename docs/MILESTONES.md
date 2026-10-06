@@ -126,7 +126,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   containing every fact kind DEFECTS.md relies on.
 - [x] **M1.6 Profile.** Detectors and all flags in RUBRICS.md §2, computed from snapshot + facts.
   AC: table-driven detector tests; tiny_service profile matches a checked-in expected profile.
-- [ ] **M1.7 Index.** Chunker, FTS5, sqlite-vec, RRF search, embedding cache via the M0.6 cache
+- [x] **M1.7 Index.** Chunker, FTS5, sqlite-vec, RRF search, embedding cache via the M0.6 cache
   store (embedding function injected; deterministic fake embeddings until M2.1).
   AC: known queries on tiny_service return the expected chunk in top 3; re-indexing unchanged files
   makes zero embedding calls.
@@ -200,6 +200,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   connection-string config detection is left to the LLM checks; global `fetch(` / `new HttpClient`
   are matched as text since they need no import; lang_java covers Java/Kotlin/Scala; language
   shares use code files only (no YAML/JSON/Markdown, vendored or generated). Spend: $0.
+- 2026-10-07 — M1.7: `index/{chunker,embed,store,__init__}.py` — tree-sitter symbol chunks (Python,
+  JS/TS/TSX/JSX, Java, C#, Go; big classes split into header + members; > 80 lines and other files
+  → 60-line windows, 10 overlap; blank edges trimmed), chunk text redacted before storage and
+  embedding, one SQLite file per snapshot (FTS5 porter/unicode61 + sqlite-vec), hybrid search with
+  RRF (k=60) and wcmatch path globs; `FakeEmbedder` (hashed bag of words) until M2.1;
+  `CachedEmbedder` over the M0.6 cache store. AC: six known queries on tiny_service hit the top 3;
+  re-indexing makes 0 provider calls (34/34 cache hits). Resolved: **ADR-015** — per-language
+  grammar wheels instead of tree-sitter-language-pack (it downloads grammars at runtime; its
+  cache was cleaned and removed) and uv-managed Python (local build lacked loadable SQLite
+  extensions); free text is turned into quoted FTS tokens so no FTS syntax reaches MATCH. Spend: $0.
 
 ---
 
