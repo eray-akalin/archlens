@@ -99,7 +99,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M1 — Ingest, facts, profile, index (week 1)
 
-- [ ] **M1.1 Fixture repo.** `tests/fixtures/repos/tiny_service/`: small FastAPI + SQLAlchemy app
+- [x] **M1.1 Fixture repo.** `tests/fixtures/repos/tiny_service/`: small FastAPI + SQLAlchemy app
   with Dockerfile, GitHub workflow and tests, plus `DEFECTS.md` listing each planted defect and the
   check it should trigger (aim for ≥ 1 per metric). Secrets are **not** committed: a pytest fixture
   copies the repo to a temp dir and injects a generated secret (keeps this repo clean for
@@ -132,6 +132,20 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   makes zero embedding calls.
 
 **Log**
+
+- 2026-10-06 — M1.1: `tiny_service` (FastAPI + SQLAlchemy, Dockerfile, compose, workflow,
+  tests) with 42 defects covering all 10 metrics plus 5 controls; `DEFECTS.md` is checked row by
+  row by `tests/unit/test_tiny_service_fixture.py` (marker at file:line, check IDs exist in the
+  catalogue). Resolved: the `tiny_service` fixture copies the repo **without** `DEFECTS.md` (the
+  answer key must never reach an evaluator) and injects both the secret (D01) and the vulnerable
+  `PyYAML==5.3` pin (D02), so this public repo never triggers push protection or Dependabot alerts;
+  defects that are an absence use location `absent`; D04 (SEC-03 via semgrep) to be confirmed in
+  M1.4. Fixture excluded from ruff (with `force-exclude`), pyright and pytest collection.
+  Incident: the Claude Code format hook ran `uv run` from inside the fixture, which created a
+  `.venv` and `uv.lock` there (deps installed from PyPI, no fixture code run); removed, hook now
+  pinned to `--project $CLAUDE_PROJECT_DIR --no-sync --force-exclude`, and a test fails if a
+  lockfile or venv appears in the fixture. Scanners installed via Homebrew: gitleaks 8.30.1,
+  osv-scanner 2.6.0, semgrep 1.179.0, hadolint 2.15.1, checkov 3.3.20, actionlint 1.7.12. Spend: $0.
 
 ---
 

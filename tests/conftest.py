@@ -6,8 +6,13 @@ Settings — so `pytest -m live` on its own can never spend money.
 """
 
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from tests.fixture_repos import MaterializedRepo
 
 LIVE_ENV_VAR = "ARCHLENS_LIVE_TESTS"
 _NON_UNIT_MARKERS = frozenset({"integration", "scanners", "live"})
@@ -23,3 +28,12 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             item.add_marker(skip_live)
         if not names & _NON_UNIT_MARKERS:
             item.add_marker(pytest.mark.unit)
+
+
+@pytest.fixture
+def tiny_service(tmp_path: Path) -> "MaterializedRepo":
+    """tiny_service copied to a temp dir, answer key removed, secret and vulnerable pin injected."""
+    # Imported lazily: test_live_guard runs this conftest in an isolated pytester session.
+    from tests.fixture_repos import materialize_tiny_service
+
+    return materialize_tiny_service(tmp_path / "tiny_service")

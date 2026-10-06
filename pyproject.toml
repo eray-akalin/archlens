@@ -33,8 +33,10 @@ dev = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
-# Docs embed illustrative Python with hand-aligned comments; they are not code.
-extend-exclude = ["*.md"]
+# Docs embed illustrative Python with hand-aligned comments; fixture repos contain planted
+# defects on purpose. force-exclude keeps editor/hook invocations on single files from touching them.
+extend-exclude = ["*.md", "tests/fixtures"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = [
@@ -54,6 +56,7 @@ select = [
 
 [tool.pyright]
 include = ["src", "tests"]
+exclude = ["tests/fixtures"]
 strict = ["src"]
 pythonVersion = "3.12"
 venvPath = "."
@@ -61,6 +64,8 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# pytest defaults plus `fixtures`: fixture repos carry their own (never-run) test suites.
+norecursedirs = ["*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}", "fixtures"]
 # Default run excludes scanner-binary and paid tests; a later `-m` on the command line overrides
 # this one. The live guard in tests/conftest.py still skips `live` tests without the env var.
 addopts = ["-ra", "--strict-markers", "-p", "pytester", "-m", "not scanners and not live"]

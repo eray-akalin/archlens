@@ -1,0 +1,26 @@
+name: ci
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+
+  deploy:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: tiny-service-bot
+          password: tinyservice
+      - run: docker build -t ghcr.io/example/tiny-service:latest .
+      - run: docker push ghcr.io/example/tiny-service:latest

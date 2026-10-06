@@ -1,0 +1,14 @@
+[project]
+name = "tiny-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "requests>=2.31",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.4"]
