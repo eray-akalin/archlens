@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "AbsenceProbe": {
+      "additionalProperties": false,
+      "description": "A pattern whose presence would contradict an evidence-less fail/partial/NA claim.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "path_glob",
+            "regex",
+            "symbol"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        },
+        "path_glob": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path Glob"
+        }
+      },
+      "required": [
+        "kind",
+        "pattern"
+      ],
+      "title": "AbsenceProbe",
+      "type": "object"
+    },
+    "AppliesWhen": {
+      "additionalProperties": false,
+      "description": "All present clauses must hold over RepoProfile.flags; `{}` always applies.",
+      "properties": {
+        "all": {
+          "items": {
+            "type": "string"
+          },
+          "title": "All",
+          "type": "array"
+        },
+        "any": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Any",
+          "type": "array"
+        },
+        "none": {
+          "items": {
+            "type": "string"
+          },
+          "title": "None",
+          "type": "array"
+        }
+      },
+      "title": "AppliesWhen",
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Z]+-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "deterministic",
+            "llm"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight"
+        },
+        "applies_when": {
+          "$ref": "#/$defs/AppliesWhen"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "remediation": {
+          "title": "Remediation",
+          "type": "string"
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "guidance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Guidance"
+        },
+        "fact_kinds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fact Kinds",
+          "type": "array"
+        },
+        "evidence_policy": {
+          "default": "positive_required",
+          "enum": [
+            "positive_required",
+            "absence_allowed"
+          ],
+          "title": "Evidence Policy",
+          "type": "string"
+        },
+        "absence_probes": {
+          "items": {
+            "$ref": "#/$defs/AbsenceProbe"
+          },
+          "title": "Absence Probes",
+          "type": "array"
+        },
+        "na_allowed": {
+          "default": false,
+          "title": "Na Allowed",
+          "type": "boolean"
+        },
+        "self_consistency": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Self Consistency"
+        },
+        "retired": {
+          "default": false,
+          "title": "Retired",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "severity",
+        "rationale",
+        "remediation"
+      ],
+      "title": "CheckSpec",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "metric": {
+      "pattern": "^[a-z][a-z_]*$",
+      "title": "Metric",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "weight": {
+      "minimum": 0,
+      "title": "Weight",
+      "type": "number"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "applies_when": {
+      "$ref": "#/$defs/AppliesWhen"
+    },
+    "scope_globs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Scope Globs",
+      "type": "array"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckSpec"
+      },
+      "title": "Checks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metric",
+    "title",
+    "version",
+    "weight",
+    "description",
+    "checks"
+  ],
+  "title": "Rubric",
+  "type": "object"
+}

@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "CodeEvidence": {
+      "additionalProperties": false,
+      "description": "A line range of a snapshot file. `snippet` and its hash are filled by the system.",
+      "properties": {
+        "kind": {
+          "const": "code",
+          "default": "code",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        },
+        "snippet": {
+          "title": "Snippet",
+          "type": "string"
+        },
+        "snippet_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snippet Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line",
+        "snippet",
+        "snippet_sha256"
+      ],
+      "title": "CodeEvidence",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "enum": [
+                "critical",
+                "high",
+                "medium",
+                "low",
+                "info"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "evidence": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "code": "#/$defs/CodeEvidence",
+                "scan": "#/$defs/ScanEvidence"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CodeEvidence"
+              },
+              {
+                "$ref": "#/$defs/ScanEvidence"
+              }
+            ]
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "source",
+        "attributes",
+        "evidence"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ScanEvidence": {
+      "additionalProperties": false,
+      "description": "A tool or probe result; `result_count=0` records \"nothing found\".",
+      "properties": {
+        "kind": {
+          "const": "scan",
+          "default": "scan",
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "result_count": {
+          "minimum": 0,
+          "title": "Result Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool",
+        "tool_version",
+        "query",
+        "result_count"
+      ],
+      "title": "ScanEvidence",
+      "type": "object"
+    },
+    "ToolRunRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Command",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error",
+            "timeout",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "fact_count": {
+          "title": "Fact Count",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "tool",
+        "version",
+        "command",
+        "status",
+        "duration_ms",
+        "fact_count"
+      ],
+      "title": "ToolRunRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "commit_sha": {
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "facts": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Facts",
+      "type": "array"
+    },
+    "tool_runs": {
+      "items": {
+        "$ref": "#/$defs/ToolRunRecord"
+      },
+      "title": "Tool Runs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "commit_sha",
+    "facts",
+    "tool_runs"
+  ],
+  "title": "FactSet",
+  "type": "object"
+}

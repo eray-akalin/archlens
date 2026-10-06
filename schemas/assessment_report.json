@@ -1,0 +1,858 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "deterministic",
+            "llm"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "not_applicable",
+            "unknown"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "code": "#/$defs/CodeEvidence",
+                "scan": "#/$defs/ScanEvidence"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CodeEvidence"
+              },
+              {
+                "$ref": "#/$defs/ScanEvidence"
+              }
+            ]
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "search_log": {
+          "items": {
+            "$ref": "#/$defs/SearchRecord"
+          },
+          "title": "Search Log",
+          "type": "array"
+        },
+        "llm_call_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Llm Call Ids",
+          "type": "array"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        },
+        "rubric_version": {
+          "title": "Rubric Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "attempt": {
+          "default": 0,
+          "title": "Attempt",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "check_id",
+        "metric",
+        "origin",
+        "verdict",
+        "claim",
+        "confidence",
+        "rubric_version"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "CodeEvidence": {
+      "additionalProperties": false,
+      "description": "A line range of a snapshot file. `snippet` and its hash are filled by the system.",
+      "properties": {
+        "kind": {
+          "const": "code",
+          "default": "code",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        },
+        "snippet": {
+          "title": "Snippet",
+          "type": "string"
+        },
+        "snippet_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snippet Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line",
+        "snippet",
+        "snippet_sha256"
+      ],
+      "title": "CodeEvidence",
+      "type": "object"
+    },
+    "ConfigFingerprint": {
+      "additionalProperties": false,
+      "properties": {
+        "archlens_version": {
+          "title": "Archlens Version",
+          "type": "string"
+        },
+        "rubric_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Rubric Versions",
+          "type": "object"
+        },
+        "prompt_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Prompt Versions",
+          "type": "object"
+        },
+        "models": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Models",
+          "type": "object"
+        },
+        "tool_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Tool Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "archlens_version",
+        "rubric_versions",
+        "prompt_versions",
+        "models",
+        "tool_versions"
+      ],
+      "title": "ConfigFingerprint",
+      "type": "object"
+    },
+    "CostSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "cached_input_tokens": {
+          "title": "Cached Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "reasoning_tokens": {
+          "title": "Reasoning Tokens",
+          "type": "integer"
+        },
+        "usd": {
+          "title": "Usd",
+          "type": "number"
+        },
+        "by_stage": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "By Stage",
+          "type": "object"
+        },
+        "by_metric": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "By Metric",
+          "type": "object"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+        "usd",
+        "by_stage",
+        "by_metric"
+      ],
+      "title": "CostSummary",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/CheckResult"
+        },
+        "verification": {
+          "$ref": "#/$defs/Verification"
+        },
+        "scored": {
+          "title": "Scored",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "result",
+        "verification",
+        "scored"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "MetricNarrative": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "text"
+      ],
+      "title": "MetricNarrative",
+      "type": "object"
+    },
+    "MetricScore": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "scored",
+            "insufficient_evidence",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 10.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Score"
+        },
+        "coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Coverage",
+          "type": "number"
+        },
+        "capped_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Capped By",
+          "type": "array"
+        },
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "pass",
+              "partial",
+              "fail",
+              "not_applicable",
+              "unknown"
+            ]
+          },
+          "title": "Counts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "metric",
+        "status",
+        "score",
+        "coverage",
+        "capped_by",
+        "counts"
+      ],
+      "title": "MetricScore",
+      "type": "object"
+    },
+    "Narrative": {
+      "additionalProperties": false,
+      "description": "LLM-facing (synthesizer output): no dicts, for strict structured outputs.",
+      "properties": {
+        "executive_summary": {
+          "title": "Executive Summary",
+          "type": "string"
+        },
+        "per_metric": {
+          "items": {
+            "$ref": "#/$defs/MetricNarrative"
+          },
+          "title": "Per Metric",
+          "type": "array"
+        },
+        "cited_findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cited Findings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "executive_summary",
+        "per_metric",
+        "cited_findings"
+      ],
+      "title": "Narrative",
+      "type": "object"
+    },
+    "RepoProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "languages": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Languages",
+          "type": "object"
+        },
+        "frameworks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Frameworks",
+          "type": "array"
+        },
+        "package_managers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Package Managers",
+          "type": "array"
+        },
+        "ci_systems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ci Systems",
+          "type": "array"
+        },
+        "test_frameworks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Test Frameworks",
+          "type": "array"
+        },
+        "flags": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Flags",
+          "type": "object"
+        },
+        "entrypoints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Entrypoints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "languages",
+        "frameworks",
+        "package_managers",
+        "ci_systems",
+        "test_frameworks",
+        "flags",
+        "entrypoints"
+      ],
+      "title": "RepoProfile",
+      "type": "object"
+    },
+    "ScanEvidence": {
+      "additionalProperties": false,
+      "description": "A tool or probe result; `result_count=0` records \"nothing found\".",
+      "properties": {
+        "kind": {
+          "const": "scan",
+          "default": "scan",
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "result_count": {
+          "minimum": 0,
+          "title": "Result Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool",
+        "tool_version",
+        "query",
+        "result_count"
+      ],
+      "title": "ScanEvidence",
+      "type": "object"
+    },
+    "SearchRecord": {
+      "additionalProperties": false,
+      "description": "One tool call an evaluator made.",
+      "properties": {
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "result_count": {
+          "title": "Result Count",
+          "type": "integer"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "args",
+        "result_count",
+        "paths"
+      ],
+      "title": "SearchRecord",
+      "type": "object"
+    },
+    "ToolRunRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Command",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error",
+            "timeout",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "fact_count": {
+          "title": "Fact Count",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "tool",
+        "version",
+        "command",
+        "status",
+        "duration_ms",
+        "fact_count"
+      ],
+      "title": "ToolRunRecord",
+      "type": "object"
+    },
+    "Verification": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "verified",
+            "unverified",
+            "rejected",
+            "disputed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/VerificationStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "steps"
+      ],
+      "title": "Verification",
+      "type": "object"
+    },
+    "VerificationStep": {
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "enum": [
+            "mechanical",
+            "entailment",
+            "absence",
+            "skeptic"
+          ],
+          "title": "Step",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "llm_call_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Call Id"
+        }
+      },
+      "required": [
+        "step",
+        "passed",
+        "detail"
+      ],
+      "title": "VerificationStep",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The canonical output (`assessment.json`). Every rendering is derived from it.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "repo_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Repo Url"
+    },
+    "commit_sha": {
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "config": {
+      "$ref": "#/$defs/ConfigFingerprint"
+    },
+    "profile": {
+      "$ref": "#/$defs/RepoProfile"
+    },
+    "metric_scores": {
+      "items": {
+        "$ref": "#/$defs/MetricScore"
+      },
+      "title": "Metric Scores",
+      "type": "array"
+    },
+    "overall_score": {
+      "anyOf": [
+        {
+          "maximum": 10.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Overall Score"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "other_findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Other Findings",
+      "type": "array"
+    },
+    "tool_runs": {
+      "items": {
+        "$ref": "#/$defs/ToolRunRecord"
+      },
+      "title": "Tool Runs",
+      "type": "array"
+    },
+    "cost": {
+      "$ref": "#/$defs/CostSummary"
+    },
+    "timings_ms": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Timings Ms",
+      "type": "object"
+    },
+    "narrative": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Narrative"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "run_id",
+    "repo_url",
+    "commit_sha",
+    "created_at",
+    "config",
+    "profile",
+    "metric_scores",
+    "overall_score",
+    "findings",
+    "other_findings",
+    "tool_runs",
+    "cost",
+    "timings_ms",
+    "narrative"
+  ],
+  "title": "AssessmentReport",
+  "type": "object"
+}

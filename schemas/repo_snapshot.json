@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "FileEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "size": {
+          "title": "Size",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Language"
+        },
+        "loc": {
+          "title": "Loc",
+          "type": "integer"
+        },
+        "is_binary": {
+          "title": "Is Binary",
+          "type": "boolean"
+        },
+        "is_generated": {
+          "title": "Is Generated",
+          "type": "boolean"
+        },
+        "is_vendored": {
+          "title": "Is Vendored",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "size",
+        "sha256",
+        "language",
+        "loc",
+        "is_binary",
+        "is_generated",
+        "is_vendored"
+      ],
+      "title": "FileEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "File listing of one commit. The root path lives in RunContext and is never serialized.",
+  "properties": {
+    "repo_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Repo Url"
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Ref"
+    },
+    "commit_sha": {
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/FileEntry"
+      },
+      "title": "Files",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "repo_url",
+    "ref",
+    "commit_sha",
+    "files",
+    "created_at"
+  ],
+  "title": "RepoSnapshot",
+  "type": "object"
+}

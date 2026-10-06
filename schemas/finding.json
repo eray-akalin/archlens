@@ -1,0 +1,397 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "deterministic",
+            "llm"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "not_applicable",
+            "unknown"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "code": "#/$defs/CodeEvidence",
+                "scan": "#/$defs/ScanEvidence"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CodeEvidence"
+              },
+              {
+                "$ref": "#/$defs/ScanEvidence"
+              }
+            ]
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "search_log": {
+          "items": {
+            "$ref": "#/$defs/SearchRecord"
+          },
+          "title": "Search Log",
+          "type": "array"
+        },
+        "llm_call_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Llm Call Ids",
+          "type": "array"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        },
+        "rubric_version": {
+          "title": "Rubric Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "attempt": {
+          "default": 0,
+          "title": "Attempt",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "check_id",
+        "metric",
+        "origin",
+        "verdict",
+        "claim",
+        "confidence",
+        "rubric_version"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "CodeEvidence": {
+      "additionalProperties": false,
+      "description": "A line range of a snapshot file. `snippet` and its hash are filled by the system.",
+      "properties": {
+        "kind": {
+          "const": "code",
+          "default": "code",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        },
+        "snippet": {
+          "title": "Snippet",
+          "type": "string"
+        },
+        "snippet_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snippet Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line",
+        "snippet",
+        "snippet_sha256"
+      ],
+      "title": "CodeEvidence",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ScanEvidence": {
+      "additionalProperties": false,
+      "description": "A tool or probe result; `result_count=0` records \"nothing found\".",
+      "properties": {
+        "kind": {
+          "const": "scan",
+          "default": "scan",
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "tool_version": {
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "result_count": {
+          "minimum": 0,
+          "title": "Result Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool",
+        "tool_version",
+        "query",
+        "result_count"
+      ],
+      "title": "ScanEvidence",
+      "type": "object"
+    },
+    "SearchRecord": {
+      "additionalProperties": false,
+      "description": "One tool call an evaluator made.",
+      "properties": {
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "result_count": {
+          "title": "Result Count",
+          "type": "integer"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "args",
+        "result_count",
+        "paths"
+      ],
+      "title": "SearchRecord",
+      "type": "object"
+    },
+    "Verification": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "verified",
+            "unverified",
+            "rejected",
+            "disputed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/VerificationStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "steps"
+      ],
+      "title": "Verification",
+      "type": "object"
+    },
+    "VerificationStep": {
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "enum": [
+            "mechanical",
+            "entailment",
+            "absence",
+            "skeptic"
+          ],
+          "title": "Step",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "llm_call_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Call Id"
+        }
+      },
+      "required": [
+        "step",
+        "passed",
+        "detail"
+      ],
+      "title": "VerificationStep",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "result": {
+      "$ref": "#/$defs/CheckResult"
+    },
+    "verification": {
+      "$ref": "#/$defs/Verification"
+    },
+    "scored": {
+      "title": "Scored",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "result",
+    "verification",
+    "scored"
+  ],
+  "title": "Finding",
+  "type": "object"
+}

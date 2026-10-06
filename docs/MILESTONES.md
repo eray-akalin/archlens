@@ -23,7 +23,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   commands `assess, facts, eval, schema, prompts, serve, worker`.
   AC: `uv run archlens --help` lists the commands; `uv run pytest -m live` skips everything without
   the env var; all checks green.
-- [ ] **M0.2 Contracts.** All models from DATA_MODEL.md in `src/archlens/models/`,
+- [x] **M0.2 Contracts.** All models from DATA_MODEL.md in `src/archlens/models/`,
   `SCHEMA_VERSION`, `archlens schema export` → `schemas/*.json`, drift test.
   AC: round-trip (model → JSON → model) tests for every top-level model; drift test fails when a
   model changes without re-export.
@@ -58,6 +58,14 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `infra/budget.bicep` (timeGrain `Annually` so the one-off credit accumulates instead of
   resetting monthly) and `infra/ai.bicep` (region swedencentral; versions/capacity live in the
   Bicep param since `config/models.yaml` has no such fields); budget what-if: 1 Create, no errors.
+- 2026-10-06 — M0.2: all DATA_MODEL contracts in `src/archlens/models/`, 13 top-level models
+  exported to `schemas/` with `x-schema-version`; round-trip test per model (a sample is required
+  for every registered model) and a drift test (verified by adding a field: test fails naming
+  `assessment_report.json`). Resolved: timestamps are `AwareDatetime` (no naive times); LLM-facing
+  models carry no length/count constraints (caps applied in post-processing, M2.4) and are tested
+  for strict-mode shape; `CheckSpec` already enforces type-specific fields and the absence-probe
+  requirement (registry checks stay in M2.2); `RuleContext` deferred to `rubric/context.py` (M2.2)
+  since it needs the jail and redaction. Spend: $0.
 
 ---
 

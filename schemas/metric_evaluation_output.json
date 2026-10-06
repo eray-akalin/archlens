@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "LLMCheckOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "not_applicable",
+            "unknown"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "verdict",
+        "claim",
+        "citations",
+        "confidence"
+      ],
+      "title": "LLMCheckOutput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "results": {
+      "items": {
+        "$ref": "#/$defs/LLMCheckOutput"
+      },
+      "title": "Results",
+      "type": "array"
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "title": "MetricEvaluationOutput",
+  "type": "object"
+}

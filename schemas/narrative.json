@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "MetricNarrative": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "text"
+      ],
+      "title": "MetricNarrative",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "LLM-facing (synthesizer output): no dicts, for strict structured outputs.",
+  "properties": {
+    "executive_summary": {
+      "title": "Executive Summary",
+      "type": "string"
+    },
+    "per_metric": {
+      "items": {
+        "$ref": "#/$defs/MetricNarrative"
+      },
+      "title": "Per Metric",
+      "type": "array"
+    },
+    "cited_findings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Cited Findings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "executive_summary",
+    "per_metric",
+    "cited_findings"
+  ],
+  "title": "Narrative",
+  "type": "object"
+}

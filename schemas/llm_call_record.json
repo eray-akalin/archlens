@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "stage": {
+      "title": "Stage",
+      "type": "string"
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Metric"
+    },
+    "model": {
+      "title": "Model",
+      "type": "string"
+    },
+    "prompt_version": {
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "input_tokens": {
+      "title": "Input Tokens",
+      "type": "integer"
+    },
+    "cached_input_tokens": {
+      "title": "Cached Input Tokens",
+      "type": "integer"
+    },
+    "output_tokens": {
+      "title": "Output Tokens",
+      "type": "integer"
+    },
+    "reasoning_tokens": {
+      "title": "Reasoning Tokens",
+      "type": "integer"
+    },
+    "latency_ms": {
+      "title": "Latency Ms",
+      "type": "integer"
+    },
+    "cost_usd": {
+      "title": "Cost Usd",
+      "type": "number"
+    },
+    "cache_hit": {
+      "title": "Cache Hit",
+      "type": "boolean"
+    },
+    "attempt": {
+      "title": "Attempt",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "stage",
+    "metric",
+    "model",
+    "prompt_version",
+    "input_tokens",
+    "cached_input_tokens",
+    "output_tokens",
+    "reasoning_tokens",
+    "latency_ms",
+    "cost_usd",
+    "cache_hit",
+    "attempt"
+  ],
+  "title": "LLMCallRecord",
+  "type": "object"
+}

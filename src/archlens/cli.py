@@ -10,6 +10,7 @@ from typing import Annotated, NoReturn
 import typer
 
 from archlens import __version__
+from archlens.models.schemas import export_schemas
 
 app = typer.Typer(
     name="archlens",
@@ -83,7 +84,8 @@ def schema_export(
     out: Annotated[Path, typer.Option(help="Output directory.")] = Path("schemas"),
 ) -> None:
     """Write JSON Schemas for all top-level contracts."""
-    _not_implemented("M0.2")
+    written = export_schemas(out)
+    typer.echo(f"wrote {len(written)} schemas to {out}")
 
 
 @prompts_app.command("lock")

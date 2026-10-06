@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "Citation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "refuted": {
+      "title": "Refuted",
+      "type": "boolean"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "$ref": "#/$defs/Citation"
+      },
+      "title": "Citations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "refuted",
+    "reason",
+    "citations"
+  ],
+  "title": "SkepticOutput",
+  "type": "object"
+}

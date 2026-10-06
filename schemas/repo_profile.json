@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "additionalProperties": false,
+  "properties": {
+    "languages": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Languages",
+      "type": "object"
+    },
+    "frameworks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Frameworks",
+      "type": "array"
+    },
+    "package_managers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Package Managers",
+      "type": "array"
+    },
+    "ci_systems": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ci Systems",
+      "type": "array"
+    },
+    "test_frameworks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Test Frameworks",
+      "type": "array"
+    },
+    "flags": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Flags",
+      "type": "object"
+    },
+    "entrypoints": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Entrypoints",
+      "type": "array"
+    }
+  },
+  "required": [
+    "languages",
+    "frameworks",
+    "package_managers",
+    "ci_systems",
+    "test_frameworks",
+    "flags",
+    "entrypoints"
+  ],
+  "title": "RepoProfile",
+  "type": "object"
+}

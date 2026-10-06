@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.0.0",
+  "$defs": {
+    "EntailmentItem": {
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "title": "Ref",
+          "type": "string"
+        },
+        "supports": {
+          "enum": [
+            "yes",
+            "no",
+            "insufficient"
+          ],
+          "title": "Supports",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "supports",
+        "rationale"
+      ],
+      "title": "EntailmentItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/EntailmentItem"
+      },
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "EntailmentBatchOutput",
+  "type": "object"
+}
