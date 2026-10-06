@@ -1,0 +1,72 @@
+[project]
+name = "archlens"
+version = "0.1.0"
+description = "Evidence-backed architecture assessment for Git repositories"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "typer>=0.12",
+]
+
+[project.scripts]
+archlens = "archlens.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "syrupy>=4.7",
+    "hypothesis>=6.112",
+    "ruff>=0.7",
+    "pyright[nodejs]>=1.1.390",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+# Docs embed illustrative Python with hand-aligned comments; they are not code.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import order
+    "UP",           # modern syntax for the target version
+    "B",            # bugbear
+    "SIM",          # simplifications
+    "RUF",          # ruff-specific
+    "PTH",          # pathlib over os.path
+    "T20",          # no print() — logging only, except cli.py
+    "ASYNC",        # async pitfalls
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/archlens/cli.py" = ["T20"]
+
+[tool.pyright]
+include = ["src", "tests"]
+strict = ["src"]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Default run excludes scanner-binary and paid tests; a later `-m` on the command line overrides
+# this one. The live guard in tests/conftest.py still skips `live` tests without the env var.
+addopts = ["-ra", "--strict-markers", "-p", "pytester", "-m", "not scanners and not live"]
+markers = [
+    "unit: fast, isolated tests (applied automatically to unmarked tests)",
+    "integration: offline tests spanning several stages",
+    "scanners: need external scanner binaries installed",
+    "live: real LLM calls; cost money; need ARCHLENS_LIVE_TESTS=1 in the process environment",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

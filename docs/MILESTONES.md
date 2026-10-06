@@ -16,7 +16,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M0 — Scaffold, contracts, storage (days 1–2)
 
-- [ ] **M0.1 Repo scaffold.** `pyproject.toml` (uv, Python 3.12), `src/archlens/`, ruff + pyright
+- [x] **M0.1 Repo scaffold.** `pyproject.toml` (uv, Python 3.12), `src/archlens/`, ruff + pyright
   (strict on `src/`) + pytest config with markers `unit, integration, scanners, live` (default
   excludes `scanners`, `live`), `tests/conftest.py` live guard (`ARCHLENS_LIVE_TESTS=1` from
   `os.environ` only), `.gitignore` (incl. `.env`, `.archlens/`, `runs/`), Typer app with stub
@@ -45,6 +45,12 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   backend can reuse it in M4.2.
 
 **Log**
+
+- 2026-10-06 — M0.1: uv/hatchling project, ruff + pyright (strict on `src/`) + pytest config,
+  Typer stubs (unimplemented commands exit 1 naming their milestone), live guard tested via
+  `pytester` (incl. `.env` not enabling live). Resolved: current ruff formats Python blocks inside
+  Markdown → `*.md` excluded so doc samples keep their alignment; unmarked tests get `unit`
+  automatically. Spend: $0.
 
 ---
 
