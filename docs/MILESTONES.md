@@ -110,7 +110,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: tests for each limit (total/file count fail; oversized file listed but not read),
   binary/vendored/generated detection, symlink listing, and that the git command lines contain every
   hardening flag; a requested SHA ends up as `commit_sha`.
-- [ ] **M1.3 Jail and redaction.** `resolve_in_snapshot`, `redact`.
+- [x] **M1.3 Jail and redaction.** `resolve_in_snapshot`, `redact`.
   AC: tests for every case in SECURITY.md §4 and §5.
 - [ ] **M1.4 Scanner adapters.** gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint,
   lizard; severity mapping (DATA_MODEL §4); `config/tools.yaml` with pinned versions;
@@ -156,6 +156,14 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   content-derived 40-hex `commit_sha` and git is never run in them (a repo's `.git/config` can make
   git execute programs); lockfiles count as `is_generated`; short SHAs are not supported as refs.
   Spend: $0.
+- 2026-10-06 — M1.3: `tools/paths.resolve_in_snapshot` (component-wise containment, so
+  `<root>-evil` is outside; NUL, absolute, UNC and drive paths rejected; symlink chains followed
+  then checked; missing paths allowed) and `security/redact` (`Redactor` with gitleaks spans +
+  fallback patterns). Resolved: a redaction keeps the original newline count so line numbers —
+  and therefore citations — stay valid; `SecretSpan` columns are 1-based inclusive (gitleaks
+  mapping confirmed in M1.4); the generic `password=`/`token=` rule needs ≥ 16 chars and entropy
+  ≥ 3.5, so low-entropy demo values like compose's `POSTGRES_PASSWORD: app` stay readable as
+  evidence; redaction is idempotent (hypothesis). Spend: $0.
 
 ---
 
