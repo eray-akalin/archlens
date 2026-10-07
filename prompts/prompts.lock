@@ -10,5 +10,21 @@
   "evaluator.system": {
     "version": "1.0.0",
     "sha256": "7be43cc8c1945467dc6aca0e41a5cb3d47e2653aa1b74f6de2f203f85c36826f"
+  },
+  "skeptic.finding": {
+    "version": "1.0.0",
+    "sha256": "c912b0593f174f0d8be4ca1b47053667875b5c5e3c708821121b8d787213c18b"
+  },
+  "skeptic.system": {
+    "version": "1.0.0",
+    "sha256": "5297ca585c49cda7339855cfb32db0efba934c5157035f9c7fcfd77201d89811"
+  },
+  "verifier.entailment": {
+    "version": "1.0.0",
+    "sha256": "cf6cc0080ecf694ea5212dbf891adc921ebc21920a599a4e76c807c2e9ec13d9"
+  },
+  "verifier.findings": {
+    "version": "1.0.0",
+    "sha256": "2435cc3d08ba28fff875c4bf1dcfbf02bd555495e710e1fee7927d7d2e4f6a16"
   }
 }

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from archlens.config import SessionLimits
 from archlens.llm.client import LLMClientProtocol
-from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, Prompt, load_prompt
+from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, Prompt, joined_version, load_prompt
 from archlens.llm.session import SessionError, run_tool_session
 from archlens.llm.untrusted import wrap
 from archlens.models import (
@@ -61,7 +61,7 @@ class EvaluatorPrompts:
     @property
     def version(self) -> str:
         """`prompt_version` of the session: the three versions joined with `;`."""
-        return ";".join(p.prompt_version for p in (self.system, self.metric, self.repo))
+        return joined_version(self.system, self.metric, self.repo)
 
 
 @dataclass(frozen=True)

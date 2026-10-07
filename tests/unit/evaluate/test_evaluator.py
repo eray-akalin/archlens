@@ -27,7 +27,7 @@ from archlens.models import (
     Verdict,
 )
 from archlens.rubric import load_rubrics
-from tests.unit.evaluate.conftest import TinyEnv
+from tests.unit.conftest import TinyEnv
 from tests.unit.rubric.helpers import make_ctx
 
 REPO = Path(__file__).parents[3]

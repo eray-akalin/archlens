@@ -232,7 +232,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   structured output; post-processing rules; self-consistency.
   AC: FakeLLM-scripted session test with tool calls; one test per post-processing rule (LLM.md §4),
   incl. evidence-less `pass` → `unknown`.
-- [ ] **M2.5 Verifier.** Mechanical, entailment (batched), absence replay, skeptic; budget handling.
+- [x] **M2.5 Verifier.** Mechanical, entailment (batched), absence replay, skeptic; budget handling.
   AC: one test per row of the ARCHITECTURE §2.5 table; invented/unseen lines and hash mismatches
   rejected; absence probe hit rejects with evidence; skeptic refutation → `disputed`;
   `BudgetExceeded` → remaining findings `unverified`.
@@ -318,6 +318,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `InvalidModelOutput` now carries the call records so `llm_call_ids` stay complete; claims
   trimmed to 300 chars / 5 citations; `severity_rank` moved to `models.enums`. Deps: `jinja2`.
   Tests: 689 offline (+41). Spend: $0.
+- 2026-10-07 — M2.5: `verify/{mechanical,entailment,absence,skeptic,pipeline}.py`,
+  `prompts/{verifier.entailment,verifier.findings,skeptic.system,skeptic.finding}.md`.
+  `Verifier.verify(results) → findings` routes each result per ARCHITECTURE §2.5, then batches
+  entailment per metric (≤ 5), then challenges verified critical `fail`s with the skeptic
+  (`run_tool_session`, own session id + ledger; cited snippets shown and marked). AC: one test per
+  table row; invented lines, unseen lines, paths outside the snapshot / unlisted / binary /
+  symlink, spans ≥ 60 and hash mismatches of carried evidence rejected; absence hit → `rejected`
+  with the hit as `CodeEvidence`; skeptic refutation with valid citations → `disputed` (with
+  unseen lines → ignored); `BudgetExceeded` → pending and later batches `unverified`
+  ("skipped: budget"), no further calls, skeptic skipped, absence replay still runs. Resolved:
+  one bad citation fails the whole mechanical step (the evidence is taken whole or not at all);
+  an absence probe that can't finish (regex timeout without a hit, bad pattern, no index) →
+  `unverified` rather than verified; the claim is wrapped as untrusted data in entailment and
+  skeptic prompts; entailment gets one retry on unusable output; `VerifierOptions` for the
+  EVALUATION §6 ablations (mechanical only, skeptic off); `RepoTools.listing()` and
+  `ToolSession.show_evidence()` added; `tiny_env` fixture moved to `tests/unit/conftest.py`.
+  Tests: 727 offline (+38). Spend: $0.
 
 ---
 

@@ -42,7 +42,8 @@ The available deployments depend on the subscription's quota tier — treat name
 
 - Files in `prompts/` (Jinja2), one per role/purpose: `evaluator.system.md`,
   `evaluator.metric.md` (rubric text), `evaluator.repo.md` (repo-specific part),
-  `verifier.entailment.md`, `skeptic.system.md`, `synth.narrative.md`, `synth.qa.md`.
+  `verifier.entailment.md` + `verifier.findings.md` (the batch), `skeptic.system.md` +
+  `skeptic.finding.md` (the finding to challenge), `synth.narrative.md`, `synth.qa.md`.
 - Front matter: `id`, `version` (semver), `role`. `prompt_version` string =
   `"{id}@{version}+{sha256(body)[:8]}"`; a call built from several prompts uses their versions
   joined with `;` (the evaluator's starts with `evaluator.system@…`).
@@ -156,20 +157,28 @@ Paths and outcomes are in ARCHITECTURE §2.5. LLM-specific parts:
 mechanical step. Input per finding = a `ref`, check title, verdict, claim, and the cited snippets
 (wrapped). Up to 5 findings of the same metric per call; output `EntailmentBatchOutput`
 (DATA_MODEL §6), one item per `ref`. `yes` → step passes; `no` → `rejected`; `insufficient` or a
-missing item → `unverified`.
+missing item → `unverified`. The claim is wrapped as untrusted data too (it may repeat repository
+text). An unusable answer is retried once; a second failure or a provider error → `unverified`.
 
 **Absence replay** (no LLM): run each `absence_probes` entry against the snapshot (path globs via
 `wcmatch` with GLOBSTAR|BRACE|DOTGLOB; regex over non-binary, non-vendored files; symbol lookup in
 the index). Probes describe what would *contradict* an evidence-less claim — i.e. signs that the
 thing the check is about exists. Zero hits across all probes → step passes, attach
 `ScanEvidence(tool="absence_probe", result_count=0)`. Any hit → `rejected`, hits attached as
-`CodeEvidence` so the report can show what was missed.
+`CodeEvidence` so the report can show what was missed (≤ 10). A probe that can't run to the end
+(regex timeout with no hit, invalid pattern, no symbol index) can't confirm the absence →
+`unverified`.
 
 **Skeptic** (`skeptic.system.md`, role `skeptic`): LLM-origin findings only. A tool session with
 `max_tool_calls: 6`, its own `session_id` and ledger, told the finding and asked to find code
-showing it is wrong. Output `SkepticOutput` (DATA_MODEL §6). `refuted=True` with citations that
-pass the mechanical step against the skeptic's ledger → `disputed`; otherwise the finding stays
-`verified`.
+showing it is wrong. The cited snippets are shown in its prompt (and marked in its ledger).
+Output `SkepticOutput` (DATA_MODEL §6). `refuted=True` with citations that pass the mechanical
+step against the skeptic's ledger → `disputed`; otherwise (incl. a failed session) the finding
+stays `verified` and the step records why.
+
+Implementation: `archlens.verify.{mechanical,entailment,absence,skeptic,pipeline}`. One failing
+citation fails the mechanical step for the whole result. `VerifierOptions(entailment=False)` is
+the "mechanical only" ablation and `skeptic=False` turns the skeptic off (EVALUATION.md §6).
 
 ## 7. Synthesizer
 

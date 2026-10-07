@@ -105,8 +105,9 @@ Which path a result takes depends on whether it has citations (details in `LLM.m
 4. **Skeptic** — separate tool session tries to refute.
 
 If `BudgetExceeded` is raised during verification, results not yet verified become `unverified`
-(`reason="budget"`); a skipped skeptic leaves the finding `verified` with a
-`VerificationStep(step="skeptic", passed=True, detail="skipped: budget")`.
+(their last step reads `skipped: budget`) and no further LLM step runs; a skipped skeptic leaves
+the finding `verified` with a `VerificationStep(step="skeptic", passed=True,
+detail="skipped: budget")`. Absence replay needs no LLM and still runs.
 
 ### 2.6 Score
 Pure function, specified in `RUBRICS.md` §4.

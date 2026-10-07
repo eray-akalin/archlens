@@ -103,6 +103,10 @@ class RepoTools:
                 self._dir_files[d] = self._dir_files.get(d, 0) + 1
         self._cache: OrderedDict[str, list[str] | None] = OrderedDict()
 
+    def listing(self) -> list[FileEntry]:
+        """The snapshot listing, in path order."""
+        return [self._entries[p] for p in sorted(self._entries)]
+
     def session(self, session_id: str) -> "ToolSession":
         return ToolSession(self, session_id)
 
@@ -443,6 +447,23 @@ class ToolSession:
         output = self.tools.render_facts(facts)
         self._mark(output)
         return wrap(redact(output.text), "facts", self.tools.boundary)
+
+    def show_evidence(self, evidence: Sequence[CodeEvidence]) -> str:
+        """Code evidence for a prompt (e.g. the finding a skeptic challenges): each snippet
+        line-numbered and wrapped with its path as source; the lines are marked as shown."""
+        blocks: list[str] = []
+        for item in evidence:
+            rows = item.snippet.split("\n")
+            width = max(4, len(str(item.start_line + len(rows) - 1)))
+            body = "\n".join(
+                _numbered(item.start_line + i, row, width, LINE_MAX_CHARS)
+                for i, row in enumerate(rows)
+            )
+            self.tools.ledger.add(
+                self.session_id, item.path, item.start_line, item.start_line + len(rows) - 1
+            )
+            blocks.append(wrap(redact(body), item.path, self.tools.boundary))
+        return "\n".join(blocks)
 
     def _mark(self, output: ToolOutput) -> None:
         for path, start, end in output.shown:

@@ -53,6 +53,11 @@ class Prompt:
         return _ENV.from_string(self.body).render(**variables).strip()
 
 
+def joined_version(*prompts: Prompt) -> str:
+    """`prompt_version` of a call built from several prompts: their versions joined with `;`."""
+    return ";".join(p.prompt_version for p in prompts)
+
+
 def load_prompt(path: Path) -> Prompt:
     """Parse one prompt file. Raises ConfigError (bad front matter, id ≠ file stem)."""
     text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
