@@ -1,0 +1,51 @@
+repo: primary
+commit: f27b4721507824e57ebd0286ff1a84d82e83bf59
+labels:
+  AUTH-01:
+    verdict: pass
+    path: backend/app/api/routes/items.py
+  AUTH-05:
+    verdict: pass
+    path: backend/app/core/security.py
+  CI-04:
+    verdict: pass
+    path: .github/workflows/test-backend.yml
+  CTR-01:
+    verdict: fail
+    path: backend/Dockerfile
+  CTR-02:
+    verdict: pass
+    path: backend/Dockerfile
+  DATA-01:
+    verdict: pass
+    path: backend/app/alembic/versions/
+  DATA-02:
+    verdict: pass
+    path: backend/app/core/config.py
+  DOC-03:
+    verdict: fail
+    path: null
+  LOG-01:
+    verdict: pass
+    path: backend/app/utils.py
+  PERF-03:
+    verdict: fail
+    path: null
+  PERF-04:
+    verdict: pass
+    path: backend/app/api/routes/items.py
+  PERF-06:
+    verdict: fail
+    path: compose.yml
+  SEC-05:
+    verdict: pass
+    path: backend/app/crud.py
+  STR-06:
+    verdict: pass
+    path: uv.lock
+  TEST-01:
+    verdict: pass
+    path: backend/tests/api/routes/test_items.py
+  TEST-03:
+    verdict: pass
+    path: .github/workflows/test-backend.yml

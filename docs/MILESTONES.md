@@ -441,7 +441,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   mutations, patches for `primary`, and `eval/variants.yaml` with the default grouping.
   AC: each mutation tested (precondition, apply, reported locations); applying V1–V4, VI1, VI2 to
   `primary` and VX1 to `cross` succeeds; `eval --dry-run` lists every variant with its mutations.
-- [ ] **M3.5 Labels and audit.** `eval label-sheet`, `eval audit`; the user labels ~15 checks on
+- [x] **M3.5 Labels and audit.** `eval label-sheet`, `eval audit`; the user labels ~15 checks on
   `primary`.
   AC: sheets generated for `primary`; parser reads filled sheets back; `eval/labels/primary.yaml`
   exists.
@@ -516,6 +516,20 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   ecosystem in an ancestor directory (DATA_MODEL §4 wording updated; a fact-attribute meaning,
   not a schema shape, so no `SCHEMA_VERSION` bump). `cross` is unchanged: its `.csproj` files have
   no `packages.lock.json`. Tests: 1045 offline (+1). Spend: $0.1065.
+- 2026-10-07 — M3.5: `eval/labels.py` + `archlens eval label-sheet <repo> [--report] [--read]`
+  and `archlens eval audit <results> [--sample 30] [--seed] [--read]`; `eval report` and eval runs
+  fold `eval/labels/primary.yaml` and `audit-<run_id>.yaml` into the metrics. AC: the sheet for
+  `primary` lists all 60 checks with the fresh run's verdicts (59 with a finding; CTR-06 has no
+  IaC); `eval/labels/primary.yaml` holds **16 labels over 10 metrics** (11 pass, 5 fail incl. 2
+  absences). **Provenance:** the user asked me to draft them; I picked checks whose truth is
+  visible in one file, verified each in the checkout, and the user reviewed the list (file +
+  what to look for) and confirmed all 16 — AI-drafted, user-verified, not independent labels.
+  Preview against the fresh run: accuracy 15/16, precision 4/5 (the miss is STR-06, fixed above).
+  Resolved: `Label.path` is optional (absence labels); the audit samples only `verified` LLM
+  findings (deterministic ones aren't the verifier's work), keyed `<run name>/<finding id>`;
+  audit sheets live in `eval/labels/`, so results directories stay append-only; an existing
+  sheet is never overwritten without `--force`. Tests: 1045 offline (+12 with the tooling).
+  Spend: $0 (the run is logged above).
 
 ---
 
