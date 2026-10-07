@@ -1,6 +1,7 @@
 """Chunker, embeddings cache and hybrid search (M1.7)."""
 
 import sqlite3
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
@@ -267,3 +268,21 @@ async def test_find_symbols_globs_are_case_insensitive(
     exact, _ = await find_symbols(path, "search_users")
     assert [(d.path, d.kind) for d in exact] == [("app/api/users.py", "function")]
     assert (await find_symbols(path, "NoSuchThing*"))[1] == 0
+
+
+def test_tree_sitter_is_not_the_broken_release() -> None:
+    """0.26.0 corrupts memory reading Point rows > 256 (py-tree-sitter#472); see pyproject."""
+    assert version("tree-sitter") != "0.26.0"
+
+
+def test_large_files_keep_spans_inside_the_file() -> None:
+    source = "".join(
+        f"@decorator\ndef handler_{i}(value):\n    if value:\n        return {i}\n    return None\n\n\n"
+        for i in range(120)
+    )  # 840 lines: row numbers well above 256
+    total = len(source.splitlines())
+    for _ in range(5):
+        chunks = chunk_file("big.py", "python", source, NO_REDACTION)
+        defs = symbol_defs("big.py", "python", source)
+        assert all(1 <= c.start_line <= c.end_line <= total for c in chunks)
+        assert len(defs) == 120 and defs[-1].end_line <= total

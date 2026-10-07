@@ -229,7 +229,12 @@ def chunk_file(path: str, language: str | None, text: str, redactor: Redactor) -
     spans: list[tuple[int, int, str | None]] = []
     if grammar is not None:
         tree = _parser(grammar).parse(text.encode("utf-8", "replace"))
-        spans = _symbol_spans(tree.root_node, grammar)
+        # a parser-binding bug must not turn into a runaway window loop: keep spans in the file
+        spans = [
+            (start, min(end, len(lines)), symbol)
+            for start, end, symbol in _symbol_spans(tree.root_node, grammar)
+            if 1 <= start <= len(lines)
+        ]
     pieces: list[tuple[int, int, str | None]] = []
     cursor = 1
     for start, end, symbol in spans:
