@@ -413,6 +413,12 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   "unpinned" PyYAML); (3) index embeds batches sequentially (68 s) — parallelize; (4) lift the
   tree-sitter pin when 0.26.1 ships; (5) dry-run's heuristic ($0.11) is ~2.4× the actual here.
   Spend: $0.0455 (+ ≤ $0.003); project total ≈ $0.063.
+- 2026-10-07 — M2.9 follow-up (1) done (user-approved): CI step classifier learns generic forms —
+  build: `docker compose … build`, `docker buildx bake`; lint: `prek run`, `biome check/ci`,
+  `pre-commit/action`, golangci-lint/ruff/super-linter actions; test: scripts named `test*`/`tests*`
+  (`.sh`/`.ps1`/`.bat`) and `coverage run`. Re-classifying the run's stored steps: build 3, lint 1,
+  test 2 (backend `tests-start.sh` + Playwright), so CI-02 would pass and TEST-03 sees the backend
+  tests. tiny_service unchanged. Spend: $0.
 
 ---
 

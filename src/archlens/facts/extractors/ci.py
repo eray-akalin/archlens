@@ -44,6 +44,7 @@ RUN_KINDS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"(?i)\bpytest\b|\b(npm|pnpm|yarn|bun)\s+(run\s+)?test\b|\bjest\b|\bvitest\b|\bmocha\b|\bgo\s+test\b"
             r"|\bdotnet\s+test\b|\bmvn\b.*\b(test|verify)\b|\bgradlew?\b.*\btest\b|\btox\b|\bnox\b|\bcargo\s+test\b"
             r"|\bmake\s+test\b|\bunittest\b|\bplaywright\s+test\b|\bcypress\s+run\b|\bphpunit\b|\brspec\b"
+            r"|\bcoverage\s+run\b|[\w./-]*\btests?[\w-]*\.(?:sh|ps1|bat)\b"
         ),
     ),
     (
@@ -52,6 +53,8 @@ RUN_KINDS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"(?i)\bruff\b|\bflake8\b|\bpylint\b|\bmypy\b|\bpyright\b|\bblack\s+--check|\beslint\b|\bprettier\s+--check"
             r"|\b(npm|pnpm|yarn)\s+(run\s+)?lint\b|\bgolangci-lint\b|\bgo\s+vet\b|\bhadolint\b|\bactionlint\b"
             r"|\bdotnet\s+format\b|\btsc\b.*--noEmit|\bshellcheck\b|\bpre-commit\s+run\b|\bstylelint\b"
+            r"|\bprek\s+run\b|\bbiome\s+(?:check|lint|ci)\b|pre-commit/action|golangci-lint-action"
+            r"|ruff-action|super-linter"
         ),
     ),
     (
@@ -60,6 +63,7 @@ RUN_KINDS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"(?i)\bdocker\s+(build|buildx)\b|\b(npm|pnpm|yarn)\s+(run\s+)?build\b|\bgo\s+build\b|\bdotnet\s+(build|publish)\b"
             r"|\bmvn\b.*\b(package|install)\b|\bgradlew?\b.*\b(build|assemble)\b|\bpython\s+-m\s+build\b|\buv\s+build\b"
             r"|\bcargo\s+build\b|\bmake(\s+build)?\s*$|\bpoetry\s+build\b|\btsc\b|setup-buildx-action"
+            r"|\bdocker[\s-]compose\s+(?:\S+\s+)*?build\b|\bdocker\s+buildx\s+bake\b"
         ),
     ),
 )
