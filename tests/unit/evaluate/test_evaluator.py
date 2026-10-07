@@ -11,7 +11,7 @@ from archlens.evaluate.consistency import evaluate_llm_checks, merge_runs
 from archlens.evaluate.deterministic import llm_checks, run_deterministic_checks
 from archlens.evaluate.llm_session import Evaluator, EvaluatorPrompts, profile_summary, select_facts
 from archlens.facts.base import make_fact
-from archlens.llm.fake import FakeLLM
+from archlens.llm.fake import FakeLLM, Scripted
 from archlens.llm.types import ToolCall
 from archlens.models import (
     CheckResult,
@@ -140,12 +140,23 @@ async def test_session_failure_marks_all_checks(tiny_env: TinyEnv) -> None:
 # --- self-consistency --------------------------------------------------------------------------
 
 
+TIEBREAK = ("tiebreak", "evaluator.system", "SEC-05")
+
+
 async def run_consistency(
-    tiny_env: TinyEnv, *reruns: MetricEvaluationOutput | Exception
+    tiny_env: TinyEnv,
+    rerun: MetricEvaluationOutput | Exception,
+    tie_break: MetricEvaluationOutput | None = None,
 ) -> tuple[list[CheckResult], FakeLLM]:
     rubric = security()
     checks = llm_checks(rubric, tiny_env.profile.flags)
-    llm = FakeLLM({key("SEC-04", "SEC-05", "SEC-06"): [ANSWER], key("SEC-05"): list(reruns)})
+    script: dict[tuple[str, ...], list[Scripted]] = {
+        key("SEC-04", "SEC-05", "SEC-06"): [ANSWER],
+        key("SEC-05"): [rerun],
+    }
+    if tie_break is not None:
+        script[TIEBREAK] = [tie_break]
+    llm = FakeLLM(script)
     return await evaluate_llm_checks(evaluator(tiny_env, llm), rubric, checks), llm
 
 
@@ -165,6 +176,7 @@ async def test_disagreement_gets_a_tie_break_run(tiny_env: TinyEnv) -> None:
     sec05 = next(r for r in results if r.check_id == "SEC-05")
     assert (sec05.verdict, sec05.attempt, sec05.confidence) == ("fail", 0, "medium")
     assert [c.tags for c in llm.calls] == [("SEC-04", "SEC-05", "SEC-06"), ("SEC-05",), ("SEC-05",)]
+    assert [c.role for c in llm.calls] == ["evaluator", "evaluator", "tiebreak"]
     assert "Evaluation run 3." in str(llm.calls[2].messages[-1]["content"])
     others = [r.verdict for r in results if r.check_id != "SEC-05"]
     assert others == ["partial", "unknown"]  # non-critical checks are not rerun

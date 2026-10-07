@@ -31,6 +31,7 @@ Every call returns its parsed output plus an `LLMCallRecord` (DATA_MODEL §8), a
 | `evaluator` | gpt-5-mini | `reasoning_effort: low`, `max_completion_tokens: 6000` | metric sessions |
 | `verifier` | gpt-4.1-mini | `temperature: 0`, `max_completion_tokens: 400` | entailment |
 | `skeptic` | gpt-5-mini | `reasoning_effort: low`, `max_completion_tokens: 3000` | refutation sessions |
+| `tiebreak` | gpt-5-mini | `reasoning_effort: medium`, `max_completion_tokens: 12000` | self-consistency tie-break sessions (optional in config; absent → the `evaluator` settings) |
 | `synth` | gpt-4.1-mini | `temperature: 0.2`, `max_completion_tokens: 2500` | report narrative, report Q&A |
 | `embed` | text-embedding-3-small | – | index |
 
@@ -140,7 +141,9 @@ Post-processing (deterministic) turns each `LLMCheckOutput` into a `CheckResult`
 
 Self-consistency: for checks with `self_consistency: 2`, run a second session restricted to those
 checks (shares the cached prefix, so it is cheap). The usable runs decide by strict majority: all
-agree → the first result stands; no majority → one tie-break session for those checks, after which
+agree → the first result stands; no majority → one tie-break session for those checks on the `tiebreak` role (a stronger setting
+where the evaluator disagreed with itself — the first eval showed gpt-5-mini at low effort misread
+a `CurrentUser` handler and flagged constant migration SQL), after which
 the first result with the majority verdict stands (its own citations and session; `confidence` at
 most `medium`). Still no majority → `unknown`, `confidence="low"`, `reason="inconsistent"`, every
 run's claim kept. A run that failed (budget, provider, invalid output) doesn't count: the remaining

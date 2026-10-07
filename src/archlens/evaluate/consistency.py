@@ -2,7 +2,8 @@
 
 Checks with `self_consistency: n` (default 2 for critical checks) get n-1 extra sessions restricted
 to them. The usable runs (a run that failed for budget, model or output problems doesn't count)
-decide by strict majority. A check whose runs have no majority gets one tie-break session; still
+decide by strict majority. A check whose runs have no majority gets one tie-break session on the
+`tiebreak` role (a stronger setting, used only where the evaluator disagreed with itself); still
 no majority → `unknown`, `confidence="low"`, `reason="inconsistent"`, with every run's claim kept.
 
 Unanimous → the first usable result stands (low confidence if some run failed). Majority → the
@@ -35,7 +36,7 @@ async def evaluate_llm_checks(
     split = undecided(first, reruns)
     if split:
         subset = [c for c in checks if c.id in split]
-        reruns.append(await evaluator.evaluate(rubric, subset, attempt=runs))
+        reruns.append(await evaluator.evaluate(rubric, subset, attempt=runs, role="tiebreak"))
     return merge_runs(first, reruns)
 
 

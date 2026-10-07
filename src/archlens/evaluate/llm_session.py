@@ -89,10 +89,16 @@ class Evaluator:
     prompts: EvaluatorPrompts
 
     async def evaluate(
-        self, rubric: Rubric, checks: Sequence[CheckSpec], *, attempt: int = 0
+        self,
+        rubric: Rubric,
+        checks: Sequence[CheckSpec],
+        *,
+        attempt: int = 0,
+        role: str = "evaluator",
     ) -> list[CheckResult]:
         """One session over `checks` (LLM checks of `rubric`); one result per check, in order.
-        Never raises for model-side problems (they become `unknown` with a reason)."""
+        `role="tiebreak"` runs it on the tie-break model (config/models.yaml). Never raises for
+        model-side problems (they become `unknown` with a reason)."""
         if not checks:
             return []
         session = self.tools.session(f"{rubric.metric}:{STAGE}:{attempt}")
@@ -117,7 +123,7 @@ class Evaluator:
         system = self.prompts.system.render(max_tool_calls=self.limits.max_tool_calls)
         outcome = await run_tool_session(
             self.llm,
-            role="evaluator",
+            role=role,
             stage=STAGE,
             prompt_version=self.prompts.version,
             messages=[

@@ -594,6 +594,15 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   integration. Not done: a dedicated report section for injection attempts (needs an
   `AssessmentReport` field; the count shows in tool runs). Expect a higher cost per run (more
   tool calls, tie-breaks, judge calls). Tests: 1067 offline (+19). Spend: $0.
+- 2026-10-07 — `tiebreak` model role (from an external review of the first eval: use a stronger
+  model only where it matters). The self-consistency tie-break session runs on
+  `roles.tiebreak` — gpt-5-mini at `reasoning_effort: medium`, no new deployment; optional in
+  config (absent → evaluator settings), `ARCHLENS_MODEL_TIEBREAK` overrides the deployment, priced
+  like every role. Confirmed in the results first: gpt-5-mini/low said `items.create_item` had no
+  auth although it takes `CurrentUser` (base.2 AUTH-01) and called constant Alembic SQL `partial`
+  (base.2 and V1 SEC-05) — both disagreements a tie-break now decides. The dry-run counts one
+  tie-break session per metric with a critical LLM check (upper bound). Tests: 1068 (+1).
+  Spend: $0.
 
 ---
 

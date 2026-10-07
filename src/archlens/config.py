@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     model_evaluator: str | None = None
     model_verifier: str | None = None
     model_skeptic: str | None = None
+    model_tiebreak: str | None = None
     model_synth: str | None = None
     model_embed: str | None = None
     # Limits & budget
@@ -100,6 +101,19 @@ class Roles(_ConfigFile):
     skeptic: RoleConfig
     synth: RoleConfig
     embed: RoleConfig
+    # the self-consistency tie-break session (LLM.md §4); None → the evaluator's settings
+    tiebreak: RoleConfig | None = None
+
+    def get(self, name: str) -> RoleConfig | None:
+        """The role's settings (`tiebreak` falls back to `evaluator`); None for an unknown name."""
+        if name == "tiebreak":
+            return self.tiebreak or self.evaluator
+        role = getattr(self, name, None) if name in type(self).model_fields else None
+        return role if isinstance(role, RoleConfig) else None
+
+    def all(self) -> list[RoleConfig]:
+        return [r for r in (self.evaluator, self.verifier, self.skeptic, self.synth, self.embed,
+                            self.tiebreak) if r is not None]  # fmt: skip
 
 
 class SessionLimits(_ConfigFile):
@@ -231,22 +245,20 @@ def _apply_deployment_overrides(models: ModelsConfig, settings: Settings) -> Mod
         "skeptic": settings.model_skeptic,
         "synth": settings.model_synth,
         "embed": settings.model_embed,
+        "tiebreak": settings.model_tiebreak,
     }
     roles = models.roles
     updated = {
-        role: getattr(roles, role).model_copy(update={"deployment": deployment})
+        role: base.model_copy(update={"deployment": deployment})
         for role, deployment in overrides.items()
-        if deployment
+        if deployment and (base := roles.get(role)) is not None
     }
     return models.model_copy(update={"roles": roles.model_copy(update=updated)})
 
 
 def _check_prices(models: ModelsConfig, pricing: PricingConfig, *, source: str) -> None:
     roles = models.roles
-    used = {
-        r.deployment
-        for r in (roles.evaluator, roles.verifier, roles.skeptic, roles.synth, roles.embed)
-    }
+    used = {r.deployment for r in roles.all()}
     missing = sorted(used - pricing.deployments.keys())
     if missing:
         raise ConfigError(

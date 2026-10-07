@@ -317,8 +317,8 @@ class LLMClient:
         await self._provider.aclose()
 
     def _role(self, name: str) -> RoleConfig:
-        role = getattr(self._models.roles, name, None)
-        if not isinstance(role, RoleConfig):
+        role = self._models.roles.get(name)
+        if role is None:
             raise LLMError(f"unknown role {name!r}")
         return role
 

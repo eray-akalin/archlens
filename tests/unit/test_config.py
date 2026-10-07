@@ -129,6 +129,23 @@ def test_deployment_override_from_environment(config_dir: Path) -> None:
     assert config.models.roles.skeptic.deployment == "gpt-5-mini"  # other roles untouched
 
 
+def test_tiebreak_role(config_dir: Path) -> None:
+    roles = load_config(settings_for(config_dir)).models.roles
+    tiebreak = roles.get("tiebreak")
+    assert tiebreak is not None and tiebreak.reasoning_effort == "medium"
+    assert roles.get("nope") is None
+    without = roles.model_copy(update={"tiebreak": None})
+    assert without.get("tiebreak") == roles.evaluator  # absent → the evaluator's settings
+    pricing = config_dir / "pricing.yaml"
+    pricing.write_text(
+        pricing.read_text() + "  big-model:\n    input: 1\n    cached_input: 1\n    output: 1\n"
+    )
+    config = load_config(settings_for(config_dir, model_tiebreak="big-model"))
+    overridden = config.models.roles.get("tiebreak")
+    assert overridden is not None and overridden.deployment == "big-model"
+    assert overridden.reasoning_effort == "medium"  # other params kept
+
+
 def _edit(path: Path, old: str, new: str) -> None:
     text = path.read_text()
     assert old in text, f"fixture drift: {old!r} not in {path.name}"

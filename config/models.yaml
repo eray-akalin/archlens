@@ -12,6 +12,12 @@ roles:
     deployment: gpt-5-mini
     reasoning_effort: low
     max_completion_tokens: 3000
+  # Self-consistency tie-break (docs/LLM.md §4): runs only when two evaluator runs disagree, so a
+  # stronger setting costs little. Point `deployment` at a larger model once one is deployed.
+  tiebreak:
+    deployment: gpt-5-mini
+    reasoning_effort: medium
+    max_completion_tokens: 12000
   synth:
     deployment: gpt-4.1-mini
     temperature: 0.2

@@ -86,7 +86,7 @@ class ChatPayload:
 
 @dataclass(frozen=True)
 class LLMRequest[T: BaseModel]:
-    role: str  # evaluator | verifier | skeptic | synth (config/models.yaml)
+    role: str  # evaluator | tiebreak | verifier | skeptic | synth (config/models.yaml)
     stage: str
     prompt_version: str  # "{id}@{version}+{sha8}"
     messages: list[ChatMessage]

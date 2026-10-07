@@ -1,10 +1,11 @@
 """`archlens assess --dry-run`: projected LLM cost before spending anything (docs/LLM.md §9).
 
 Heuristics from `config/models.yaml` (`estimates`) until recorded runs exist: per metric with LLM
-checks, one evaluator session (plus one consistency rerun when it has a critical LLM check), one
-skeptic session per critical LLM check (a third of a session), one entailment estimate per LLM
-check, and one synthesizer call. Every LLM check counts as applicable, so this is an upper bound.
-Embeddings are not included (text-embedding-3-small costs about $0.02 per million tokens).
+checks, one evaluator session (plus one consistency rerun and one tie-break session when it has a
+critical LLM check), one skeptic session per critical LLM check (a third of a session), one
+entailment estimate per LLM check, and one synthesizer call. Every LLM check counts as applicable,
+so this is an upper bound. Embeddings are not included (text-embedding-3-small costs about $0.02
+per million tokens).
 """
 
 from collections.abc import Sequence
@@ -47,8 +48,8 @@ def tokens_cost(price: Price, tokens: TokenEstimate, times: Decimal = Decimal(1)
 def project_cost(config: AppConfig, rubrics: Sequence[Rubric]) -> Projection:
     models, pricing = config.models, config.pricing
     price = {
-        role: pricing.deployments[getattr(models.roles, role).deployment]
-        for role in ("evaluator", "verifier", "skeptic", "synth")
+        role: pricing.deployments[(models.roles.get(role) or models.roles.evaluator).deployment]
+        for role in ("evaluator", "verifier", "skeptic", "synth", "tiebreak")
     }
     estimates = models.estimates
     lines: list[ProjectionLine] = []
@@ -59,6 +60,8 @@ def project_cost(config: AppConfig, rubrics: Sequence[Rubric]) -> Projection:
         critical = [c for c in llm if c.consistency_runs > 1]
         sessions = Decimal(1 + (1 if critical else 0))
         usd = tokens_cost(price["evaluator"], estimates.tokens_per_metric, sessions)
+        if critical:  # worst case: the two runs disagree and a tie-break session follows
+            usd += tokens_cost(price["tiebreak"], estimates.tokens_per_metric)
         usd += tokens_cost(
             price["skeptic"], estimates.tokens_per_metric, SKEPTIC_SHARE * len(critical)
         )
