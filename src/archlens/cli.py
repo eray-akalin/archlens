@@ -6,6 +6,7 @@ code 1 and name the milestone (docs/MILESTONES.md) that delivers them.
 
 import asyncio
 import json
+import logging
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -94,6 +95,7 @@ def assess(
     ] = None,
 ) -> None:
     """Run the full pipeline: ingest, facts, profile, index, evaluate, verify, score, report."""
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     try:
         settings = load_settings()
         config = load_config(settings)

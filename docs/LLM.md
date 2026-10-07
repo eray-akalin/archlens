@@ -190,8 +190,10 @@ snippets). Output: `Narrative` (DATA_MODEL §8). Guards:
 
 Implementation (`archlens.report.synth`, prompts `synth.narrative.md` + `synth.input.md`): the
 whitelist is exactly what the input shows — metric and overall scores, coverage percentages,
-verdict counts, the numbers of findings and metrics, and the 0-10 scale; digits inside check and
-finding ids don't count as numbers; values compare numerically (`4.00` = `4.0`). Finding ids in
+verdict counts, the numbers of findings and metrics, the 0-10 scale, and every number written in
+a verified finding's claim (claims are part of the report); digits inside check and finding ids
+and dotted version strings (`16.3.3`) don't count as numbers; values compare numerically
+(`4.00` = `4.0`). Finding ids in
 the *text* are checked too: an unknown one left after the retry discards the narrative (it can't
 be dropped like a `cited_findings` entry). Claims and snippets are wrapped as untrusted data.
 Paragraphs for unknown metrics are dropped. Model or budget failures → `narrative=None`.

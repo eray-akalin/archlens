@@ -48,6 +48,26 @@ def test_numbers_inside_ids_are_ignored() -> None:
     assert numbers_in(text) == ["4.0", "10", "85", "3", "2026"]
 
 
+def test_versions_are_not_numbers_and_claims_are_whitelisted() -> None:
+    assert numbers_in("next 16.3.3 and seroval 1.5.4 at 0.24.") == ["0.24"]
+    report = sample_report()
+    claim = "Test-to-source LOC ratio is 0.24 across 119 tests."
+    first = report.findings[0]
+    with_claim = report.model_copy(
+        update={
+            "findings": [
+                first.model_copy(
+                    update={"result": first.result.model_copy(update={"claim": claim})}
+                ),
+                *report.findings[1:],
+            ]
+        }
+    )
+    allowed = number_whitelist(with_claim)
+    assert Decimal("0.24") in allowed and Decimal("119") in allowed
+    assert not check_narrative(narrative("Tests cover a 0.24 ratio over 119 tests."), with_claim)
+
+
 def test_check_narrative_reports_every_problem() -> None:
     report = sample_report()
     assert not check_narrative(NARRATIVE, report)

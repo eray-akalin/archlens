@@ -28,7 +28,7 @@ STAGE = "report"
 SNIPPET_LINES = 3
 FINDING_ID = re.compile(r"\b[A-Z]+-\d{2}@[0-9a-f]{12}\b")
 CHECK_ID = re.compile(r"\b[A-Z]+-\d{2}\b")
-NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?!\w)")
+NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)*(?!\w)")  # dotted runs (versions) are skipped
 RETRY = (
     "Your narrative broke the rules: {problems}. Write it again using only finding ids and "
     "numbers that appear in the data."
@@ -77,7 +77,8 @@ class SynthResult:
 
 
 def number_whitelist(report: AssessmentReport) -> set[Decimal]:
-    """Numbers the narrative may use: everything the synthesizer input shows."""
+    """Numbers the narrative may use: everything the synthesizer input shows — scores, coverage,
+    counts, the 0-10 scale, and the numbers written in the verified findings' claims."""
     values: set[Decimal] = {Decimal(0), Decimal(10)}
     values.add(Decimal(len(report.findings)))
     values.add(Decimal(len(report.other_findings)))
@@ -90,13 +91,16 @@ def number_whitelist(report: AssessmentReport) -> set[Decimal]:
             values.add(Decimal(str(metric.score)))
         values.add(Decimal(coverage_percent(metric.coverage)))
         values.update(Decimal(n) for n in metric.counts.values())
+    for finding in report.findings:
+        values.update(Decimal(raw) for raw in numbers_in(finding.result.claim))
     return values
 
 
 def numbers_in(text: str) -> list[str]:
-    """Numbers written in `text`, ignoring the digits inside finding and check ids."""
+    """Numbers written in `text`, ignoring the digits inside finding and check ids and dotted
+    version strings such as `16.3.3`."""
     bare = CHECK_ID.sub(" ", FINDING_ID.sub(" ", text))
-    return NUMBER.findall(bare)
+    return [raw for raw in NUMBER.findall(bare) if raw.count(".") <= 1]
 
 
 def check_narrative(narrative: Narrative, report: AssessmentReport) -> Problems:

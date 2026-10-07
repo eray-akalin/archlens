@@ -283,6 +283,8 @@ class Pipeline:
             boundary=boundary,
             rubrics=self.rubrics,
         )
+        if synth.narrative is None:
+            logger.warning("report has no narrative: %s", "; ".join(synth.notes) or "no answer")
         for note in synth.notes:
             logger.info("narrative: %s", note)
         return with_narrative(report, synth.narrative, self._records())
