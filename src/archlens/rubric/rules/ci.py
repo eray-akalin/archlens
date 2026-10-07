@@ -4,6 +4,7 @@ A step counts for every stage its command matches (the extractor's single `run_k
 the highest-priority one, so `ruff check . && pytest` would otherwise hide the lint stage).
 """
 
+import re
 from typing import Literal
 
 from pydantic import Field
@@ -19,6 +20,7 @@ from archlens.rubric.rules._common import (
     attr_list,
     attr_str,
     fact_evidence,
+    line_evidence,
     missing_data,
     plural,
     scan,
@@ -199,6 +201,9 @@ def is_restricted(workflow: Fact) -> bool:
     return bool(jobs) and all(per_job.get(j) is not None for j in jobs)
 
 
+_WRITE_ALL = re.compile(r"^\s*permissions:\s*['\"]?write-all")
+
+
 @rule("ci.permissions_restricted")
 def permissions_restricted(ctx: RuleContext, params: PermissionsParams) -> RuleOutcome:
     """pass if every GitHub workflow restricts token permissions, else fail."""
@@ -218,7 +223,10 @@ def permissions_restricted(ctx: RuleContext, params: PermissionsParams) -> RuleO
         verdict="fail",
         claim=f"Token permissions are default or write-all in {len(open_)} of "
         f"{plural(len(workflows), 'GitHub workflow')}: {', '.join(paths[:3])}.",
-        evidence=[scan(ctx, CI_TOOL, query, len(open_)), *fact_evidence(open_, MAX_EVIDENCE - 1)],
+        evidence=[
+            scan(ctx, CI_TOOL, query, len(open_)),
+            *line_evidence(ctx, [(p, _WRITE_ALL) for p in paths], open_)[: MAX_EVIDENCE - 1],
+        ],
     )
 
 

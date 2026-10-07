@@ -138,13 +138,15 @@ def plan_of(cfg: EvalConfig, *variants: VariantSpec):
 
 def test_plan_expands_runs_with_cache_flags() -> None:
     plan = plan_of(
-        config(SuiteEntry(repo="primary", runs=3), SuiteEntry(repo="primary", variant="V1")),
+        config(
+            SuiteEntry(repo="primary", runs=3), SuiteEntry(repo="primary", variant="V1", runs=2)
+        ),
         variant("M-SECRET", "M-ROOT"),
     )
     assert plan.problems == []
     assert [(r.name, r.use_cache) for r in plan.runs] == [
         ("primary.base.0", False), ("primary.base.1", False), ("primary.base.2", False),
-        ("primary.V1.0", True),
+        ("primary.V1.0", True), ("primary.V1.1", False),  # a repeat is an independent sample
     ]  # fmt: skip
 
 

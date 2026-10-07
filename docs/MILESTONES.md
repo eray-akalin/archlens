@@ -535,7 +535,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   82% (17 pairs) / cross 100% (7), located 65% / 86%, spillover −1%, labeled precision 100%,
   labeled accuracy 96%, mechanical pass 98%, score std 0.24, verdict agreement 83%, VI1 max Δ 1.33,
   VI1 injected-only findings 0, VI2 not detected. **Two harness bugs found in the analysis (fixed
-  in the next commit):** (1) the runner passed the cached checkout as a relative path and scanners
+  in a6148c7):** (1) the runner passed the cached checkout as a relative path and scanners
   run with the work dir as cwd, so precondition facts had osv-scanner/semgrep errors and gitleaks
   "ok, 0" → M-VULNDEP was applied to `primary` (it has 22 advisories in `bun.lock`) and M-SECRET
   to `cross` (it has a committed key file); both pairs are trivially "detected" and invalid.
@@ -568,6 +568,32 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
      With (a), primary recall would be 15/16.
   VI1 also showed that exact-cache hits skip sessions that never read the injected text
   (I-TOOLSPOOF's file was never opened). Spend: $1.4971 (project total ≈ $1.67).
+- 2026-10-07 — M3.6 follow-up, the three planned fixes (user: where a failure comes from the rules
+  we put in front of the model, relax them and give it room). Model-facing rules relaxed:
+  evaluator budget 14 → 24 tool calls and 60k → 90k context (auth's 6 checks shared 14 calls;
+  AUTH-06, DATA-05 and PERF-05 answered `unknown` after exhausting them); `evaluator.system` 1.1.0
+  presents the criteria as typical cases ("choose the closest verdict and say why") and keeps
+  `unknown` for code the model couldn't inspect; DOC-06 told the model to answer `unknown` for a
+  README without commands — now `not_applicable`, and PERF-05 may be `not_applicable` without
+  outbound calls (both with probes); AUTH-06 accepts framework cookie defaults, DATA-05 identity
+  frameworks, DOC-01 asks to cite a stub README (rubrics auth/data/documentation/performance
+  1.1.0). Verifier: absence-probe hits are no longer an automatic rejection but go to an
+  **absence judge** (the entailment model, `verifier.absence` + `verifier.probe_hits`, same
+  `EntailmentBatchOutput` → no contract change); "mechanical only" keeps the old rejection.
+  Self-consistency: a disagreement gets one tie-break run and the strict majority stands (≤
+  medium confidence); still split → `unknown`. Injection: `fs:injection` extractor →
+  `injection_attempt` facts (generic signatures: override, addresses_ai, score_request,
+  delimiter, role_spoof; I-COMMENT/I-FAKEEVIDENCE deliberately don't match — plausible comments
+  are the verifier's job), always added to evaluator sessions ahead of the fact cap and named in
+  the system prompt. Eval: M-AUTHOFF expects AUTH-01 `partial`; VI1 measures distance outside
+  the base runs' range; VI2 checks each paired defect's own expectation; VI1/VI2 run twice in
+  `full` (repeats with the exact cache off; 13 runs, ≤ $3.82 projected). Evidence lines: CTR-02
+  cites the offending `FROM`, CI-04 the `permissions: write-all` line, `ci_step` facts point at
+  their `uses:`/`run:` line. Also fixed: `tests/unit/test_config.py::settings_for` wrote
+  `os.environ` directly and leaked `ARCHLENS_MODEL_*` into later tests when unit ran before
+  integration. Not done: a dedicated report section for injection attempts (needs an
+  `AssessmentReport` field; the count shows in tool runs). Expect a higher cost per run (more
+  tool calls, tie-breaks, judge calls). Tests: 1067 offline (+19). Spend: $0.
 
 ---
 

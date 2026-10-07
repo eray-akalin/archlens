@@ -1,6 +1,6 @@
 metric: data
 title: Data management
-version: 1.0.0
+version: 1.1.0
 weight: 1.0
 description: >
   Whether the database schema evolves through migrations, connection settings stay out of code,
@@ -88,7 +88,8 @@ checks:
       - {kind: regex, pattern: "(?i)password|passwd|secret|token|ssn|credit_?card|iban", path_glob: "**/*.{py,ts,js,cs,java,go}"}
     guidance: |
       Look at the data models for sensitive fields: passwords, tokens, secrets, government IDs,
-      payment data.
+      payment data. Passwords handled by a vetted identity framework (which hashes them) count as
+      protected; cite where the framework is configured or used.
       - pass: sensitive fields are hashed, encrypted or masked before storage, and excluded from
         API responses; cite the model and the protection.
       - partial: some sensitive fields are protected and others are not, or they are protected

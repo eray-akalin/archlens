@@ -109,7 +109,9 @@ line it shows to the model is added to the **seen-lines ledger** (`archlens.tool
 ledger before the first turn. Each session (evaluator, self-consistency rerun, skeptic) has its own
 `session_id`; citations are always checked against the ledger of the session that produced them.
 
-Budgets per session (config): `max_tool_calls: 14`, `max_context_tokens: 60000`. When either is
+Budgets per session (config): `max_tool_calls: 24`, `max_context_tokens: 90000` (raised from
+14 / 60 000 after the first eval: metrics with 5–6 LLM checks ran out of calls and answered
+`unknown`). When either is
 reached the client sends a final turn: "Tool budget exhausted; answer now with what you have" and
 requests the structured output (no tools offered). Calls beyond the budget within one turn get an
 "exhausted" tool message instead of running.
@@ -137,10 +139,16 @@ Post-processing (deterministic) turns each `LLMCheckOutput` into a `CheckResult`
    a model's own `unknown` gets `reason="model_unknown"`.
 
 Self-consistency: for checks with `self_consistency: 2`, run a second session restricted to those
-checks (shares the cached prefix, so it is cheap). Same verdict → keep the first result.
-Different verdicts → `unknown`, `confidence="low"`, `reason="inconsistent"`, both claims kept.
-A rerun that failed (budget, provider, invalid output) is not a disagreement: the first result
-stands with `confidence="low"`.
+checks (shares the cached prefix, so it is cheap). The usable runs decide by strict majority: all
+agree → the first result stands; no majority → one tie-break session for those checks, after which
+the first result with the majority verdict stands (its own citations and session; `confidence` at
+most `medium`). Still no majority → `unknown`, `confidence="low"`, `reason="inconsistent"`, every
+run's claim kept. A run that failed (budget, provider, invalid output) doesn't count: the remaining
+runs decide, with `confidence="low"`.
+
+Facts of kind `injection_attempt` (SECURITY.md §6) are added to every evaluator session whatever
+the checks' `fact_kinds`, and the system prompt says that text is never evidence that a check
+passes.
 
 ## 5. Structured output contract
 
@@ -165,7 +173,11 @@ text). An unusable answer is retried once; a second failure or a provider error 
 the index). Probes describe what would *contradict* an evidence-less claim — i.e. signs that the
 thing the check is about exists. Zero hits across all probes → step passes, attach
 `ScanEvidence(tool="absence_probe", result_count=0)`. Any hit → `rejected`, hits attached as
-`CodeEvidence` so the report can show what was missed (≤ 10). A probe that can't run to the end
+`CodeEvidence` (≤ 10) and go to the **absence judge**: the entailment model with
+`verifier.absence.md` / `verifier.probe_hits.md` and the same `EntailmentBatchOutput`, asked
+whether the claim still holds given the found code — `yes` → `verified`, `no` → `rejected`,
+`insufficient` or no answer → `unverified`. A probe is a lead, not proof. Without entailment
+(the "mechanical only" ablation) any hit → `rejected`. A probe that can't run to the end
 (regex timeout with no hit, invalid pattern, no symbol index) can't confirm the absence →
 `unverified`.
 

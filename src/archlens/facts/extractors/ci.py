@@ -132,7 +132,10 @@ def _github(ctx: ScanContext, path: str) -> list[Fact]:
         step_nodes = _sequence(_child(job_nodes.get(job_id), "steps"))
         for index, step_value in enumerate(as_list(job.get("steps"))):
             step = as_dict(step_value)
-            line = step_nodes[index].start_mark.line + 1 if index < len(step_nodes) else 1
+            node = step_nodes[index] if index < len(step_nodes) else None
+            # the `uses:` (else `run:`) line — what CI-05/CI-02/TEST-03 are about — else the step
+            anchor = _child(node, "uses") or _child(node, "run") or node
+            line = anchor.start_mark.line + 1 if anchor is not None else 1
             run = step.get("run")
             uses = step.get("uses")
             facts.append(

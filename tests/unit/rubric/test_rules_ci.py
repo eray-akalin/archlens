@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import JsonValue
 
-from archlens.models import Fact, ToolStatus
+from archlens.models import CodeEvidence, Fact, ToolStatus
 from tests.unit.rubric.helpers import ci_step, ci_workflow, fact, first_scan, make_ctx, run
 
 GITLAB = ".gitlab-ci.yml"
@@ -183,6 +183,16 @@ def test_permissions_fail_names_every_open_workflow(tmp_path: Path) -> None:
     assert outcome.verdict == "fail"
     assert "1 of 2 GitHub workflows" in outcome.claim and "b.yml" in outcome.claim
     assert open_.evidence[0] in outcome.evidence and ok.evidence[0] not in outcome.evidence
+
+
+def test_permissions_cites_the_write_all_line(tmp_path: Path) -> None:
+    text = "on: push\njobs:\n  build:\n    permissions: write-all\n    runs-on: x\n"
+    workflow = ci_workflow(permissions=None, jobs=["build"], job_permissions={"build": "write-all"})
+    ctx = make_ctx(tmp_path, [workflow], files={".github/workflows/ci.yml": text})
+    cited = [
+        e for e in run("ci.permissions_restricted", ctx).evidence if isinstance(e, CodeEvidence)
+    ]
+    assert [(e.path, e.start_line) for e in cited] == [(".github/workflows/ci.yml", 4)]
 
 
 # --- ci.actions_pinned -------------------------------------------------------------------------

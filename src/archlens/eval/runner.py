@@ -94,7 +94,8 @@ def build_plan(
                 problems.append(f"suite: variant {spec.id} is for {spec.repo}, not {entry.repo}")
             problems += static_problems(spec, mutations, check_metric)
         runs += [
-            PlannedRun(entry.repo, entry.variant, i, use_cache=entry.variant != BASE)
+            # base runs and repeats of a variant are independent samples: exact cache off
+            PlannedRun(entry.repo, entry.variant, i, use_cache=entry.variant != BASE and i == 0)
             for i in range(entry.runs)
         ]
     return EvalPlan(config, by_repo, by_variant, runs, problems)

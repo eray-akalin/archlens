@@ -39,6 +39,14 @@ class EntailmentPrompts:
             load_prompt(directory / "verifier.findings.md"),
         )
 
+    @classmethod
+    def load_absence(cls, directory: Path = DEFAULT_PROMPTS_DIR) -> "EntailmentPrompts":
+        """The absence judge: same output, but the code is what the absence probes found."""
+        return cls(
+            load_prompt(directory / "verifier.absence.md"),
+            load_prompt(directory / "verifier.probe_hits.md"),
+        )
+
     @property
     def version(self) -> str:
         return joined_version(self.system, self.findings)

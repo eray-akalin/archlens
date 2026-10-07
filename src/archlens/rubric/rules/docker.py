@@ -5,6 +5,7 @@ some → partial, none → fail. NA when the repository has no Dockerfile (appli
 the rubric).
 """
 
+import re
 from collections.abc import Callable
 
 from pydantic import Field
@@ -19,6 +20,7 @@ from archlens.rubric.rules._common import (
     attr_list,
     attr_str,
     fact_evidence,
+    line_evidence,
     missing_data,
     plural,
     scan,
@@ -93,6 +95,11 @@ def is_pinned_image(image: str) -> bool:
     return ":" in last and last.rsplit(":", 1)[1] != "latest"
 
 
+def from_line(image: str) -> re.Pattern[str]:
+    """The `FROM` instruction that names `image` (flags such as `--platform` allowed)."""
+    return re.compile(rf"(?i)^\s*FROM\s+(?:--\S+\s+)*{re.escape(image)}(?:\s|$)")
+
+
 @rule("docker.pinned_base")
 def pinned_base(ctx: RuleContext, params: NoParams) -> RuleOutcome:
     """fail if any external base image has no tag or uses `latest`."""
@@ -113,12 +120,13 @@ def pinned_base(ctx: RuleContext, params: NoParams) -> RuleOutcome:
             ],
         )
     images = ", ".join(sorted({image for _, image in unpinned})[:3])
+    wanted = [(attr_str(f, "path") or "", from_line(image)) for f, image in unpinned]
     return RuleOutcome(
         verdict="fail",
         claim=f"Unpinned base image(s): {images}.",
         evidence=[
             scan(ctx, TOOL, "unpinned base images", len(unpinned)),
-            *fact_evidence([f for f, _ in unpinned], MAX_EVIDENCE - 1),
+            *line_evidence(ctx, wanted, [f for f, _ in unpinned])[: MAX_EVIDENCE - 1],
         ],
     )
 

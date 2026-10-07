@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import JsonValue
 
-from archlens.models import Fact, Severity, ToolStatus
+from archlens.models import CodeEvidence, Fact, Severity, ToolStatus
 from archlens.rubric.rules.docker import is_pinned_image, runs_as_non_root
 from tests.unit.rubric.helpers import fact, first_scan, make_ctx, run
 
@@ -173,6 +173,16 @@ def test_pinned_base_rule(tmp_path: Path) -> None:
     latest = dockerfile(bases=["node:20", "python:latest"])
     outcome = run("docker.pinned_base", make_ctx(tmp_path / "b", [latest]))
     assert outcome.verdict == "fail" and "python:latest" in outcome.claim
+
+
+def test_pinned_base_cites_the_offending_from_line(tmp_path: Path) -> None:
+    text = "FROM node:20 AS web\nRUN make\nFROM --platform=linux/amd64 python:latest\nUSER app\n"
+    latest = dockerfile(bases=["node:20", "python:latest"])
+    ctx = make_ctx(tmp_path, [latest], files={"Dockerfile": text})
+    lines = {(e.path, e.start_line) for e in run("docker.pinned_base", ctx).evidence if isinstance(e, CodeEvidence)}  # fmt: skip
+    assert lines == {("Dockerfile", 3)}
+    missing = make_ctx(tmp_path / "x", [latest])  # file not readable → the fact's own evidence
+    assert latest.evidence[0] in run("docker.pinned_base", missing).evidence
 
 
 def test_multistage(tmp_path: Path) -> None:

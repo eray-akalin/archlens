@@ -21,8 +21,8 @@ roles:
 
 sessions:
   evaluator:
-    max_tool_calls: 14
-    max_context_tokens: 60000
+    max_tool_calls: 24
+    max_context_tokens: 90000
     max_facts: 150
   skeptic:
     max_tool_calls: 6

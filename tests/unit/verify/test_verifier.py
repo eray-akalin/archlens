@@ -95,7 +95,9 @@ def result(
     )
 
 
-def verifier(env: TinyEnv, llm: FakeLLM, options: VerifierOptions | None = None) -> Verifier:
+def verifier(
+    env: TinyEnv, llm: FakeLLM, options: VerifierOptions | None = None, *, judge: bool = False
+) -> Verifier:
     return Verifier(
         llm,
         env.tools,
@@ -105,6 +107,7 @@ def verifier(env: TinyEnv, llm: FakeLLM, options: VerifierOptions | None = None)
         skeptic_prompts=SkepticPrompts.load(REPO / "prompts"),
         skeptic_limits=SessionLimits(max_tool_calls=6, max_context_tokens=20_000),
         options=options,
+        absence_prompts=EntailmentPrompts.load_absence(REPO / "prompts") if judge else None,
     )
 
 
@@ -212,6 +215,35 @@ async def test_evidence_less_na_is_checked_by_absence(tiny_env: TinyEnv) -> None
     assert found.verification.status == "rejected"
     hit = found.result.evidence[0]
     assert isinstance(hit, CodeEvidence) and hit.path == USERS and hit.start_line == 32
+
+
+JUDGE_04 = ("verifier", "verifier.absence", "DM-04")
+
+
+@pytest.mark.parametrize(
+    ("supports", "status"),
+    [("yes", "verified"), ("no", "rejected"), ("insufficient", "unverified")],
+)
+async def test_probe_hits_go_to_the_absence_judge(
+    tiny_env: TinyEnv, supports: Supports, status: str
+) -> None:
+    llm = FakeLLM({JUDGE_04: [entail(("DM-04", supports))]})
+    (finding,) = await verifier(tiny_env, llm, judge=True).verify([result("DM-04", "partial")])
+    assert finding.verification.status == status
+    first, second = finding.verification.steps
+    assert (first.step, first.passed) == ("absence", False) and "absence judge" in first.detail
+    assert (second.step, second.passed) == ("absence", supports == "yes")
+    assert second.detail.startswith(f"judge {supports}:")
+    (hit,) = finding.result.evidence  # the hits stay attached either way
+    assert isinstance(hit, CodeEvidence) and (hit.path, hit.start_line) == (MAIN, 11)
+    assert "Code found by the search" in str(llm.calls[0].messages[-1]["content"])
+
+
+async def test_mechanical_only_rejects_probe_hits_without_a_judge(tiny_env: TinyEnv) -> None:
+    options = VerifierOptions(entailment=False)
+    vf = verifier(tiny_env, FakeLLM(), options, judge=True)
+    (finding,) = await vf.verify([result("DM-04", "partial")])
+    assert finding.verification.status == "rejected"
 
 
 async def test_evidence_less_other_cases_stay_unverified(tiny_env: TinyEnv) -> None:

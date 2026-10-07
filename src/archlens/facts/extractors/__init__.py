@@ -16,6 +16,7 @@ from archlens.facts.extractors.deploy import extract_deploy_configs
 from archlens.facts.extractors.docker import extract_dockerfiles
 from archlens.facts.extractors.docs import extract_doc_files
 from archlens.facts.extractors.imports import extract_imports
+from archlens.facts.extractors.injection import extract_injection_attempts
 from archlens.facts.extractors.logging_ import extract_log_calls
 from archlens.facts.extractors.manifests import extract_manifests
 from archlens.facts.extractors.metrics import extract_file_metrics
@@ -38,6 +39,7 @@ EXTRACTORS: dict[str, Extractor] = {
     "ast:logging": extract_log_calls,
     "ast:metrics": extract_file_metrics,
     "fs:docs": extract_doc_files,
+    "fs:injection": extract_injection_attempts,
 }
 
 

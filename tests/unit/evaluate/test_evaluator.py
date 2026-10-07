@@ -141,11 +141,11 @@ async def test_session_failure_marks_all_checks(tiny_env: TinyEnv) -> None:
 
 
 async def run_consistency(
-    tiny_env: TinyEnv, rerun: MetricEvaluationOutput | Exception
+    tiny_env: TinyEnv, *reruns: MetricEvaluationOutput | Exception
 ) -> tuple[list[CheckResult], FakeLLM]:
     rubric = security()
     checks = llm_checks(rubric, tiny_env.profile.flags)
-    llm = FakeLLM({key("SEC-04", "SEC-05", "SEC-06"): [ANSWER], key("SEC-05"): [rerun]})
+    llm = FakeLLM({key("SEC-04", "SEC-05", "SEC-06"): [ANSWER], key("SEC-05"): list(reruns)})
     return await evaluate_llm_checks(evaluator(tiny_env, llm), rubric, checks), llm
 
 
@@ -158,15 +158,35 @@ async def test_critical_check_agreeing_rerun_keeps_the_first(tiny_env: TinyEnv) 
     assert "Evaluation run 2." in str(llm.calls[1].messages[-1]["content"])
 
 
-async def test_critical_check_disagreement_is_unknown(tiny_env: TinyEnv) -> None:
+async def test_disagreement_gets_a_tie_break_run(tiny_env: TinyEnv) -> None:
     rerun = MetricEvaluationOutput(results=[result("SEC-05", "pass", 33, 35)])
-    results, _ = await run_consistency(tiny_env, rerun)
+    tie_break = MetricEvaluationOutput(results=[result("SEC-05", "fail")])
+    results, llm = await run_consistency(tiny_env, rerun, tie_break)
     sec05 = next(r for r in results if r.check_id == "SEC-05")
-    assert (sec05.verdict, sec05.reason, sec05.confidence) == ("unknown", "inconsistent", "low")
-    assert sec05.claim == "run 1 fail: SEC-05 fail | run 2 pass: SEC-05 pass"
-    assert len(sec05.llm_call_ids) == 2
+    assert (sec05.verdict, sec05.attempt, sec05.confidence) == ("fail", 0, "medium")
+    assert [c.tags for c in llm.calls] == [("SEC-04", "SEC-05", "SEC-06"), ("SEC-05",), ("SEC-05",)]
+    assert "Evaluation run 3." in str(llm.calls[2].messages[-1]["content"])
     others = [r.verdict for r in results if r.check_id != "SEC-05"]
     assert others == ["partial", "unknown"]  # non-critical checks are not rerun
+
+
+async def test_majority_can_come_from_the_reruns(tiny_env: TinyEnv) -> None:
+    rerun = MetricEvaluationOutput(results=[result("SEC-05", "pass", 33, 35)])
+    results, _ = await run_consistency(tiny_env, rerun, rerun)
+    sec05 = next(r for r in results if r.check_id == "SEC-05")
+    assert (sec05.verdict, sec05.attempt, sec05.confidence) == ("pass", 1, "medium")
+
+
+async def test_no_majority_after_the_tie_break_is_unknown(tiny_env: TinyEnv) -> None:
+    rerun = MetricEvaluationOutput(results=[result("SEC-05", "pass", 33, 35)])
+    third = MetricEvaluationOutput(results=[result("SEC-05", "partial")])
+    results, _ = await run_consistency(tiny_env, rerun, third)
+    sec05 = next(r for r in results if r.check_id == "SEC-05")
+    assert (sec05.verdict, sec05.reason, sec05.confidence) == ("unknown", "inconsistent", "low")
+    assert sec05.claim == (
+        "run 1 fail: SEC-05 fail | run 2 pass: SEC-05 pass | run 3 partial: SEC-05 partial"
+    )
+    assert len(sec05.llm_call_ids) == 3
 
 
 async def test_failed_rerun_is_not_a_disagreement(tiny_env: TinyEnv) -> None:
@@ -192,8 +212,14 @@ def test_merge_with_three_runs() -> None:
     same = base.model_copy(update={"attempt": 1})
     other = base.model_copy(update={"attempt": 2, "verdict": "partial", "claim": "b"})
     assert merge_runs([base], [[same], [same]]) == [base]
-    (merged,) = merge_runs([base], [[same], [other]])
+    (majority,) = merge_runs([base], [[same], [other]])
+    assert (majority.verdict, majority.attempt, majority.confidence) == ("fail", 0, "medium")
+    third = other.model_copy(update={"attempt": 3, "verdict": "pass", "claim": "c"})
+    (merged,) = merge_runs([base], [[other], [third]])
     assert merged.reason == "inconsistent" and merged.claim.count("run ") == 3
+    failed = other.model_copy(update={"verdict": "unknown", "reason": "budget"})
+    (alone,) = merge_runs([failed], [[same]])  # a failed first run doesn't count against a rerun
+    assert (alone.verdict, alone.attempt, alone.confidence) == ("fail", 1, "low")
 
 
 # --- fact selection, profile, deterministic helpers --------------------------------------------
@@ -202,6 +228,24 @@ def test_merge_with_three_runs() -> None:
 def fact(path: str, severity: Severity | None, n: int) -> Fact:
     evidence = [ScanEvidence(tool="t", tool_version="1", query=f"{path}{n}", result_count=1)]
     return make_fact("sast_finding", "t", {"path": path, "n": n}, evidence, severity)
+
+
+async def test_injection_facts_reach_every_session(tiny_env: TinyEnv) -> None:
+    flagged = make_fact(
+        "injection_attempt", "fs:injection",
+        {"path": "README.md", "line": 3, "signatures": ["override"]},
+        [ScanEvidence(tool="fs:injection", tool_version="1", query="README.md", result_count=1)],
+    )  # fmt: skip
+    facts = tiny_env.facts.model_copy(update={"facts": [*tiny_env.facts.facts, flagged]})
+    rubric = security()
+    checks = llm_checks(rubric, tiny_env.profile.flags)
+    llm = FakeLLM({key("SEC-04", "SEC-05", "SEC-06"): [ANSWER]})
+    tight = SessionLimits(max_tool_calls=14, max_context_tokens=60_000, max_facts=1)
+    session = Evaluator(llm, tiny_env.tools, tiny_env.profile, facts, tight, PROMPTS)
+    await session.evaluate(rubric, checks)
+    repo = str(llm.calls[0].messages[-1]["content"])
+    assert "kinds route, sast_finding, dependency, injection_attempt" in repo
+    assert "README.md" in repo  # shown despite max_facts=1
 
 
 def test_select_facts_by_severity_then_path_diversity() -> None:

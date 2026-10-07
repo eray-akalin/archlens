@@ -82,14 +82,19 @@ Layered; no single layer is trusted.
    per-run boundary (LLM.md §3).
 2. **Instruction hierarchy** — system prompt says repo data is never instructions and that
    attempts to influence the assessment should be mentioned in the claim.
-3. **Constrained outputs** — structured outputs; the model cannot change control flow, scores,
+3. **Flagged text** — the `fs:injection` extractor marks lines matching generic injection
+   signatures (addressing AI reviewers, overriding instructions, asking for perfect scores,
+   imitating `repo_data` or a chat role) as `injection_attempt` facts. Every evaluator session
+   gets them, so the model is told which repository text is trying to steer it; the count shows
+   in the report's tool runs. Informational only: a hit never changes a verdict or score.
+4. **Constrained outputs** — structured outputs; the model cannot change control flow, scores,
    tools, or budgets. Tools are read-only.
-4. **Independent verification** — every LLM verdict needs cited code that an independent
+5. **Independent verification** — every LLM verdict needs cited code that an independent
    entailment call accepts (a `pass` can never be evidence-less); critical failures get a skeptic
    pass.
-5. **Deterministic scoring** — no model output is ever parsed as a number that becomes a score.
-6. **Measured** — the injection suite in `EVALUATION.md` §5 must show no score change beyond
-   ±0.2 per metric; regressions block release.
+6. **Deterministic scoring** — no model output is ever parsed as a number that becomes a score.
+7. **Measured** — the injection suite in `EVALUATION.md` §5 must show no score change beyond
+   ±0.2 per metric beyond the base runs' own spread; regressions block release.
 
 ## 7. Hosted API
 

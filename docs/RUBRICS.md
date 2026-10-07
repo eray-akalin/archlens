@@ -164,7 +164,7 @@ Type: **D** = deterministic, **L** = LLM. Severity: C/H/M/L.
 | PERF-02 | No N+1 query patterns | L | M | `applies_when: {any: [has_database]}` |
 | PERF-03 | Caching strategy for expensive reads | L | L | `absence_allowed`; `na_allowed: true` |
 | PERF-04 | List endpoints paginated | L | M | `applies_when: {any: [has_http_api]}` |
-| PERF-05 | Outbound calls have timeouts and retries | L | H | `applies_when: {any: [has_outbound_http]}`; `fact_kinds: [sast_finding]` |
+| PERF-05 | Outbound calls have timeouts and retries | L | H | `applies_when: {any: [has_outbound_http]}`; `fact_kinds: [sast_finding]`; `na_allowed: true` (no outbound calls in code) |
 | PERF-06 | Resource limits configured for deployments | D | L | `deploy.resource_limits`; `applies_when: {any: [has_k8s, has_compose]}` |
 
 ### documentation — Documentation (weight 0.75)
@@ -175,7 +175,7 @@ Type: **D** = deterministic, **L** = LLM. Severity: C/H/M/L.
 | DOC-03 | Architecture docs or ADRs | D | L | `docs.architecture` |
 | DOC-04 | Docstring/comment coverage of public functions | D | L | `docs.docstring_ratio` |
 | DOC-05 | Contributing guide or changelog | D | L | `files.any_exists` |
-| DOC-06 | Commands in README refer to things that exist (scripts, make targets, files) | L | L | |
+| DOC-06 | Commands in README refer to things that exist (scripts, make targets, files) | L | L | `na_allowed: true` (no commands in the README) |
 
 ## 4. Scoring (implemented in `src/archlens/score/scorer.py`)
 

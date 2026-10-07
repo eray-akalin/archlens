@@ -238,6 +238,7 @@ class Pipeline:
             self.rubrics,
             snapshot.commit_sha,
             entailment_prompts=EntailmentPrompts.load(self.ctx.prompts_dir),
+            absence_prompts=EntailmentPrompts.load_absence(self.ctx.prompts_dir),
             skeptic_prompts=SkepticPrompts.load(self.ctx.prompts_dir),
             skeptic_limits=sessions.skeptic,
             options=self.options.verifier,

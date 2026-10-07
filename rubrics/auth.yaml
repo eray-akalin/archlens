@@ -1,6 +1,6 @@
 metric: auth
 title: Authentication & authorization
-version: 1.0.0
+version: 1.1.0
 weight: 1.5
 description: >
   Whether the API authenticates callers, keeps unauthenticated access deliberate, authorizes
@@ -126,7 +126,9 @@ checks:
     absence_probes:
       - {kind: regex, pattern: "(?i)set_cookie|set-cookie|cookies?\\.set|SessionMiddleware|express-session|cookie-session", path_glob: "**/*.{py,ts,js,cs,java,go}"}
     guidance: |
-      Find where cookies carrying sessions or tokens are set.
+      Find where cookies carrying sessions or tokens are set. Framework defaults count: if the
+      web or auth framework sets these flags by default and the code doesn't weaken them, that is
+      a pass; cite the cookie or auth setup that relies on them.
       - pass: HttpOnly, Secure and SameSite are set; cite the cookie configuration.
       - partial: some of the flags are missing; cite it.
       - fail: session cookies are set without these flags; cite it.

@@ -1,6 +1,6 @@
 metric: performance
 title: Performance & resilience
-version: 1.0.0
+version: 1.1.0
 weight: 0.75
 description: >
   Whether request paths avoid blocking IO and N+1 queries, expensive reads are cached, lists are
@@ -97,6 +97,9 @@ checks:
     applies_when: {any: [has_outbound_http]}
     fact_kinds: [sast_finding, dependency]
     evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)\\b(requests|httpx|aiohttp|urllib3?)\\.(get|post|put|patch|delete|head|request|urlopen|Client|AsyncClient|ClientSession|PoolManager)\\b|\\baxios\\b|\\bfetch\\(|\\bHttpClient\\b|RestTemplate|WebClient|\\bhttp\\.(Get|Post|NewRequest)\\b", path_glob: "**/*.{py,ts,js,cs,java,go}"}
     guidance: |
       Find outbound HTTP/RPC calls (requests, httpx, aiohttp, axios, fetch, HttpClient) and check
       for timeouts and, for idempotent calls, retries with backoff.
@@ -105,6 +108,8 @@ checks:
       - partial: timeouts are set but no retry/backoff anywhere, or only some calls are bounded;
         cite the gap.
       - fail: outbound calls have no timeout; cite one.
+      - not_applicable: the code makes no outbound HTTP/RPC calls (a client library may be
+        declared but unused, or used only by a third-party SDK that manages its own timeouts).
     rationale: >
       A call without a timeout can hang a worker indefinitely when a dependency stalls.
     remediation: >

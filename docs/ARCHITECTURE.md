@@ -75,10 +75,12 @@ cached by chunk hash).
 For each applicable metric (in parallel, bounded by a semaphore):
 1. Deterministic checks → run their rule with a `RuleContext` (facts, profile, file list). No LLM.
 2. LLM checks → one tool-calling evaluator session per metric covering all of that metric's LLM
-   checks. Input: rubric guidance, relevant facts (`fact_kinds`), profile summary, read-only tools.
+   checks. Input: rubric guidance, relevant facts (`fact_kinds`, plus any `injection_attempt`
+   facts), profile summary, read-only tools.
    Output: `MetricEvaluationOutput` (structured). Details in `LLM.md` §4.
-3. Checks with `self_consistency: 2` (critical LLM checks) are evaluated twice; disagreement ⇒
-   `verdict="unknown"`, `confidence="low"`, flagged in the report.
+3. Checks with `self_consistency: 2` (critical LLM checks) are evaluated twice; a disagreement
+   gets one tie-break run and the strict majority stands (`confidence` at most `medium`); still no
+   majority ⇒ `verdict="unknown"`, `confidence="low"`, `reason="inconsistent"`.
 
 ### 2.5 Verify
 Applies to LLM-origin results with verdict `pass`, `partial`, `fail` or `not_applicable`
@@ -90,8 +92,8 @@ Which path a result takes depends on whether it has citations (details in `LLM.m
 | Result | Steps | Outcome |
 |---|---|---|
 | has citations | 1 mechanical → 2 entailment | both pass ⇒ `verified`; mechanical fails ⇒ `rejected`; entailment `no` ⇒ `rejected`, `insufficient` ⇒ `unverified` |
-| no citations, verdict `fail`/`partial`, check `absence_allowed` | 3 absence replay | zero probe hits ⇒ `verified`; any hit ⇒ `rejected` (hits attached) |
-| no citations, verdict `not_applicable`, check `na_allowed` | 3 absence replay | zero probe hits ⇒ `verified`; any hit ⇒ `rejected` |
+| no citations, verdict `fail`/`partial`, check `absence_allowed` | 3 absence replay (+ judge) | zero probe hits ⇒ `verified`; hits (attached) go to the absence judge: claim holds ⇒ `verified`, contradicted ⇒ `rejected`, unclear ⇒ `unverified` |
+| no citations, verdict `not_applicable`, check `na_allowed` | 3 absence replay (+ judge) | as above |
 | no citations, any other case | – | coerced earlier to `unknown` (LLM.md §4) |
 | verified `fail` on a `critical` check | 4 skeptic (extra) | refutation with mechanically valid citations ⇒ `disputed` |
 
@@ -101,13 +103,17 @@ Which path a result takes depends on whether it has citations (details in `LLM.m
 2. **Entailment** — cheap model judges whether the snippets support the claim. Runs on every cited
    LLM result (batched; ~$0.02 per run), so a manipulated `pass` still needs code that an
    independent call accepts.
-3. **Absence replay** — run the check's `absence_probes`.
+3. **Absence replay** — run the check's `absence_probes`; hits are shown to the entailment model
+   (prompt `verifier.absence`), which decides whether they contradict the claim — a probe match is
+   a lead, not proof (a stub README matches `README*` yet confirms "the README is a stub").
+   With entailment off ("mechanical only") any hit ⇒ `rejected`.
 4. **Skeptic** — separate tool session tries to refute.
 
 If `BudgetExceeded` is raised during verification, results not yet verified become `unverified`
 (their last step reads `skipped: budget`) and no further LLM step runs; a skipped skeptic leaves
 the finding `verified` with a `VerificationStep(step="skeptic", passed=True,
-detail="skipped: budget")`. Absence replay needs no LLM and still runs.
+detail="skipped: budget")`. Absence replay needs no LLM and still runs; its judge is an LLM
+step and is skipped like entailment.
 
 ### 2.6 Score
 Pure function, specified in `RUBRICS.md` §4.

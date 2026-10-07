@@ -16,7 +16,7 @@ suite:
   - {repo: primary, variant: V2}
   - {repo: primary, variant: V3}
   - {repo: primary, variant: V4}
-  - {repo: primary, variant: VI1}
-  - {repo: primary, variant: VI2}
+  - {repo: primary, variant: VI1, runs: 2}
+  - {repo: primary, variant: VI2, runs: 2}
   - {repo: cross, variant: base}
   - {repo: cross, variant: VX1}

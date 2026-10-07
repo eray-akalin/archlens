@@ -1,6 +1,6 @@
 metric: documentation
 title: Documentation
-version: 1.0.0
+version: 1.1.0
 weight: 0.75
 description: >
   Whether a newcomer can understand, set up and run the project: README, API docs, architecture
@@ -23,8 +23,8 @@ checks:
         configuration) and how to run it; cite each part.
       - partial: one of purpose, setup or run instructions is missing or only hinted at; cite
         what is there and say what is missing.
-      - fail: the README is a stub, or there is no README. If there is no README at all, answer
-        fail with no citations; the absence is verified separately.
+      - fail: the README is a stub (cite its few lines), or there is no README. If there is no
+        README at all, answer fail with no citations; the absence is verified separately.
     rationale: >
       The README is the entry point for every new contributor and operator.
     remediation: >
@@ -82,6 +82,9 @@ checks:
     severity: low
     fact_kinds: [doc_file]
     evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?m)^\\s*(```|\\$ |(make|npm|npx|pnpm|yarn|bun|uv|pip|poetry|docker|docker-compose|python|dotnet|go|cargo|mvn|gradle|bash|sh)\\s)", path_glob: "README*"}
     guidance: |
       Take the commands and file references in the README (make targets, npm/uv scripts,
       scripts, compose services, config files) and check that they exist in the repository
@@ -89,7 +92,7 @@ checks:
       - pass: the references you checked exist; cite a README command and what it refers to.
       - partial: most exist but at least one does not; cite the broken reference.
       - fail: the main setup or run commands refer to things that do not exist; cite them.
-      - unknown: the README contains no commands or file references.
+      - not_applicable: the README contains no commands or file references to check.
     rationale: >
       Instructions that point to missing scripts or targets block new contributors immediately.
     remediation: >

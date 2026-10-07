@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from archlens.config import SessionLimits
+from archlens.facts.extractors.injection import KIND as INJECTION
 from archlens.llm.client import LLMClientProtocol
 from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, Prompt, joined_version, load_prompt
 from archlens.llm.session import SessionError, run_tool_session
@@ -95,8 +96,15 @@ class Evaluator:
         if not checks:
             return []
         session = self.tools.session(f"{rubric.metric}:{STAGE}:{attempt}")
-        kinds = list(dict.fromkeys(kind for check in checks for kind in check.fact_kinds))
-        selected, total = select_facts(self.facts, kinds, self.limits.max_facts or 150)
+        wanted = dict.fromkeys(k for check in checks for k in check.fact_kinds)
+        kinds = [k for k in wanted if k != INJECTION]
+        # injection_attempt facts go to every session, ahead of the cap, so the model is told which
+        # repository text is trying to steer it; the header names the kind only when there are some
+        flagged = self.facts.by_kind(INJECTION)
+        limit = max((self.limits.max_facts or 150) - len(flagged), 0)
+        selected, total = select_facts(self.facts, kinds, limit)
+        selected, total = [*flagged, *selected], total + len(flagged)
+        kinds = [*kinds, INJECTION] if flagged else kinds
         repo_text = self.prompts.repo.render(
             profile=wrap(profile_summary(self.profile), "profile", self.tools.boundary),
             facts=session.show_facts(selected),

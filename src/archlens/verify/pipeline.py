@@ -4,7 +4,10 @@
 - cited → mechanical, then entailment: both pass → `verified`; mechanical fails → `rejected`;
   entailment `no` → `rejected`, `insufficient` or no answer → `unverified`.
 - no citations with fail/partial on an `absence_allowed` check, or NA on an `na_allowed` check →
-  absence replay: no hits → `verified`; hits → `rejected` (hits attached as evidence).
+  absence replay: no hits → `verified`; hits are attached as evidence and go to the absence judge
+  (the entailment model asked whether the hits contradict the claim): `yes` (the claim holds) →
+  `verified`, `no` → `rejected`, otherwise `unverified`. Without entailment ("mechanical only")
+  hits → `rejected`.
 - no citations otherwise → `unverified` (post-processing already made these `unknown`).
 - a verified `fail` on a critical check also faces the skeptic: refuted with valid citations →
   `disputed`.
@@ -17,6 +20,7 @@ time in result order, so the outcome is reproducible.
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Literal
 
 from archlens.config import SessionLimits
 from archlens.errors import BudgetExceeded
@@ -64,6 +68,7 @@ class _State:
     status: VerificationStatus | None = None  # None: waiting for entailment
     steps: list[VerificationStep] = field(default_factory=list[VerificationStep])
     evidence: list[Evidence] | None = None  # replaces result.evidence when set
+    judge: bool = False  # waiting for the absence judge instead of entailment
 
     def finish(self, status: VerificationStatus, step: VerificationStep | None = None) -> None:
         self.status = status
@@ -83,11 +88,13 @@ class Verifier:
         skeptic_prompts: SkepticPrompts,
         skeptic_limits: SessionLimits,
         options: VerifierOptions | None = None,
+        absence_prompts: EntailmentPrompts | None = None,
     ) -> None:
         self.llm = llm
         self.tools = tools
         self.commit_sha = commit_sha
         self.entailment_prompts = entailment_prompts
+        self.absence_prompts = absence_prompts
         self.skeptic_prompts = skeptic_prompts
         self.skeptic_limits = skeptic_limits
         self.options = options or VerifierOptions()
@@ -99,7 +106,11 @@ class Verifier:
     async def verify(self, results: Sequence[CheckResult]) -> list[Finding]:
         """One `Finding` per result, in input order. Never raises for model-side problems."""
         states = [await self._route(r) for r in results]
-        await self._entailment([s for s in states if s.status is None])
+        await self._entailment([s for s in states if s.status is None and not s.judge])
+        if self.absence_prompts is not None:
+            await self._entailment(
+                [s for s in states if s.status is None and s.judge], self.absence_prompts
+            )
         if self.options.skeptic:
             for state in states:
                 if self._needs_skeptic(state):
@@ -138,8 +149,14 @@ class Verifier:
         elif _absence_path(state.spec, result):
             absence = await replay(state.spec.absence_probes, self.tools, self.reader)
             state.evidence = list(absence.evidence)
-            status = ABSENCE_STATUS[absence.outcome]
-            state.finish(status, absence.step)
+            judged = self.options.entailment and self.absence_prompts is not None
+            if absence.outcome == "found" and judged:
+                hits = sum(isinstance(e, CodeEvidence) for e in absence.evidence)
+                detail = f"{hits} probe hit(s), sent to the absence judge"
+                state.steps.append(VerificationStep(step="absence", passed=False, detail=detail))
+                state.judge = True
+            else:
+                state.finish(ABSENCE_STATUS[absence.outcome], absence.step)
         else:
             detail = "no citations and the check does not allow evidence by absence"
             state.finish(
@@ -149,7 +166,14 @@ class Verifier:
 
     # --- entailment ---
 
-    async def _entailment(self, pending: list[_State]) -> None:
+    async def _entailment(
+        self, pending: list[_State], prompts: EntailmentPrompts | None = None
+    ) -> None:
+        """Entailment for cited results, or — with the absence prompts — the absence judge for
+        probe hits (its steps are recorded as `absence`)."""
+        judge = prompts is not None
+        prompts = prompts or self.entailment_prompts
+        step_name: Literal["entailment", "absence"] = "absence" if judge else "entailment"
         by_metric: dict[str, list[_State]] = {}
         for state in pending:
             by_metric.setdefault(state.result.metric, []).append(state)
@@ -158,26 +182,28 @@ class Verifier:
             for batch in batches([item for _, item in items.values()]):
                 if self.budget_exhausted:
                     for item in batch:
-                        items[item.ref][0].finish("unverified", _entail_step(False, BUDGET_SKIP))
+                        skipped = _entail_step(False, BUDGET_SKIP, step=step_name)
+                        items[item.ref][0].finish("unverified", skipped)
                     continue
                 try:
                     answers = await entail_batch(
-                        self.llm,
-                        self.entailment_prompts,
-                        batch,
-                        boundary=self.tools.boundary,
-                        metric=metric,
+                        self.llm, prompts, batch, boundary=self.tools.boundary, metric=metric
                     )
                 except BudgetExceeded:
                     self.budget_exhausted = True
                     for item in batch:
-                        items[item.ref][0].finish("unverified", _entail_step(False, BUDGET_SKIP))
+                        skipped = _entail_step(False, BUDGET_SKIP, step=step_name)
+                        items[item.ref][0].finish("unverified", skipped)
                     continue
                 for item in batch:
                     answer = answers[item.ref]
                     state = items[item.ref][0]
                     detail = f"{answer.supports or 'no answer'}: {answer.rationale}"
-                    step = _entail_step(answer.supports == "yes", detail, answer.llm_call_id)
+                    if judge:
+                        detail = f"judge {detail}"
+                    step = _entail_step(
+                        answer.supports == "yes", detail, answer.llm_call_id, step=step_name
+                    )
                     if answer.supports == "yes":
                         state.finish("verified", step)
                     elif answer.supports == "no":
@@ -244,7 +270,11 @@ def _input(state: _State) -> EntailmentInput:
     return EntailmentInput(state.result.check_id, title, state.result, evidence)
 
 
-def _entail_step(passed: bool, detail: str, call_id: str | None = None) -> VerificationStep:
-    return VerificationStep(
-        step="entailment", passed=passed, detail=detail[:300], llm_call_id=call_id
-    )
+def _entail_step(
+    passed: bool,
+    detail: str,
+    call_id: str | None = None,
+    *,
+    step: Literal["entailment", "absence"] = "entailment",
+) -> VerificationStep:
+    return VerificationStep(step=step, passed=passed, detail=detail[:300], llm_call_id=call_id)

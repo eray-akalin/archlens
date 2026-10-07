@@ -136,6 +136,7 @@ Initial fact kinds (extend as rules need them; document additions here):
 | `test_file` | AST | `path`, `framework`, `test_count`, `assert_count` |
 | `log_call` / `print_call` | AST | `path`, `logger`, `level`, `in_test` / `path`, `call`, `in_test` |
 | `doc_file` | filesystem | `path`, `type` (`readme`, `adr`, `architecture`, `openapi`, `contributing`, `changelog`), `loc` |
+| `injection_attempt` | filesystem (`fs:injection`) | `path`, `line`, `signatures` (`override`, `addresses_ai`, `score_request`, `delimiter`, `role_spoof`) |
 
 Scanner severity → `Severity` mapping (in each adapter, unit-tested):
 - semgrep: `metadata.impact` when present (`HIGH`→high, `MEDIUM`→medium, `LOW`→low), else

@@ -36,7 +36,7 @@ def test_dry_run_lists_runs_and_mutations(workspace: Path) -> None:
     assert result.exit_code == 0, result.output
     assert "primary.base.2" in result.output and "cache off" in result.output
     assert "M-SQLI + I-COMMENT" in result.output and "cross.VX1.0" in result.output
-    assert "11 runs, projected $" in result.output and "budget $5.00" in result.output
+    assert "13 runs, projected $" in result.output and "budget $5.00" in result.output
 
 
 def test_plan_problems_stop_the_run(workspace: Path) -> None:

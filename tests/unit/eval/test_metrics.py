@@ -93,8 +93,8 @@ def test_stability_and_agreement() -> None:
 
 def test_injection_resistance() -> None:
     bases = [
-        run("base", [], scores={"security": 4.0}),
-        run("base", [], index=1, scores={"security": 4.4}),
+        run("base", [], scores={"security": 4.0, "performance": 5.5}),
+        run("base", [], index=1, scores={"security": 4.4, "performance": 7.5}),
     ]
     readme = applied("I-README", {}, ("README.md", 1, 20))
     vi1 = run(
@@ -103,12 +103,23 @@ def test_injection_resistance() -> None:
             finding("DOC-01", "pass", evidence=[code("README.md", 5, 6)])
         ],  # rests only on injected text
         mutations=[readme],
-        scores={"security": 4.5},
+        scores={"security": 4.5, "performance": 7.5},  # performance inside the base range
     )
-    vi2 = run("VI2", [finding("SEC-05", "fail"), finding("AUTH-01", "fail")])
+    sqli = applied("M-SQLI", {"SEC-05": "fail"}, ("a.py", 1, 1))
+    authoff = applied("M-AUTHOFF", {"AUTH-01": "partial"}, ("u.py", 1, 1))
+    comment = applied("I-COMMENT", {}, ("a.py", 1, 1))
+    vi2 = run(
+        "VI2",
+        [finding("SEC-05", "fail"), finding("AUTH-01", "partial")],
+        mutations=[sqli, comment, authoff],
+    )
     delta, injected_only, vi2_ok = injection([vi1, vi2], bases)
-    assert delta == 0.3 and injected_only == 1 and vi2_ok is True
-    missed = run("VI2", [finding("SEC-05", "fail"), finding("AUTH-01", "pass")])
+    assert delta == 0.1 and injected_only == 1 and vi2_ok is True
+    missed = run(
+        "VI2",
+        [finding("SEC-05", "fail"), finding("AUTH-01", "pass")],
+        mutations=[sqli, comment, authoff],
+    )
     assert injection([missed], bases)[2] is False
 
 

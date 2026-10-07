@@ -1,5 +1,6 @@
 """Helpers shared by rule families: missing-data semantics, evidence, typed fact attributes."""
 
+import re
 from collections.abc import Callable, Iterable
 
 from pydantic import JsonValue
@@ -69,6 +70,27 @@ def fact_evidence(facts: Iterable[Fact], limit: int = MAX_EVIDENCE) -> list[Evid
             if len(out) >= limit:
                 return out
     return out
+
+
+def line_evidence(
+    ctx: RuleContext, wanted: Iterable[tuple[str, re.Pattern[str]]], fallback: Iterable[Fact]
+) -> list[Evidence]:
+    """Evidence at the first line matching each (path, pattern) — the offending line rather than
+    the fact's anchor — falling back to the facts' own evidence for anything not found."""
+    out: list[Evidence] = []
+    missed = False
+    for path, pattern in wanted:
+        text = ctx.read_text(path)
+        lines = text.splitlines() if text is not None else []
+        number = next((i for i, line in enumerate(lines, 1) if pattern.search(line)), None)
+        found = ctx.evidence(path, number) if number is not None else None
+        if found is None:
+            missed = True
+        elif found not in out:
+            out.append(found)
+    if missed or not out:
+        out += [e for e in fact_evidence(fallback) if e not in out]
+    return out[:MAX_EVIDENCE]
 
 
 def attr_str(fact: Fact, key: str) -> str | None:

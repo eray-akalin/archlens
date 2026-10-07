@@ -1,4 +1,5 @@
-"""M-AUTHOFF: remove the superuser dependency from the user list route → AUTH-01 fail.
+"""M-AUTHOFF: remove the superuser dependency from the user list route → AUTH-01 partial (the
+rubric's verdict for one unprotected route among protected ones).
 
 Applied from `eval/patches/primary/M-AUTHOFF.patch`; `primary` only.
 """
@@ -24,7 +25,7 @@ def apply(repo: Path, rng: random.Random) -> MutationResult:
 
 MUTATION = Mutation(
     id="M-AUTHOFF",
-    expected={"AUTH-01": "fail"},
+    expected={"AUTH-01": "partial"},
     may_affect=("AUTH-02", "AUTH-03"),
     generic=False,
     description="Remove the superuser dependency from the user list route",
