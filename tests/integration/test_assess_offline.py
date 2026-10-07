@@ -135,7 +135,7 @@ async def run(
 
 
 class KillTesting(FakeLLM):
-    """Dies in the testing session once the other metrics' checkpoints are on disk."""
+    """Dies in the testing session once the other metrics are recorded as done."""
 
     def __init__(self, script: dict[tuple[str, ...], list[Scripted]], storage: Storage) -> None:
         super().__init__(script)
@@ -143,9 +143,9 @@ class KillTesting(FakeLLM):
 
     async def complete[T: BaseModel](self, request: LLMRequest[T]) -> LLMResult[T]:
         if request.tags[:1] == ("TEST-05",):
-            for _ in range(1000):
-                keys = set(await self.storage.checkpoints.keys("r1"))
-                if {"evaluate/security", "evaluate/cicd"} <= keys:
+            for _ in range(2000):  # until both metrics are fully recorded, not just written
+                state = await self.storage.run_state.load("r1")
+                if state is not None and {"cicd", "security"} <= set(state.metrics_done):
                     break
                 await asyncio.sleep(0.005)
             raise RuntimeError("killed")
