@@ -509,6 +509,13 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   has dangling symlinks under `.agents/`, so the runner copies with `symlinks=True`; M-NOTESTS
   reported a line past EOF when the test step ended the file; `patch_changes` double-reported a
   replaced line. Tests: 1032 offline (+32). Spend: $0.
+- 2026-10-07 — fix (found while preparing M3.5 labels): a fresh 10-metric run on `primary`
+  ($0.1065, overall 8.8) flagged STR-06 for `backend/pyproject.toml`, `frontend/package.json` and
+  `packages/react-email/package.json`, which are workspace members locked by the root `uv.lock` /
+  `bun.lock`. With the user's approval `has_lockfile` now also accepts a lockfile of the same
+  ecosystem in an ancestor directory (DATA_MODEL §4 wording updated; a fact-attribute meaning,
+  not a schema shape, so no `SCHEMA_VERSION` bump). `cross` is unchanged: its `.csproj` files have
+  no `packages.lock.json`. Tests: 1045 offline (+1). Spend: $0.1065.
 
 ---
 

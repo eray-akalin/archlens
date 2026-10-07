@@ -130,7 +130,7 @@ Initial fact kinds (extend as rules need them; document additions here):
 | `file_metrics` | AST | `path`, `language`, `loc`, `is_test`, `is_generated`, `public_functions`, `documented_functions` (no evidence: whole-file fact) |
 | `deploy_config` | AST (YAML) | `path`, `kind` (`compose_service`, `k8s_workload`), `workload` (k8s kind), `name`, `has_limits`, `has_liveness`, `has_readiness`, `has_healthcheck` |
 | `import_edge` | AST | `from_module`, `to_module`, `internal`, `language` |
-| `manifest` | AST | `path`, `type` (`pyproject`, `requirements`, `package.json`, ...), `has_lockfile` (sibling lockfile, or every dependency pinned exactly), `dependency_count` |
+| `manifest` | AST | `path`, `type` (`pyproject`, `requirements`, `package.json`, ...), `has_lockfile` (a lockfile of its ecosystem in its directory or an ancestor — e.g. a workspace root — or every dependency pinned exactly), `dependency_count` |
 | `dependency` | manifests | `name`, `version_spec`, `dev`, `manifest` |
 | `route` | AST | `method`, `path` (router prefix applied), `handler`, `is_async`, `decorators`, `framework`, `file` |
 | `test_file` | AST | `path`, `framework`, `test_count`, `assert_count` |

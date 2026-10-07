@@ -1,8 +1,9 @@
 """Dependency manifests → `manifest` and `dependency` facts (STR-06 lockfile, context for SEC-*).
 
 Manifests are read as data (TOML/JSON/text); no package manager is ever invoked. `has_lockfile`:
-a sibling lockfile exists, or the manifest pins every dependency exactly (requirements files with
-only `==`, pom.xml with explicit versions).
+a lockfile of the manifest's ecosystem sits in its directory or an ancestor (a workspace root, e.g.
+`uv.lock` or `bun.lock` locking `backend/` and `frontend/`), or the manifest pins every dependency
+exactly (requirements files with only `==`, pom.xml with explicit versions).
 """
 
 import json
@@ -161,10 +162,11 @@ _PARSERS: dict[str, Callable[[str], list[Dep]]] = {
 
 
 def _has_lockfile(kind: str, path: str, deps: list[Dep], present: set[str]) -> bool:
-    folder = str(PurePosixPath(path).parent)
-    siblings = {f"{folder}/{name}" if folder != "." else name for name in _LOCKS.get(kind, ())}
-    if siblings & present:
-        return True
+    names = _LOCKS.get(kind, ())
+    for folder in PurePosixPath(path).parents:  # own directory first, then up to the root
+        prefix = "" if str(folder) == "." else f"{folder}/"
+        if any(prefix + name in present for name in names):
+            return True
     if kind == "requirements":
         return bool(deps) and all(spec.startswith("==") for _, spec, _ in deps)
     if kind == "pom.xml":

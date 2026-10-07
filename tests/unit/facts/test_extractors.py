@@ -157,6 +157,28 @@ def test_lockfile_sibling_and_other_ecosystems(tmp_path: Path) -> None:
     assert manifests["broken/pyproject.toml"]["dependency_count"] == 0  # unparseable, still listed
 
 
+def test_workspace_root_lockfile_covers_members(tmp_path: Path) -> None:
+    ctx = repo(
+        tmp_path,
+        {
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend"]\n',
+            "uv.lock": "version = 1\n",
+            "backend/pyproject.toml": '[project]\nname = "app"\ndependencies = ["fastapi>=0.110"]\n',
+            "package.json": '{"workspaces": ["frontend"]}',
+            "bun.lock": "{}\n",
+            "frontend/package.json": '{"dependencies": {"react": "^18"}}',
+            "tools/go.mod": "module x\n",  # no go.sum anywhere
+            "lib/Cargo.toml": '[dependencies]\nserde = "1"\n',
+            "lib/uv.lock": "version = 1\n",  # another ecosystem's lockfile doesn't count
+        },
+    )
+    manifests = {a["path"]: a["has_lockfile"] for a in attrs(extract_manifests(ctx), "manifest")}
+    assert manifests["backend/pyproject.toml"] is True and manifests["pyproject.toml"] is True
+    assert manifests["frontend/package.json"] is True and manifests["package.json"] is True
+    assert manifests["tools/go.mod"] is False
+    assert manifests["lib/Cargo.toml"] is False
+
+
 # --- ci -----------------------------------------------------------------------------------------
 
 
