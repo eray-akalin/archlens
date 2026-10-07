@@ -1,5 +1,6 @@
 import os
 import shutil
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -11,11 +12,16 @@ REPO_CONFIG = Path(__file__).parents[2] / "config"
 
 
 @pytest.fixture(autouse=True)
-def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Hide the developer's ARCHLENS_* variables so results don't depend on the machine."""
+def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Hide the developer's ARCHLENS_* variables so results don't depend on the machine, and drop
+    the ones `settings_for` set so they can't leak into later tests (monkeypatch then restores
+    the hidden ones)."""
     for name in list(os.environ):
         if name.startswith("ARCHLENS_") or name == "APPLICATIONINSIGHTS_CONNECTION_STRING":
             monkeypatch.delenv(name)
+    yield
+    for name in [n for n in os.environ if n.startswith("ARCHLENS_")]:
+        del os.environ[name]
 
 
 @pytest.fixture
@@ -107,7 +113,7 @@ def test_shipped_config_files_load(config_dir: Path) -> None:
     config = load_config(settings_for(config_dir))
     assert config.models.roles.evaluator.deployment == "gpt-5-mini"
     assert config.models.roles.verifier.temperature == 0
-    assert config.models.sessions.evaluator.max_tool_calls == 14
+    assert config.models.sessions.evaluator.max_tool_calls == 24
     assert config.pricing.deployments["gpt-5-mini"].output == 2.00
     assert config.tools.tools["semgrep"].rulesets == ["p/default"]
 
@@ -135,7 +141,7 @@ def _edit(path: Path, old: str, new: str) -> None:
         ("models.yaml", "  embed:\n    deployment: text-embedding-3-small\n", "", "roles.embed"),
         (
             "models.yaml",
-            "max_tool_calls: 14",
+            "max_tool_calls: 24",
             "max_tool_calls: lots",
             "sessions.evaluator.max_tool_calls",
         ),
