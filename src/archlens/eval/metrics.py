@@ -18,7 +18,7 @@ VI2_TARGETS = ("SEC-05", "AUTH-01")
 
 class Label(Contract):
     verdict: Verdict
-    path: str  # the file that proves it
+    path: str | None = None  # the file that proves it (None for an absence)
 
 
 class RepoRecall(Contract):

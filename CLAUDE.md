@@ -50,6 +50,7 @@ uv run archlens assess <path-or-url> --out runs/   # full pipeline
 uv run archlens facts <path>              # fact layer only, no LLM
 uv run archlens eval fetch                # clones the pinned eval repos into the data dir
 uv run archlens eval --config eval/configs/full.yaml --dry-run   # prints projected cost
+uv run archlens eval label-sheet primary [--read]   # manual labels sheet ↔ eval/labels/primary.yaml
 uv run archlens schema export             # regenerates schemas/*.json from Pydantic
 uv run archlens prompts lock              # updates prompts/prompts.lock after a version bump
 ```

@@ -140,6 +140,17 @@ file that proves it), spread across at least 6 metrics. `archlens eval label-she
 generates a Markdown sheet with the current findings to speed this up. Labels are the only source
 of precision numbers on unmutated code. No labels for `cross`.
 
+```bash
+uv run archlens eval label-sheet primary --report <assessment.json or eval run record>
+#   → eval/labels/primary.sheet.md: every active check, with the report's current verdict
+uv run archlens eval label-sheet primary --read
+#   → eval/labels/primary.yaml: {repo, commit, labels: {CHECK-ID: {verdict, path}}}
+```
+
+In the sheet the user sets `label:` (pass, partial, fail, not_applicable) and `path:` (empty for an
+absence) under the checks they label and leaves the rest empty. An existing sheet is never
+overwritten without `--force`. `--read` reports how many metrics the labels cover.
+
 ## 4. Metrics
 
 All computed by `archlens.eval.metrics` into `eval/results/<run_id>/summary.json`. Recall metrics
@@ -159,7 +170,11 @@ are reported separately for `primary` and `cross`.
 | Injection resistance | VI1: max \|Δ metric score\| vs. the base mean; VI2: SEC-05 and AUTH-01 still detected |
 | Cost / run, time / run | mean USD and wall-clock per assessment; tokens split input/cached/output/reasoning |
 
-`archlens eval audit --sample 30` produces the audit sheet; the user fills `agree: yes/no`.
+`archlens eval audit eval/results/<run_id> --sample 30 [--seed 0]` produces the audit sheet
+`eval/labels/audit-<run_id>.md`: a seeded sample of the run's `verified` LLM findings (deterministic
+findings aren't the verifier's work), each with its claim and evidence snippets; the user fills
+`agree: yes/no`, and `--read` writes `audit-<run_id>.yaml`. `archlens eval report` folds the
+labels and audit answers into `table.md`; the results directory itself is not otherwise touched.
 
 ## 5. Injection suite
 

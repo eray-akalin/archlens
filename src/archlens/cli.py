@@ -19,6 +19,23 @@ from archlens import __version__
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
 from archlens.eval.config import load_eval_config
+from archlens.eval.labels import (
+    LABELED_REPO,
+    LabelError,
+    audit_paths,
+    audit_sample,
+    audit_sheet,
+    dump_audit,
+    dump_labels,
+    label_sheet,
+    label_sheet_path,
+    labels_path,
+    load_audits,
+    load_labels,
+    parse_audit_sheet,
+    parse_label_sheet,
+    read_report,
+)
 from archlens.eval.metrics import render_table, summarize
 from archlens.eval.mutations import registry as mutation_registry
 from archlens.eval.repos import DEFAULT_REPOS_FILE, fetch, load_repos
@@ -235,7 +252,8 @@ def eval_(
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Print projected cost only.")] = False,
     yes: Annotated[bool, typer.Option("--yes", help="Skip the spending confirmation.")] = False,
 ) -> None:
-    """Run the evaluation harness (EVALUATION.md §7); subcommands: fetch, report."""
+    """Run the evaluation harness (EVALUATION.md §7); subcommands: fetch, report, label-sheet,
+    audit."""
     if ctx.invoked_subcommand is not None:
         return
     if config is None:
@@ -283,6 +301,11 @@ def eval_(
         return
     if not yes and not typer.confirm("Spend real money on these runs?", default=False):
         raise typer.Exit(code=1)
+    try:
+        labels = load_labels(labels_path(LABELED_REPO))
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
     storage = open_storage(settings)
     clients: list[LLMClient] = []
 
@@ -313,6 +336,7 @@ def eval_(
         eval_run_id=f"{eval_config.name}-{ULID()}",
         app_config=app_config,
         tools_dir=settings.tools_dir,
+        labels=labels,
     )
 
     async def go() -> EvalOutcome:
@@ -336,12 +360,91 @@ def eval_(
 def eval_report(
     results: Annotated[Path, typer.Argument(help="eval/results/<run_id> directory.")],
 ) -> None:
-    """Recompute summary metrics and rewrite table.md from the recorded runs."""
-    records = load_results(results)
-    config = load_eval_config(results / "config.yaml")
-    table = render_table(summarize(records), config.name)
+    """Recompute summary metrics (with labels and audit answers, if any) and rewrite table.md."""
+    try:
+        records = load_results(results)
+        config = load_eval_config(results / "config.yaml")
+        labels = load_labels(labels_path(LABELED_REPO))
+        audits = load_audits(audit_paths(results.name)[1])
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    table = render_table(summarize(records, labels=labels, audits=audits), config.name)
     (results / "table.md").write_text(table)
     typer.echo(table)
+
+
+@eval_app.command("label-sheet")
+def eval_label_sheet(
+    repo_id: Annotated[str, typer.Argument(help="Eval repo id, e.g. primary.")],
+    report: Annotated[
+        Path | None,
+        typer.Option(help="Assessment JSON (or eval run record) whose findings the sheet shows."),
+    ] = None,
+    read: Annotated[
+        bool, typer.Option("--read", help="Read the filled sheet into eval/labels/<repo>.yaml.")
+    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing sheet.")] = False,
+    repos: Annotated[Path, typer.Option(help="Eval set file.")] = DEFAULT_REPOS_FILE,
+) -> None:
+    """Write the manual-label sheet for an eval repo, or read a filled one back (EVALUATION §3)."""
+    try:
+        repo = next((r for r in load_repos(repos) if r.id == repo_id), None)
+        if repo is None:
+            raise LabelError(f"unknown eval repo {repo_id!r}")
+        rubrics = load_rubrics()
+        sheet = label_sheet_path(repo_id)
+        if read:
+            metric_of = {c.id: r.metric for r in rubrics.values() for c in r.checks}
+            labels = parse_label_sheet(sheet.read_text(encoding="utf-8"), metric_of)
+            target = labels_path(repo_id)
+            target.write_text(dump_labels(repo_id, repo.commit, labels))
+            metrics = {metric_of[c] for c in labels}
+            typer.echo(f"{len(labels)} labels over {len(metrics)} metrics → {target}")
+            if len(metrics) < 6:
+                typer.echo("  note: EVALUATION.md §3 asks for labels in at least 6 metrics")
+            return
+        if sheet.exists() and not force:
+            raise LabelError(f"{sheet} exists and may hold your labels; --force overwrites it")
+        current = read_report(report) if report else None
+        sheet.parent.mkdir(parents=True, exist_ok=True)
+        sheet.write_text(label_sheet(repo_id, repo.commit, rubrics, current))
+    except (ArchLensError, OSError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"wrote {sheet}")
+
+
+@eval_app.command("audit")
+def eval_audit(
+    results: Annotated[Path, typer.Argument(help="eval/results/<run_id> directory.")],
+    sample: Annotated[int, typer.Option(help="Number of verified findings to audit.")] = 30,
+    seed: Annotated[int, typer.Option(help="Sampling seed.")] = 0,
+    read: Annotated[
+        bool, typer.Option("--read", help="Read the filled sheet into its audit YAML.")
+    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing sheet.")] = False,
+) -> None:
+    """Write the verifier-audit sheet for an eval run, or read a filled one back (EVALUATION §4)."""
+    sheet, parsed = audit_paths(results.name)
+    try:
+        if read:
+            answers = parse_audit_sheet(sheet.read_text(encoding="utf-8"))
+            parsed.write_text(dump_audit(results.name, answers))
+            agreed = sum(answers.values())
+            typer.echo(f"{len(answers)} answers, {agreed} agree → {parsed}")
+            return
+        if sheet.exists() and not force:
+            raise LabelError(f"{sheet} exists and may hold your answers; --force overwrites it")
+        chosen = audit_sample(load_results(results), sample, seed)
+        if not chosen:
+            raise LabelError(f"{results}: no verified LLM findings to audit")
+        sheet.parent.mkdir(parents=True, exist_ok=True)
+        sheet.write_text(audit_sheet(results.name, chosen))
+    except (ArchLensError, OSError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"wrote {sheet} ({len(chosen)} findings)")
 
 
 @eval_app.command("fetch")
