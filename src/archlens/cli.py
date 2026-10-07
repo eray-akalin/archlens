@@ -18,6 +18,7 @@ from ulid import ULID
 from archlens import __version__
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
+from archlens.eval.repos import DEFAULT_REPOS_FILE, fetch, load_repos
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.index.embed import CachedEmbedder
@@ -45,8 +46,10 @@ schema_app = typer.Typer(
     help="JSON Schemas generated from the Pydantic contracts.", no_args_is_help=True
 )
 prompts_app = typer.Typer(help="Prompt template versioning.", no_args_is_help=True)
+eval_app = typer.Typer(help="Evaluation harness (docs/EVALUATION.md).")
 app.add_typer(schema_app, name="schema")
 app.add_typer(prompts_app, name="prompts")
+app.add_typer(eval_app, name="eval")
 
 
 def _not_implemented(milestone: str) -> NoReturn:
@@ -218,13 +221,38 @@ def facts(
     typer.echo("  flags: " + ", ".join(flag for flag, on in profile.flags.items() if on))
 
 
-@app.command("eval")
+@eval_app.callback(invoke_without_command=True)
 def eval_(
-    config: Annotated[Path, typer.Option(help="Eval config YAML, e.g. eval/configs/full.yaml.")],
+    ctx: typer.Context,
+    config: Annotated[
+        Path | None, typer.Option(help="Eval config YAML, e.g. eval/configs/full.yaml.")
+    ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Print projected cost only.")] = False,
 ) -> None:
-    """Run the evaluation harness against the eval set."""
+    """Run the evaluation harness against the eval set (subcommands: fetch)."""
+    if ctx.invoked_subcommand is not None:
+        return
+    if config is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=1)
     _not_implemented("M3.3")
+
+
+@eval_app.command("fetch")
+def eval_fetch(
+    repos: Annotated[Path, typer.Option(help="Eval set file.")] = DEFAULT_REPOS_FILE,
+) -> None:
+    """Clone every eval repository at its pinned commit into the data dir's eval cache."""
+    settings = load_settings()
+    cache = settings.data_dir / "eval" / "repos"
+    try:
+        for repo in load_repos(repos):
+            fetched = fetch(repo, cache)
+            state = "cached" if fetched.cached else "cloned"
+            typer.echo(f"  {state:7} {repo.id:8} {repo.commit[:12]}  {fetched.path}")
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
 
 @schema_app.command("export")

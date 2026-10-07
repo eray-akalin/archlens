@@ -427,7 +427,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M3.1 Remaining rubrics.** structure, auth, data, logging, container, performance,
   documentation (catalogue in RUBRICS.md §3) and their rules.
   AC: every catalogue check implemented; DEFECTS.md fully covered by the offline e2e test.
-- [ ] **M3.2 Eval set.** Pin `primary` (EVALUATION.md §1) to the current default-branch SHA; propose
+- [x] **M3.2 Eval set.** Pin `primary` (EVALUATION.md §1) to the current default-branch SHA; propose
   2–3 `cross` candidates (.NET or Node/TS; owner, license, LOC, Dockerfile/Actions/HTTP API present)
   → user picks → `eval/repos.yaml`; `archlens eval fetch`.
   AC: both repos cloned into the cache with ingest limits respected; `archlens facts` runs cleanly
@@ -465,6 +465,18 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   extracted imports; Tarjan SCC is iterative (no recursion limit) and JS `x/index` = `x`;
   `ast` rules live in `ast_.py`. LLM guidance follows the user's direction: explicit criteria,
   open-ended investigation, no repo-specific hints. Tests: 955 offline (+124). Spend: $0.
+- 2026-10-07 — M3.2: `eval/repos.yaml` — `primary` pinned to `f27b4721507824e57ebd0286ff1a84d82e83bf59`
+  (master HEAD, the M2.9 run's commit); `cross` = `NimblePros/eShopOnWeb@cbd7f0c0d50a…` (user's pick
+  over `brocoders/nestjs-boilerplate` and `ivanpaulovich/clean-architecture-manga`; all three were
+  checked with a free `archlens facts`: clean runs, HTTP API/DB/Docker/CI/tests detected).
+  `archlens.eval.repos` (`load_repos`, idempotent `fetch` via the hardened clone at the pinned SHA;
+  the commit marker sits next to the checkout so the assessed tree stays untouched) and
+  `archlens eval fetch`; `eval` became a command group (`archlens eval --config … --dry-run` still
+  works, M3.3). AC: both repos cloned into `<data_dir>/eval/repos/` (second call reuses the cache),
+  `archlens facts` clean on both, `primary` has has_http_api/has_database/has_dockerfile/has_ci.
+  Offline tests use a local origin over `file://` (pinned commit, cache reuse, limits, stale
+  checkout, unknown SHA). Note: eShopOnWeb has no lockfile, so osv-scanner reports no advisories
+  there. Tests: 964 offline (+9). Spend: $0.
 
 ---
 

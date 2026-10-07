@@ -15,7 +15,7 @@ Two public repositories, pinned to a commit SHA, cloned at eval time (never vend
 | Role | Repo | Used for |
 |---|---|---|
 | `primary` | `fastapi/full-stack-fastapi-template` (MIT; FastAPI, SQLModel/Postgres, JWT auth, Docker Compose, GitHub Actions, pytest, TypeScript frontend) | all mutations, injection variants, stability, manual labels |
-| `cross` | one repo in a different stack (.NET or Node/TS), permissive license, with a Dockerfile, GitHub Actions and an HTTP API; Claude Code proposes 2–3 candidates in M3.2, the user picks | generic mutations only; no labels |
+| `cross` | `NimblePros/eShopOnWeb` (MIT; ASP.NET Core MVC + API, EF Core, xUnit, 2 Dockerfiles, GitHub Actions, Bicep) — user's pick in M3.2 from three candidates | generic mutations only; no labels |
 
 ```yaml
 repos:

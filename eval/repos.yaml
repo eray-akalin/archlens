@@ -1,0 +1,21 @@
+# Eval set (docs/EVALUATION.md §1): public repositories pinned to a commit, cloned at eval time
+# by `archlens eval fetch` into <ARCHLENS_DATA_DIR>/eval/repos/ — never vendored here.
+repos:
+  - id: primary
+    url: https://github.com/fastapi/full-stack-fastapi-template
+    commit: f27b4721507824e57ebd0286ff1a84d82e83bf59
+    license: MIT
+    langs: [python, typescript]
+    notes: >
+      FastAPI + SQLModel/Postgres, JWT auth, Docker Compose, GitHub Actions, pytest, TypeScript
+      frontend. Pinned 2026-10-07 to the master HEAD of the first real run (M2.9).
+  - id: cross
+    url: https://github.com/NimblePros/eShopOnWeb
+    commit: cbd7f0c0d50aa93257250b00432ab9e624a6aa9e
+    license: MIT
+    langs: [csharp]
+    notes: >
+      ASP.NET Core MVC + API, EF Core, xUnit (50 test files), 2 Dockerfiles, 3 GitHub workflows,
+      Bicep IaC; maintained fork of dotnet-architecture/eShopOnWeb. User's pick (M3.2) over
+      brocoders/nestjs-boilerplate and ivanpaulovich/clean-architecture-manga: a different
+      language stack than primary. No lockfile, so osv-scanner finds no advisories.
