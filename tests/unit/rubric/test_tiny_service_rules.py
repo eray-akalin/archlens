@@ -6,25 +6,26 @@ Scanners don't run here, so their checks must come out `unknown` (never pass on 
 
 from pathlib import Path
 
+from archlens.rubric import load_rubrics
 from tests.fixture_repos import MaterializedRepo, answer_key
-from tests.unit.rubric.helpers import deterministic_results
+from tests.unit.rubric.helpers import RUBRICS_DIR, deterministic_results
 
-SCANNER_CHECKS = {"SEC-01", "SEC-02", "SEC-03", "CI-03"}
+SCANNER_CHECKS = {"SEC-01", "SEC-02", "SEC-03", "CI-03", "STR-03", "CTR-07"}
 
 
 def test_answer_key_verdicts(tiny_service: MaterializedRepo, tmp_path: Path) -> None:
     results = deterministic_results(tiny_service.root, tmp_path)
     expected = {row.check: row.expected for row in answer_key() if row.check in results}
-    assert set(expected) >= {
-        "SEC-07",
-        "TEST-01",
-        "TEST-03",
-        "TEST-04",
-        "CI-01",
-        "CI-02",
-        "CI-04",
-        "CI-05",
+    deterministic = {
+        c.id
+        for r in load_rubrics(RUBRICS_DIR).values()
+        for c in r.checks
+        if c.type == "deterministic"
     }
+    rows = [row for row in answer_key() if row.check in deterministic]
+    # every deterministic row is checked, except NA rows whose check doesn't apply at all (C05)
+    assert {r.check for r in rows if r.expected != "not_applicable"} <= set(results)
+    assert len(rows) >= 25
     for check_id, verdict in expected.items():
         result = results[check_id]
         if check_id in SCANNER_CHECKS:

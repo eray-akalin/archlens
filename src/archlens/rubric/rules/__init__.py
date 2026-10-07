@@ -1,5 +1,29 @@
-"""Built-in deterministic rules, one family per module; importing this package registers them."""
+"""Built-in deterministic rules, one family per module; importing this package registers them.
 
-from archlens.rubric.rules import ci, files, sast, secrets, tests, vulns
+Module names follow the family (`ast` lives in `ast_.py` so it can't shadow the stdlib module).
+"""
 
-__all__ = ["ci", "files", "sast", "secrets", "tests", "vulns"]
+from archlens.rubric.rules import (
+    ast_,
+    ci,
+    complexity,
+    data,
+    deploy,
+    deps,
+    docker,
+    docs,
+    files,
+    iac,
+    imports,
+    observability,
+    sast,
+    secrets,
+    size,
+    tests,
+    vulns,
+)
+
+__all__ = [
+    "ast_", "ci", "complexity", "data", "deploy", "deps", "docker", "docs", "files", "iac",
+    "imports", "observability", "sast", "secrets", "size", "tests", "vulns",
+]  # fmt: skip

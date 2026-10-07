@@ -1,0 +1,137 @@
+metric: auth
+title: Authentication & authorization
+version: 1.0.0
+weight: 1.5
+description: >
+  Whether the API authenticates callers, keeps unauthenticated access deliberate, authorizes
+  privileged operations, validates tokens properly and stores credentials safely.
+applies_when: {any: [has_http_api]}
+scope_globs: ["**/*"]
+
+checks:
+  - id: AUTH-01
+    title: Authentication enforced on API entrypoints
+    type: llm
+    severity: critical
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    self_consistency: 2
+    guidance: |
+      Use the route facts to see the API surface. Find how authentication is applied:
+      middleware, router-level dependencies, decorators, filters/guards, or per-handler checks.
+      Check routes that read or change user data, not only one example.
+      - pass: authentication is enforced on the routes that need it (globally or per router),
+        with only deliberate public exceptions; cite where it is enforced.
+      - partial: authentication exists but some routes that read or modify protected data lack
+        it; cite one unprotected route and where auth is applied elsewhere.
+      - fail: routes that read or modify data have no authentication at all; cite such a route.
+    rationale: >
+      Unauthenticated endpoints let anyone read or change data.
+    remediation: >
+      Enforce authentication by default (middleware or router dependency) and opt routes out
+      explicitly.
+
+  - id: AUTH-02
+    title: Unauthenticated routes are explicit and intentional
+    type: llm
+    severity: high
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    guidance: |
+      Identify routes reachable without authentication. Intentional ones are typically login,
+      signup, password reset, health/readiness, docs, or public content.
+      - pass: every unauthenticated route is of an intentional kind, or public access is
+        declared explicitly (allowlist, marker decorator, public router); cite it.
+      - partial: unauthenticated routes are mostly intentional but at least one looks accidental;
+        cite it.
+      - fail: unauthenticated routes include data-reading or data-changing endpoints with no sign
+        that this is intended; cite one.
+      - unknown: no authentication exists at all (AUTH-01 covers that).
+    rationale: >
+      Accidental public routes are a common way protected data leaks.
+    remediation: >
+      Keep public routes in an explicit allowlist or a separate router.
+
+  - id: AUTH-03
+    title: Authorization protects privileged operations
+    type: llm
+    severity: high
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    guidance: |
+      Look for role/scope/permission checks and ownership checks (a user may only change their
+      own resources) on privileged operations: admin actions, deleting or updating other users'
+      data, bulk operations.
+      - pass: privileged operations check roles/scopes or ownership; cite the checks.
+      - partial: some privileged operations are checked, others are not; cite an unchecked one.
+      - fail: privileged operations are open to any authenticated (or anonymous) caller; cite one.
+    rationale: >
+      Authentication without authorization lets any user act as an administrator.
+    remediation: >
+      Check roles or ownership in every privileged handler or in a shared dependency.
+
+  - id: AUTH-04
+    title: Tokens and sessions validated with vetted libraries
+    type: llm
+    severity: high
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)\\bjwt\\b|jose|oauth|openid|bearer|authlib|itsdangerous|passport|session", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Find how tokens or sessions are created and checked (JWT, OAuth/OIDC, signed cookies,
+      server-side sessions).
+      - pass: a vetted library verifies signature and expiry (and audience/issuer for external
+        tokens); cite the verification.
+      - partial: a library is used but a relevant check is disabled or missing (e.g. no expiry,
+        `verify_signature: False`, algorithm not pinned); cite it.
+      - fail: tokens are parsed or compared by hand, or not verified; cite it.
+      - not_applicable: the service has no tokens or sessions of its own (e.g. no auth at all, or
+        auth fully delegated to a gateway); say which in the claim.
+    rationale: >
+      Hand-rolled or partially verified tokens can be forged.
+    remediation: >
+      Verify tokens with a maintained library and check signature, expiry, audience and issuer.
+
+  - id: AUTH-05
+    title: Stored passwords hashed with a slow KDF
+    type: llm
+    severity: high
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)password|passwd", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Find where user passwords are stored or checked.
+      - pass: passwords are hashed with bcrypt, argon2, scrypt or PBKDF2 (e.g. passlib, pwdlib,
+        bcrypt, ASP.NET Identity) before storage; cite the hashing call.
+      - partial: a hash is used but a weak one (unsalted SHA/MD5, few iterations); cite it.
+      - fail: passwords are stored in plaintext or reversibly encrypted; cite where they are
+        stored.
+      - not_applicable: the service stores no passwords (e.g. external identity provider).
+    rationale: >
+      Fast or missing hashing turns a database leak into a credential leak.
+    remediation: >
+      Hash passwords with argon2 or bcrypt through a maintained library.
+
+  - id: AUTH-06
+    title: Session cookies set HttpOnly, Secure, SameSite
+    type: llm
+    severity: medium
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)set_cookie|set-cookie|cookies?\\.set|SessionMiddleware|express-session|cookie-session", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Find where cookies carrying sessions or tokens are set.
+      - pass: HttpOnly, Secure and SameSite are set; cite the cookie configuration.
+      - partial: some of the flags are missing; cite it.
+      - fail: session cookies are set without these flags; cite it.
+      - not_applicable: the service sets no session cookies (e.g. bearer tokens only).
+    rationale: >
+      Cookies without these flags can be stolen by scripts or sent cross-site.
+    remediation: >
+      Set HttpOnly, Secure and SameSite on every session cookie.

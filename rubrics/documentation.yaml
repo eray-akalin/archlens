@@ -1,0 +1,96 @@
+metric: documentation
+title: Documentation
+version: 1.0.0
+weight: 0.75
+description: >
+  Whether a newcomer can understand, set up and run the project: README, API docs, architecture
+  notes, code documentation, contribution notes, and instructions that match the repository.
+applies_when: {}
+scope_globs: ["**/*.md", "**/docs/**", "**/*"]
+
+checks:
+  - id: DOC-01
+    title: README covers purpose, setup and how to run
+    type: llm
+    severity: medium
+    fact_kinds: [doc_file]
+    evidence_policy: absence_allowed
+    absence_probes:
+      - {kind: path_glob, pattern: "README*"}
+    guidance: |
+      Read the top-level README (the doc_file facts list documentation files).
+      - pass: it explains what the project is, how to set it up (prerequisites, install,
+        configuration) and how to run it; cite each part.
+      - partial: one of purpose, setup or run instructions is missing or only hinted at; cite
+        what is there and say what is missing.
+      - fail: the README is a stub, or there is no README. If there is no README at all, answer
+        fail with no citations; the absence is verified separately.
+    rationale: >
+      The README is the entry point for every new contributor and operator.
+    remediation: >
+      Describe the purpose, prerequisites, setup and run commands in the README.
+
+  - id: DOC-02
+    title: API documented
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_http_api]}
+    rule: docs.api_spec
+    rationale: >
+      An API without a contract forces consumers to read the code.
+    remediation: >
+      Publish an OpenAPI/Swagger document, generated or maintained by hand.
+
+  - id: DOC-03
+    title: Architecture docs or ADRs
+    type: deterministic
+    severity: low
+    rule: docs.architecture
+    rationale: >
+      Architecture notes and decision records explain why the system is shaped the way it is.
+    remediation: >
+      Add an ARCHITECTURE.md or a docs/adr folder with decision records.
+
+  - id: DOC-04
+    title: Docstring or comment coverage of public functions
+    type: deterministic
+    severity: low
+    rule: docs.docstring_ratio
+    params:
+      pass_at: 0.6
+      partial_at: 0.3
+    rationale: >
+      Documented public functions are easier to use correctly and to review.
+    remediation: >
+      Document the contract (inputs, outputs, errors) of public functions.
+
+  - id: DOC-05
+    title: Contributing guide or changelog
+    type: deterministic
+    severity: low
+    rule: files.any_exists
+    params:
+      globs: ["**/CONTRIBUTING*", "**/CHANGELOG*", "**/HISTORY*", "**/release-notes*", "**/RELEASES*"]
+    rationale: >
+      Contribution notes and a changelog lower the cost of contributing and upgrading.
+    remediation: >
+      Add a CONTRIBUTING.md and keep a CHANGELOG.
+
+  - id: DOC-06
+    title: README commands refer to things that exist
+    type: llm
+    severity: low
+    fact_kinds: [doc_file]
+    evidence_policy: positive_required
+    guidance: |
+      Take the commands and file references in the README (make targets, npm/uv scripts,
+      scripts, compose services, config files) and check that they exist in the repository
+      (list_dir, read_file, search_code).
+      - pass: the references you checked exist; cite a README command and what it refers to.
+      - partial: most exist but at least one does not; cite the broken reference.
+      - fail: the main setup or run commands refer to things that do not exist; cite them.
+      - unknown: the README contains no commands or file references.
+    rationale: >
+      Instructions that point to missing scripts or targets block new contributors immediately.
+    remediation: >
+      Keep README commands in sync with the scripts, targets and files in the repository.

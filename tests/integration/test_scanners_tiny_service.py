@@ -108,8 +108,9 @@ def test_scanner_backed_checks_match_the_answer_key(
         tools_dir=settings.tools_dir,
     )
     expected = {row.check: row.expected for row in answer_key() if row.check in results}
-    for check_id in ("SEC-01", "SEC-02", "SEC-03"):
+    for check_id in ("SEC-01", "SEC-02", "SEC-03", "CTR-07"):
         assert results[check_id].verdict == expected[check_id], results[check_id].claim
     assert results["CI-03"].verdict == "pass", results["CI-03"].claim
+    assert results["STR-03"].verdict == "pass", results["STR-03"].claim  # small, simple functions
     dumped = "".join(r.model_dump_json() for r in results.values())
     assert not any(value in dumped for value in tiny_service.secret_values)

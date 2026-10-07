@@ -1,0 +1,82 @@
+metric: logging
+title: Logging & observability
+version: 1.0.0
+weight: 1.0
+description: >
+  Whether the service logs through a framework instead of print statements, correlates requests,
+  keeps sensitive data out of logs and exposes telemetry or health endpoints.
+applies_when: {}
+scope_globs: ["**/*"]
+
+checks:
+  - id: LOG-01
+    title: A logging framework is used
+    type: deterministic
+    severity: medium
+    rule: imports.any_of
+    rationale: >
+      A logging framework gives levels, structure and routing that print statements lack.
+    remediation: >
+      Use the language's logging framework (logging/structlog, pino/winston, ILogger, slf4j, slog).
+
+  - id: LOG-02
+    title: No print/console output in production code
+    type: deterministic
+    severity: low
+    rule: ast.debug_output_ratio
+    params:
+      pass_below: 0.05
+      partial_below: 0.2
+    rationale: >
+      Print output bypasses log levels and routing and is easily lost or leaks data.
+    remediation: >
+      Replace print/console calls with logger calls.
+
+  - id: LOG-03
+    title: Request correlation or trace context propagated
+    type: llm
+    severity: medium
+    fact_kinds: [dependency, route]
+    evidence_policy: absence_allowed
+    absence_probes:
+      - {kind: regex, pattern: "(?i)traceparent|correlation[_-]?id|request[_-]?id|x-request-id|opentelemetry", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Look for request IDs or trace context: middleware that assigns or reads a request ID,
+      OpenTelemetry instrumentation, or log records that include a correlation ID.
+      - pass: requests get an ID or trace context that appears in logs or is propagated to
+        downstream calls; cite the middleware or instrumentation.
+      - partial: an ID or trace context exists but is not used in logs or not propagated; cite it.
+      - fail: nothing correlates requests. If you looked and found no correlation or tracing at
+        all, answer fail with no citations; the absence is verified separately.
+    rationale: >
+      Without correlation, logs from one request can't be followed across components.
+    remediation: >
+      Add request-ID middleware or OpenTelemetry and include the ID in every log record.
+
+  - id: LOG-04
+    title: Sensitive data not logged
+    type: llm
+    severity: high
+    fact_kinds: [log_call, print_call, sast_finding]
+    evidence_policy: positive_required
+    guidance: |
+      Use the log and print call facts to find output statements and check what they include:
+      passwords, tokens, secrets, full request bodies, personal data.
+      - pass: the output you inspected contains no sensitive values (or masks them); cite
+        representative log calls.
+      - partial: sensitive values appear in debug-level output only, or partially masked; cite it.
+      - fail: passwords, tokens or personal data are written to logs or stdout; cite the call.
+    rationale: >
+      Logs are widely accessible and long-lived; secrets in them leak easily.
+    remediation: >
+      Never log credentials or personal data; mask fields before logging.
+
+  - id: LOG-05
+    title: Telemetry SDK or health endpoint present
+    type: deterministic
+    severity: medium
+    rule: observability.present
+    rationale: >
+      Health endpoints and telemetry let operators and orchestrators see whether the service works.
+    remediation: >
+      Add a health/readiness endpoint and an OpenTelemetry or Prometheus exporter.

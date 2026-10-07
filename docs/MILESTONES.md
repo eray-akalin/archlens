@@ -424,7 +424,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M3 — All metrics and the eval harness (week 2)
 
-- [ ] **M3.1 Remaining rubrics.** structure, auth, data, logging, container, performance,
+- [x] **M3.1 Remaining rubrics.** structure, auth, data, logging, container, performance,
   documentation (catalogue in RUBRICS.md §3) and their rules.
   AC: every catalogue check implemented; DEFECTS.md fully covered by the offline e2e test.
 - [ ] **M3.2 Eval set.** Pin `primary` (EVALUATION.md §1) to the current default-branch SHA; propose
@@ -449,6 +449,22 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: `summary.json` produced; top 3 failure modes and planned fixes written in the log.
 
 **Log**
+
+- 2026-10-07 — M3.1: `rubrics/{structure,auth,data,logging,container,performance,documentation}.yaml`
+  (all 60 catalogue checks now in YAML; the catalogue-sync test covers all ten) and 18 rules in
+  `rubric/rules/{size,complexity,imports,deps,data,ast_,observability,docker,iac,deploy,docs}.py`
+  (31 total), each with pass/fail/NA/unknown(+partial) tests. AC: the offline e2e now scripts
+  every metric's LLM session and **all 47 DEFECTS.md rows** come out as expected and `verified`
+  (scanner checks `unknown` offline; C05 not applicable by `applies_when`); AUTH-01 gets its
+  consistency rerun and skeptic, LOG-03's evidence-less fail is confirmed by absence replay; with
+  all ten metrics scored the overall score is computed. `-m scanners` adds CTR-07 fail (hadolint
+  DL4000) and STR-03 pass. Resolved (RUBRICS §5 updated): `deps.lockfile_present` stays
+  pass/fail as specified (my first draft added a partial — reverted, the key expects fail);
+  per-Dockerfile rules aggregate all/some/none → pass/partial/fail; images from build args count
+  as pinned; health routes match on the last path segment; `imports.any_of` is NA without any
+  extracted imports; Tarjan SCC is iterative (no recursion limit) and JS `x/index` = `x`;
+  `ast` rules live in `ast_.py`. LLM guidance follows the user's direction: explicit criteria,
+  open-ended investigation, no repo-specific hints. Tests: 955 offline (+124). Spend: $0.
 
 ---
 

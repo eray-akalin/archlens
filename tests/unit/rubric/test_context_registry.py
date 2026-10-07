@@ -68,7 +68,7 @@ def test_evidence_matches_the_verifier_reader(tmp_path: Path) -> None:
 def test_tool_run_returns_the_latest_record(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path)
     assert ctx.tool_run("gitleaks") is not None
-    assert ctx.tool_run("hadolint") is None
+    assert ctx.tool_run("trivy") is None
     later = ctx.facts.model_copy(
         update={"tool_runs": [*ctx.facts.tool_runs, tool_run("gitleaks", "error")]}
     )
@@ -162,7 +162,8 @@ def test_registration_errors(scratch_registry: None) -> None:
 def test_rule_names_match_their_family_module() -> None:
     for name, registered in registered_rules().items():
         family = name.split(".")[0]
-        assert registered.func.__module__ == f"archlens.rubric.rules.{family}", name
+        module = registered.func.__module__.removesuffix("_")
+        assert module == f"archlens.rubric.rules.{family}", name
 
 
 def test_params_have_defaults_except_required_globs() -> None:

@@ -27,7 +27,11 @@ from archlens.rubric import RuleContext, get_rule, load_rubrics, run_rule
 from archlens.security.redact import Redactor
 
 # Every scanner/extractor a rule in M2.2 depends on.
-TOOLS = ("gitleaks", "osv-scanner", "semgrep", "actionlint", "ast:ci", "ast:tests", "ast:metrics")
+TOOLS = (
+    "gitleaks", "osv-scanner", "semgrep", "actionlint", "hadolint", "checkov", "lizard",
+    "ast:ci", "ast:tests", "ast:metrics", "ast:imports", "ast:manifests", "ast:docker",
+    "ast:deploy", "ast:routes", "ast:logging", "fs:docs",
+)  # fmt: skip
 
 
 def tool_run(tool: str, status: ToolStatus = "ok", error: str | None = None) -> ToolRunRecord:
@@ -56,10 +60,10 @@ def fact(
     return make_fact(kind, "test", attributes, default if evidence is None else evidence, severity)
 
 
-def profile(**flags: bool) -> RepoProfile:
+def profile(*, frameworks: list[str] | None = None, **flags: bool) -> RepoProfile:
     return RepoProfile(
         languages={},
-        frameworks=[],
+        frameworks=frameworks or [],
         package_managers=[],
         ci_systems=[],
         test_frameworks=[],
@@ -75,6 +79,8 @@ def make_ctx(
     files: dict[str, str] | None = None,
     status: dict[str, ToolStatus | None] | None = None,
     redactor: Redactor | None = None,
+    flags: dict[str, bool] | None = None,
+    frameworks: list[str] | None = None,
 ) -> RuleContext:
     """Context over `root` (created, with `files` written). Every tool in TOOLS ran `ok` unless
     `status` overrides it; `None` there means the tool never ran."""
@@ -86,7 +92,8 @@ def make_ctx(
     runs = [tool_run(tool, s) for tool in TOOLS if (s := overrides.get(tool, "ok")) is not None]
     snapshot = build_snapshot(root, limits=IngestLimits())
     fact_set = FactSet(commit_sha="0" * 40, facts=facts or [], tool_runs=runs)
-    return RuleContext.create(root, fact_set, profile(), snapshot.files, redactor)
+    repo_profile = profile(frameworks=frameworks, **(flags or {}))
+    return RuleContext.create(root, fact_set, repo_profile, snapshot.files, redactor)
 
 
 def run(name: str, ctx: RuleContext, **params: JsonValue) -> RuleOutcome:
@@ -135,7 +142,10 @@ def ci_step(
 
 
 RUBRICS_DIR = Path(__file__).parents[3] / "rubrics"
-TINY_SERVICE_METRICS = ("security", "testing", "cicd")
+TINY_SERVICE_METRICS = (
+    "structure", "auth", "security", "data", "logging", "testing", "cicd", "container",
+    "performance", "documentation",
+)  # fmt: skip
 
 
 def deterministic_results(

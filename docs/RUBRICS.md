@@ -248,9 +248,9 @@ Default params live in each rule's `Params` model; YAML may override them.
 | `imports.no_cycles` | `scope: internal` | cycles in internal `import_edge` graph (Tarjan SCC) |
 | `deps.lockfile_present` | – | every `manifest` has `has_lockfile` |
 | `data.migrations_present` | `globs` (default below) | pass if any `ctx.files` path matches |
-| `imports.any_of` | `modules` (default below) | pass if any `import_edge.to_module` matches (prefix match) |
+| `imports.any_of` | `modules` (default below) | pass if any `import_edge.to_module` matches (prefix match on `.`/`/` boundaries); NA when no imports were extracted |
 | `ast.debug_output_ratio` | `pass_below: 0.05`, `partial_below: 0.2` | non-test `print_call` / (`print_call` + `log_call`); NA if both are 0 |
-| `observability.present` | `modules` (default below), `route_patterns: ["/health*", "/ready*", "/live*", "/metrics"]` | import match or `route` path match |
+| `observability.present` | `modules` (default below), `route_patterns: ["/health*", "/ready*", "/live*", "/metrics"]` | import match or `route` path match (full path or its last segment, so `/api/v1/health-check` counts) |
 | `tests.present` | `min_test_files: 1` | |
 | `tests.ratio` | `pass_at: 0.3`, `partial_at: 0.1` | test LOC / non-test source LOC from `file_metrics` |
 | `tests.coverage_configured` | – | coverage config file (`.coveragerc`, `.nycrc*`, `codecov.yml`, `[tool.coverage]`/`--cov` in pyproject/setup.cfg/tox.ini/pytest.ini via `read_text`, `jest`/`vitest` config or `package.json` with coverage, `coverlet` refs, `jacoco`/`kover`), or coverage flags/upload actions in a `ci_step`; nothing found and CI unreadable → unknown |
@@ -260,15 +260,15 @@ Default params live in each rule's `Params` model; YAML may override them.
 | `ci.actionlint_clean` | `max_errors: 0` | |
 | `ci.permissions_restricted` | – | top-level or every-job `permissions` set and not `write-all`; a job-level `write-all` always fails |
 | `ci.actions_pinned` | `allow_owners: [actions, github]` | third-party `uses:` pinned to 40-hex SHA |
-| `docker.non_root` | – | final stage has `USER` that is not root/0 |
-| `docker.pinned_base` | – | no base image without tag or with `latest` |
-| `docker.multistage` | – | > 1 stage |
+| `docker.non_root` | – | final stage has `USER` that is not root/0; per Dockerfile: all → pass, some → partial, none → fail |
+| `docker.pinned_base` | – | no base image without tag or with `latest` (images from build args can't be judged and count as pinned) |
+| `docker.multistage` | – | > 1 stage; per Dockerfile: all → pass, some → partial, none → fail |
 | `docker.healthcheck` | – | Dockerfile HEALTHCHECK, or `deploy_config` with `has_healthcheck`/`has_liveness`/`has_readiness` |
 | `docker.hadolint_errors` | `max_errors: 0` | `hadolint_finding` with severity high |
 | `iac.max_severity` | `fail_at: high`, `unknown_severity_fail_count: 5` | fail if any finding ≥ `fail_at`, or ≥ N findings with `severity=None` (checkov OSS often omits severity); partial if any finding; pass if none |
 | `deploy.resource_limits` | – | every `deploy_config` has `has_limits`; some → partial |
-| `docs.api_spec` | – | OpenAPI/Swagger file in `ctx.files`, or framework auto-docs detected (FastAPI, Swashbuckle, springdoc) |
-| `docs.architecture` | `globs: ["docs/**/adr*/**", "docs/**/architecture*", "ARCHITECTURE*", "docs/**/decisions/**"]` | |
+| `docs.api_spec` | – | OpenAPI/Swagger file in `ctx.files`, or framework auto-docs detected (FastAPI; dependencies such as Swashbuckle, springdoc, @nestjs/swagger, drf-spectacular) |
+| `docs.architecture` | `globs: ["docs/**/adr*/**", "docs/**/architecture*", "ARCHITECTURE*", "docs/**/decisions/**", "**/adr/**", "**/ADR-*"]` | pass if any matches |
 | `docs.docstring_ratio` | `pass_at: 0.6`, `partial_at: 0.3` | Σ `documented_functions` / Σ `public_functions` over non-test `file_metrics` |
 
 Default lists (in the rules' `Params` models):

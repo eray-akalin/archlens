@@ -1,0 +1,101 @@
+metric: data
+title: Data management
+version: 1.0.0
+weight: 1.0
+description: >
+  Whether the database schema evolves through migrations, connection settings stay out of code,
+  data access is isolated, multi-step writes are atomic and sensitive fields are protected.
+applies_when: {any: [has_database]}
+scope_globs: ["**/*"]
+
+checks:
+  - id: DATA-01
+    title: Schema changes managed by migrations
+    type: deterministic
+    severity: high
+    rule: data.migrations_present
+    rationale: >
+      Without migrations, schema changes are applied by hand or by `create_all` and drift between
+      environments.
+    remediation: >
+      Adopt a migration tool (Alembic, Django migrations, EF Core, Flyway, Prisma) and commit the
+      migrations.
+
+  - id: DATA-02
+    title: Connection settings come from configuration or a secret store
+    type: llm
+    severity: high
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    guidance: |
+      Find where the database connection (URL, host, user, password) is configured.
+      - pass: it comes from environment variables, a settings object or a secret store; cite it.
+      - partial: it comes from configuration but a usable default with real credentials is
+        hard-coded as a fallback; cite the default.
+      - fail: the connection string or credentials are hard-coded; cite them.
+    rationale: >
+      Hard-coded connection strings leak credentials and tie code to one environment.
+    remediation: >
+      Read connection settings from environment variables or a secret store.
+
+  - id: DATA-03
+    title: Data access isolated in a dedicated layer
+    type: llm
+    severity: medium
+    fact_kinds: [import_edge]
+    evidence_policy: positive_required
+    guidance: |
+      See where queries and ORM calls live: repositories/DAOs/CRUD modules and models, or
+      scattered through handlers.
+      - pass: queries live in a dedicated layer that handlers call; cite that layer and a caller.
+      - partial: a data layer exists but some handlers query the database directly; cite one.
+      - fail: queries are written directly in handlers throughout; cite examples.
+    rationale: >
+      Isolated data access keeps queries consistent, testable and replaceable.
+    remediation: >
+      Move queries into repository or CRUD modules that handlers call.
+
+  - id: DATA-04
+    title: Multi-step writes use transactions
+    type: llm
+    severity: medium
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)session\\.(add|delete|merge)\\(|\\.save\\(|\\.commit\\(|insert\\s+into|\\.update\\(", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Find operations that write several rows or tables that must change together (e.g. create an
+      order and its items, transfer between accounts).
+      - pass: such writes run in one transaction (unit of work, `with session.begin()`,
+        `transaction.atomic`, a single commit); cite one.
+      - partial: some multi-step writes are atomic, others commit part-way; cite a non-atomic one.
+      - fail: multi-step writes commit each step separately; cite one.
+      - not_applicable: the code has no multi-step writes.
+    rationale: >
+      Non-atomic multi-step writes leave inconsistent data after a failure.
+    remediation: >
+      Wrap related writes in a single transaction.
+
+  - id: DATA-05
+    title: Sensitive fields protected
+    type: llm
+    severity: low
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)password|passwd|secret|token|ssn|credit_?card|iban", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Look at the data models for sensitive fields: passwords, tokens, secrets, government IDs,
+      payment data.
+      - pass: sensitive fields are hashed, encrypted or masked before storage, and excluded from
+        API responses; cite the model and the protection.
+      - partial: some sensitive fields are protected and others are not, or they are protected
+        in storage but returned by the API; cite the gap.
+      - fail: sensitive fields are stored in plaintext; cite the model field.
+      - not_applicable: the models hold no sensitive fields.
+    rationale: >
+      Plaintext sensitive fields turn any data leak into an incident.
+    remediation: >
+      Hash or encrypt sensitive fields and keep them out of responses and logs.

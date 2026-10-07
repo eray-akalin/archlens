@@ -1,0 +1,122 @@
+metric: performance
+title: Performance & resilience
+version: 1.0.0
+weight: 0.75
+description: >
+  Whether request paths avoid blocking IO and N+1 queries, expensive reads are cached, lists are
+  paginated, outbound calls are bounded and deployments set resource limits.
+applies_when: {}
+scope_globs: ["**/*"]
+
+checks:
+  - id: PERF-01
+    title: Non-blocking IO in request paths
+    type: llm
+    severity: medium
+    applies_when: {any: [has_http_api]}
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    guidance: |
+      The route facts mark async handlers (`is_async`). In async handlers (and code they call),
+      look for blocking calls: synchronous HTTP clients (requests, urllib), blocking database
+      drivers, `time.sleep`, large synchronous file IO. Sync handlers run in a thread pool in most
+      frameworks and are fine.
+      - pass: async handlers use non-blocking IO (async clients/drivers, awaited calls), or the
+        API only has sync handlers; cite an async handler with awaited IO, or a sync handler.
+      - partial: most async paths are non-blocking but at least one blocking call remains; cite it.
+      - fail: async handlers routinely make blocking calls; cite one.
+    rationale: >
+      One blocking call in an async handler stalls every request on that worker.
+    remediation: >
+      Use async clients and drivers in async handlers, or make the handler synchronous.
+
+  - id: PERF-02
+    title: No N+1 query patterns
+    type: llm
+    severity: medium
+    applies_when: {any: [has_database]}
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    guidance: |
+      Look for queries executed inside loops over query results (one query per row), and for
+      lazy-loaded relationships accessed in loops.
+      - pass: list-style code loads related data with joins, eager loading or batched queries;
+        cite one.
+      - partial: most list code is batched but one loop queries per row; cite it.
+      - fail: queries per row inside loops are common; cite one.
+    rationale: >
+      N+1 queries grow database load linearly with result size and dominate latency.
+    remediation: >
+      Use joins, eager loading (selectinload/joinedload, include) or batched IN queries.
+
+  - id: PERF-03
+    title: Caching strategy for expensive reads
+    type: llm
+    severity: low
+    fact_kinds: [dependency, route]
+    evidence_policy: absence_allowed
+    na_allowed: true
+    absence_probes:
+      - {kind: regex, pattern: "(?i)\\bcache|redis|memcache|lru_cache|@cached|Cache-Control|etag", path_glob: "**/*.{py,ts,js,cs,java,go}"}
+    guidance: |
+      Look for caching of expensive or frequently repeated reads: in-memory caches, Redis,
+      HTTP caching headers, memoization.
+      - pass: expensive or hot reads are cached with sensible invalidation; cite it.
+      - partial: some caching exists but obvious hot paths are uncached, or invalidation is
+        missing; cite it.
+      - fail: there are expensive repeated reads and no caching. If you found no caching at
+        all, answer fail with no citations; the absence is verified separately.
+      - not_applicable: the service has no expensive or repeated reads worth caching.
+    rationale: >
+      Repeating expensive reads wastes resources and adds latency.
+    remediation: >
+      Cache hot, expensive reads with explicit expiry or invalidation.
+
+  - id: PERF-04
+    title: List endpoints paginated
+    type: llm
+    severity: medium
+    applies_when: {any: [has_http_api]}
+    fact_kinds: [route]
+    evidence_policy: positive_required
+    guidance: |
+      Find endpoints that return collections and check whether they bound the result size
+      (limit/offset, cursor, page parameters with a maximum).
+      - pass: collection endpoints are paginated or bounded; cite one.
+      - partial: some are paginated, others return every row; cite an unbounded one.
+      - fail: collection endpoints return every row; cite one.
+    rationale: >
+      Unbounded lists grow with the data until responses time out or exhaust memory.
+    remediation: >
+      Add limit/offset or cursor pagination with a maximum page size.
+
+  - id: PERF-05
+    title: Outbound calls have timeouts and retries
+    type: llm
+    severity: high
+    applies_when: {any: [has_outbound_http]}
+    fact_kinds: [sast_finding, dependency]
+    evidence_policy: positive_required
+    guidance: |
+      Find outbound HTTP/RPC calls (requests, httpx, aiohttp, axios, fetch, HttpClient) and check
+      for timeouts and, for idempotent calls, retries with backoff.
+      - pass: outbound calls set timeouts (per call or on a shared client), and retries exist
+        where appropriate; cite them.
+      - partial: timeouts are set but no retry/backoff anywhere, or only some calls are bounded;
+        cite the gap.
+      - fail: outbound calls have no timeout; cite one.
+    rationale: >
+      A call without a timeout can hang a worker indefinitely when a dependency stalls.
+    remediation: >
+      Set explicit timeouts on every client and add retries with backoff for idempotent calls.
+
+  - id: PERF-06
+    title: Resource limits configured for deployments
+    type: deterministic
+    severity: low
+    applies_when: {any: [has_k8s, has_compose]}
+    rule: deploy.resource_limits
+    rationale: >
+      Without limits, one service can starve its neighbours of CPU or memory.
+    remediation: >
+      Set CPU and memory limits for every compose service or Kubernetes container.

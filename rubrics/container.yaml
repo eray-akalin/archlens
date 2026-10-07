@@ -1,0 +1,102 @@
+metric: container
+title: Containers & deployment
+version: 1.0.0
+weight: 0.75
+description: >
+  Whether container images run unprivileged from pinned, small, multi-stage builds with health
+  checks, and whether infrastructure code is free of serious misconfigurations.
+applies_when: {any: [has_dockerfile, has_k8s, has_compose, has_iac]}
+scope_globs:
+  - "**/Dockerfile*"
+  - "**/*.Dockerfile"
+  - "**/Containerfile"
+  - "**/.dockerignore"
+  - "**/{docker-,}compose*.{yml,yaml}"
+  - "**/*.{tf,bicep}"
+  - "**/*.{yml,yaml}"
+
+checks:
+  - id: CTR-01
+    title: Container runs as non-root
+    type: deterministic
+    severity: high
+    applies_when: {any: [has_dockerfile]}
+    rule: docker.non_root
+    rationale: >
+      A process running as root inside the container makes any compromise far more damaging.
+    remediation: >
+      Create an unprivileged user and switch to it with `USER` in the final stage.
+
+  - id: CTR-02
+    title: Base images pinned
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_dockerfile]}
+    rule: docker.pinned_base
+    rationale: >
+      `latest` or untagged base images change underneath the build and break reproducibility.
+    remediation: >
+      Pin base images to a version tag, ideally with a digest.
+
+  - id: CTR-03
+    title: Multi-stage build
+    type: deterministic
+    severity: low
+    applies_when: {any: [has_dockerfile]}
+    rule: docker.multistage
+    rationale: >
+      Multi-stage builds keep compilers and build tools out of the runtime image.
+    remediation: >
+      Build in one stage and copy only the artifacts into a slim runtime stage.
+
+  - id: CTR-04
+    title: .dockerignore present
+    type: deterministic
+    severity: low
+    applies_when: {any: [has_dockerfile]}
+    rule: files.any_exists
+    params:
+      globs: ["**/.dockerignore"]
+    rationale: >
+      Without .dockerignore the build context can include secrets, VCS data and large files.
+    remediation: >
+      Add a .dockerignore that excludes .git, local env files and build outputs.
+
+  - id: CTR-05
+    title: Health check or probes defined
+    type: deterministic
+    severity: medium
+    applies_when: {any: [has_dockerfile, has_k8s, has_compose]}
+    rule: docker.healthcheck
+    rationale: >
+      Without health checks, orchestrators keep routing traffic to broken containers.
+    remediation: >
+      Add a HEALTHCHECK, a compose healthcheck, or Kubernetes liveness/readiness probes.
+
+  - id: CTR-06
+    title: IaC and manifests free of high-severity misconfigurations
+    type: deterministic
+    severity: high
+    applies_when: {any: [has_iac, has_k8s]}
+    rule: iac.max_severity
+    params:
+      fail_at: high
+      unknown_severity_fail_count: 5
+    rationale: >
+      Misconfigured infrastructure (public storage, privileged pods, open security groups) is a
+      common breach cause.
+    remediation: >
+      Fix the flagged resources; suppress only with a documented justification.
+
+  - id: CTR-07
+    title: Dockerfile free of hadolint errors
+    type: deterministic
+    severity: low
+    applies_when: {any: [has_dockerfile]}
+    rule: docker.hadolint_errors
+    params:
+      max_errors: 0
+    rationale: >
+      hadolint errors flag deprecated or broken Dockerfile instructions.
+    remediation: >
+      Fix the reported instructions.

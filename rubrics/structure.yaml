@@ -1,0 +1,104 @@
+metric: structure
+title: Code structure
+version: 1.0.0
+weight: 1.0
+description: >
+  Whether the code is organized into clear modules with manageable file sizes and complexity, free
+  of circular dependencies, with configuration kept out of the code and reproducible dependencies.
+applies_when: {}
+scope_globs: ["**/*"]
+
+checks:
+  - id: STR-01
+    title: Clear module and layer boundaries
+    type: llm
+    severity: medium
+    fact_kinds: [import_edge, route]
+    evidence_policy: positive_required
+    guidance: |
+      Look at how the code is split into packages/modules and how they depend on each other
+      (the import edges and routes help). Typical boundaries: request handling (routes,
+      controllers) vs business logic (services, domain) vs data access (repositories, models,
+      queries). Small projects may legitimately use fewer layers; judge whether responsibilities
+      are separated, not whether a particular pattern is used.
+      - pass: handlers delegate to separate logic and data-access code, and dependencies mostly
+        point one way; cite a handler and the module it delegates to.
+      - partial: some separation exists but at least one place mixes concerns heavily (e.g. a
+        handler that builds queries, calls external services and formats output); cite it.
+      - fail: no discernible separation — handlers, data access and logic are interleaved
+        throughout; cite representative code.
+    rationale: >
+      Clear boundaries make changes local and let parts be tested and replaced independently.
+    remediation: >
+      Move data access and business rules out of handlers into dedicated modules with one-way
+      dependencies.
+
+  - id: STR-02
+    title: No oversized source files
+    type: deterministic
+    severity: medium
+    rule: size.max_file_loc
+    params:
+      threshold: 1000
+      partial_max_offenders: 2
+    rationale: >
+      Very large files usually hold several responsibilities and are hard to review and test.
+    remediation: >
+      Split large files along their responsibilities.
+
+  - id: STR-03
+    title: Function complexity under control
+    type: deterministic
+    severity: medium
+    rule: complexity.ccn_ratio
+    params:
+      ccn: 15
+      pass_below: 0.03
+      partial_below: 0.08
+    rationale: >
+      Functions with high cyclomatic complexity are error-prone and need many tests to cover.
+    remediation: >
+      Extract branches into smaller functions and replace conditionals with data or polymorphism.
+
+  - id: STR-04
+    title: No circular imports between internal modules
+    type: deterministic
+    severity: medium
+    rule: imports.no_cycles
+    params:
+      scope: internal
+    rationale: >
+      Import cycles couple modules tightly and cause initialization-order bugs.
+    remediation: >
+      Move the shared code into a module both can depend on, or invert one dependency.
+
+  - id: STR-05
+    title: Configuration separated from code
+    type: llm
+    severity: medium
+    fact_kinds: [dependency]
+    evidence_policy: positive_required
+    guidance: |
+      Look for how settings are provided: environment variables, settings classes (e.g.
+      pydantic-settings), config files, or values hard-coded in source (URLs, hostnames, ports,
+      credentials, feature switches).
+      - pass: environment-specific values come from configuration (env vars, settings objects,
+        config files); cite where settings are loaded.
+      - partial: a config mechanism exists but some environment-specific values (endpoints,
+        hosts, credentials) are still hard-coded; cite one of them.
+      - fail: environment-specific values are hard-coded with no configuration mechanism; cite
+        them.
+    rationale: >
+      Hard-coded settings force code changes per environment and tend to leak credentials.
+    remediation: >
+      Load environment-specific values from environment variables or a settings object.
+
+  - id: STR-06
+    title: Dependency manifest with a lockfile
+    type: deterministic
+    severity: low
+    rule: deps.lockfile_present
+    rationale: >
+      Without a lockfile, builds resolve different dependency versions over time.
+    remediation: >
+      Commit the package manager's lockfile (uv.lock, poetry.lock, package-lock.json, ...).

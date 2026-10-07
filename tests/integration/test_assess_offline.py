@@ -41,8 +41,13 @@ pytestmark = pytest.mark.integration
 REPO = Path(__file__).parents[2]
 USERS, MAIN = "app/api/users.py", "app/main.py"
 TESTS, CI = "tests/test_users.py", ".github/workflows/ci.yml"
-SCANNER_CHECKS = {"SEC-01", "SEC-02", "SEC-03", "CI-03"}
-METRICS = ("cicd", "security", "testing")
+MODELS, DB, README = "app/models.py", "app/db.py", "README.md"
+SCANNER_CHECKS = {"SEC-01", "SEC-02", "SEC-03", "CI-03", "STR-03", "CTR-07"}
+METRICS = (
+    "auth", "cicd", "container", "data", "documentation", "logging", "performance", "security",
+    "structure", "testing",
+)  # fmt: skip
+RERUNS = {("SEC-05",), ("AUTH-01",)}  # critical LLM checks get a consistency session
 
 
 def read(call_id: str, path: str) -> ToolCall:
@@ -56,6 +61,20 @@ def out(check_id: str, verdict: Verdict, path: str, start: int, end: int) -> LLM
     )  # fmt: skip
 
 
+def unknown(check_id: str) -> LLMCheckOutput:
+    return LLMCheckOutput(
+        check_id=check_id, verdict="unknown", claim="not judged in this scripted run",
+        citations=[], confidence="low",
+    )  # fmt: skip
+
+
+def absent(check_id: str) -> LLMCheckOutput:
+    return LLMCheckOutput(
+        check_id=check_id, verdict="fail", claim=f"{check_id}: nothing of the kind exists",
+        citations=[], confidence="medium",
+    )  # fmt: skip
+
+
 def yes(*refs: str) -> EntailmentBatchOutput:
     return EntailmentBatchOutput(
         items=[EntailmentItem(ref=r, supports="yes", rationale="the code shows it") for r in refs]
@@ -64,49 +83,82 @@ def yes(*refs: str) -> EntailmentBatchOutput:
 
 def evaluator_script() -> dict[tuple[str, ...], list[Scripted]]:
     ev = ("evaluator", "evaluator.system")
+
+    def answer(*results: LLMCheckOutput) -> MetricEvaluationOutput:
+        return MetricEvaluationOutput(results=list(results))
+
     return {
+        (*ev, "STR-01", "STR-05"): [answer(unknown("STR-01"), unknown("STR-05"))],
+        (*ev, "AUTH-01", "AUTH-02", "AUTH-03", "AUTH-04", "AUTH-05", "AUTH-06"): [
+            [read("a1", USERS), read("a2", MODELS)],
+            answer(
+                out("AUTH-01", "fail", USERS, 50, 54), unknown("AUTH-02"), unknown("AUTH-03"),
+                unknown("AUTH-04"), out("AUTH-05", "fail", MODELS, 13, 13), unknown("AUTH-06"),
+            ),
+        ],
+        (*ev, "AUTH-01"): [answer(out("AUTH-01", "fail", USERS, 50, 54))],
         (*ev, "SEC-04", "SEC-05", "SEC-06"): [
             [read("s1", USERS), read("s2", MAIN)],
-            MetricEvaluationOutput(results=[
+            answer(
                 out("SEC-04", "partial", USERS, 38, 45),
                 out("SEC-05", "fail", USERS, 32, 35),
                 out("SEC-06", "fail", MAIN, 9, 15),
-            ]),
+            ),
         ],
-        (*ev, "SEC-05"): [MetricEvaluationOutput(results=[out("SEC-05", "fail", USERS, 34, 34)])],
-        (*ev, "TEST-05"): [
-            [read("t1", TESTS)],
-            MetricEvaluationOutput(results=[out("TEST-05", "fail", TESTS, 8, 15)]),
+        (*ev, "SEC-05"): [answer(out("SEC-05", "fail", USERS, 34, 34))],
+        (*ev, "DATA-02", "DATA-03", "DATA-04", "DATA-05"): [
+            [read("d1", DB), read("d2", MODELS)],
+            answer(
+                out("DATA-02", "fail", DB, 4, 4), unknown("DATA-03"), unknown("DATA-04"),
+                out("DATA-05", "fail", MODELS, 13, 13),
+            ),
         ],
+        (*ev, "LOG-03", "LOG-04"): [
+            [read("l1", USERS)],
+            answer(absent("LOG-03"), out("LOG-04", "fail", USERS, 18, 18)),
+        ],
+        (*ev, "TEST-05"): [[read("t1", TESTS)], answer(out("TEST-05", "fail", TESTS, 8, 15))],
         (*ev, "CI-06", "CI-07"): [
             [read("c1", CI)],
-            MetricEvaluationOutput(results=[
-                out("CI-06", "fail", CI, 15, 26), out("CI-07", "fail", CI, 20, 24),
-            ]),
+            answer(out("CI-06", "fail", CI, 15, 26), out("CI-07", "fail", CI, 20, 24)),
+        ],
+        (*ev, "PERF-01", "PERF-02", "PERF-03", "PERF-04", "PERF-05"): [
+            [read("p1", USERS)],
+            answer(
+                out("PERF-01", "fail", USERS, 57, 60), out("PERF-02", "fail", USERS, 22, 29),
+                unknown("PERF-03"), out("PERF-04", "fail", USERS, 22, 24),
+                out("PERF-05", "fail", USERS, 59, 59),
+            ),
+        ],
+        (*ev, "DOC-01", "DOC-06"): [
+            [read("r1", README)],
+            answer(out("DOC-01", "partial", README, 1, 5), out("DOC-06", "fail", README, 5, 5)),
         ],
     }  # fmt: skip
 
 
 def later_script() -> dict[tuple[str, ...], list[Scripted]]:
     """Verifier, skeptic and synthesizer answers."""
-    return {
-        ("verifier", "verifier.entailment", "SEC-04", "SEC-05", "SEC-06"): [
-            yes("SEC-04", "SEC-05", "SEC-06")
-        ],
-        ("verifier", "verifier.entailment", "TEST-05"): [yes("TEST-05")],
-        ("verifier", "verifier.entailment", "CI-06", "CI-07"): [yes("CI-06", "CI-07")],
-        ("skeptic", "skeptic.system", "SEC-05"): [
-            SkepticOutput(refuted=False, reason="the f-string reaches the query", citations=[])
-        ],
-        ("synth", "synth.narrative"): [
-            Narrative(
-                executive_summary="Security has string-built SQL and permissive CORS; CI never "
-                "runs the tests.",
-                per_metric=[],
-                cited_findings=[],
-            )
-        ],
+    batches = [
+        ("AUTH-01", "AUTH-05"), ("SEC-04", "SEC-05", "SEC-06"), ("DATA-02", "DATA-05"),
+        ("LOG-04",), ("TEST-05",), ("CI-06", "CI-07"),
+        ("PERF-01", "PERF-02", "PERF-04", "PERF-05"), ("DOC-01", "DOC-06"),
+    ]  # fmt: skip
+    script: dict[tuple[str, ...], list[Scripted]] = {
+        ("verifier", "verifier.entailment", *refs): [yes(*refs)] for refs in batches
     }
+    keep = SkepticOutput(refuted=False, reason="the cited code is reached", citations=[])
+    script[("skeptic", "skeptic.system", "SEC-05")] = [keep]
+    script[("skeptic", "skeptic.system", "AUTH-01")] = [keep]
+    script[("synth", "synth.narrative")] = [
+        Narrative(
+            executive_summary="Security has string-built SQL and permissive CORS; CI never "
+            "runs the tests.",
+            per_metric=[],
+            cited_findings=[],
+        )
+    ]
+    return script
 
 
 def context(root: Path, llm: FakeLLM, run_id: str) -> RunContext:
@@ -143,9 +195,10 @@ class KillTesting(FakeLLM):
 
     async def complete[T: BaseModel](self, request: LLMRequest[T]) -> LLMResult[T]:
         if request.tags[:1] == ("TEST-05",):
-            for _ in range(2000):  # until both metrics are fully recorded, not just written
+            others = set(METRICS) - {"testing"}
+            for _ in range(2000):  # until the other metrics are fully recorded, not just written
                 state = await self.storage.run_state.load("r1")
-                if state is not None and {"cicd", "security"} <= set(state.metrics_done):
+                if state is not None and others <= set(state.metrics_done):
                     break
                 await asyncio.sleep(0.005)
             raise RuntimeError("killed")
@@ -167,10 +220,13 @@ async def test_assess_detects_the_planted_defects(
     assert [m.metric for m in report.metric_scores] == list(METRICS)
 
     findings = {f.result.check_id: f for f in [*report.findings, *report.other_findings]}
-    for row in answer_key():
-        if row.check.split("-")[0] not in {"SEC", "TEST", "CI"}:
+    rows = answer_key()
+    assert len(rows) == 47
+    for row in rows:
+        finding = findings.get(row.check)
+        if finding is None:  # the check doesn't apply to this repo at all (C05)
+            assert row.expected == "not_applicable", row.id
             continue
-        finding = findings[row.check]
         if row.check in SCANNER_CHECKS:
             assert finding.result.verdict == "unknown", row.id
             continue
@@ -179,6 +235,11 @@ async def test_assess_detects_the_planted_defects(
         ), (row.id, finding.result.claim, finding.verification.steps)  # fmt: skip
         assert finding.scored
 
+    auth01 = findings["AUTH-01"]
+    assert [s.step for s in auth01.verification.steps] == ["mechanical", "entailment", "skeptic"]
+    log03 = findings["LOG-03"]  # evidence-less fail confirmed by the absence probes
+    assert [s.step for s in log03.verification.steps] == ["absence"]
+    assert report.overall_score is not None  # all ten metrics scored
     sec05 = findings["SEC-05"]
     assert [s.step for s in sec05.verification.steps] == ["mechanical", "entailment", "skeptic"]
     assert report.narrative is not None and "string-built SQL" in report.narrative.executive_summary
@@ -203,7 +264,7 @@ async def test_killed_mid_evaluate_then_resumed(
     stages = {s.stage: s for s in state.stages}
     assert [stages[s].status for s in ("ingest", "facts", "profile", "index")] == ["done"] * 4
     assert stages["evaluate"].status == "failed" and "killed" in (stages["evaluate"].error or "")
-    assert state.metrics_done == ["cicd", "security"]
+    assert state.metrics_done == sorted(set(METRICS) - {"testing"})
 
     # resume: finished stages and metrics must not run again
     def forbidden(*args: object, **kwargs: object) -> None:
@@ -216,7 +277,7 @@ async def test_killed_mid_evaluate_then_resumed(
     assert {c.tags for c in llm.calls if c.role == "evaluator"} == {("TEST-05",)}
     # checkpointed sessions were restored with their seen lines: their citations still verify
     for finding in report.findings + report.other_findings:
-        if finding.result.origin == "llm":
+        if finding.result.origin == "llm" and finding.result.verdict != "unknown":
             assert finding.verification.status == "verified", finding.result.check_id
     state = await resumed.storage.run_state.load("r1")
     assert state is not None and state.status == "done" and state.metrics_done == list(METRICS)
@@ -228,7 +289,7 @@ async def test_budget_exhaustion_degrades_to_unknown(
 ) -> None:
     budget = BudgetExceeded("run budget reached")
     script: dict[tuple[str, ...], list[Scripted]] = {
-        key: [budget] for key in evaluator_script() if key[2] != "SEC-05" or len(key) > 3
+        key: [budget] for key in evaluator_script() if key[2:] not in RERUNS
     }
     script[("synth", "synth.narrative")] = [budget]
     report, _ = await run(tiny_service, tmp_path, FakeLLM(script))
