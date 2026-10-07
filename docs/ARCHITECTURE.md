@@ -146,7 +146,8 @@ src/archlens/
   evaluate/              deterministic.py, llm_session.py, consistency.py
   verify/                mechanical.py, entailment.py, absence.py, skeptic.py, pipeline.py
   score/                 scorer.py
-  report/                builder.py, synth.py, render_md.py, render_html.py, sarif.py, pr.py, templates/
+  report/                builder.py, synth.py, view.py + render.py (Markdown and HTML),
+                         templates/, sarif.py, pr.py
   llm/                   client.py, fake.py, cassette.py, ratelimit.py, cache.py, cost.py,
                          prompts.py, session.py (tool loop), untrusted.py
   security/              redact.py, url_policy.py

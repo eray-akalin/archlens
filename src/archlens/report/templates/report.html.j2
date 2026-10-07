@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchLens report: {{ repo }}</title>
+<style>
+  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --code: #f6f8fa;
+          --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --code: #151b23;
+            --pass: #3fb950; --partial: #d29922; --fail: #f85149; }
+  }
+  body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg);
+         max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  pre { background: var(--code); padding: 10px 12px; overflow-x: auto; border-radius: 6px; }
+  code { font: 13px/1.45 ui-monospace, monospace; }
+  .muted { color: var(--muted); }
+  .verdict-pass { color: var(--pass); } .verdict-partial { color: var(--partial); }
+  .verdict-fail { color: var(--fail); }
+  .overall { font-size: 28px; font-weight: 600; }
+  .finding { border-left: 3px solid var(--line); padding-left: 12px; margin: 16px 0; }
+</style>
+</head>
+<body>
+<h1>ArchLens report</h1>
+<p class="muted">{{ repo }} · commit <code>{{ commit }}</code> · run <code>{{ report.run_id }}</code> · {{ created }} · ArchLens {{ report.config.archlens_version }}</p>
+
+{% if overall is not none %}
+<p class="overall">Overall {{ overall }} / 10 ({{ overall_grade }})</p>
+{% else %}
+<p class="overall">Overall not computed</p>
+<p>Fewer than 5 metrics have enough verified evidence for a score.</p>
+{% endif %}
+{% if summary %}
+<h2>Summary</h2>
+<p>{{ summary }}</p>
+{% endif %}
+
+<h2>Scores</h2>
+<table>
+<thead><tr><th>Metric</th><th class="num">Score</th><th>Grade</th><th>Status</th><th class="num">Coverage</th><th class="num">Pass</th><th class="num">Partial</th><th class="num">Fail</th><th class="num">N/A</th><th class="num">Unknown</th><th>Capped by</th></tr></thead>
+<tbody>
+{% for m in metrics %}
+<tr><td>{{ m.title }}</td><td class="num">{{ m.score }}</td><td>{{ m.grade }}</td><td>{{ m.status }}</td><td class="num">{{ m.coverage }}%</td>{% for n in m.counts %}<td class="num">{{ n }}</td>{% endfor %}<td>{{ m.capped_by | join(", ") }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<p class="muted">Scores are computed by code from verified findings only (0-10; critical fails cap a metric at 4.0, critical partials at 6.0; below 60% evidence coverage a metric is not scored).</p>
+
+<h2>Verified findings</h2>
+{% for m in metrics %}
+{% if m.findings or m.narrative %}
+<h3>{{ m.title }}{% if m.status == "scored" %}: {{ m.score }}{% endif %}</h3>
+{% if m.narrative %}<p>{{ m.narrative }}</p>{% endif %}
+{% for f in m.findings %}
+<div class="finding">
+<h4>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %}: <span class="verdict-{{ f.verdict }}">{{ f.verdict }}</span></h4>
+<p>{% if f.severity %}<span class="muted">Severity {{ f.severity }}.</span> {% endif %}{{ f.claim }}</p>
+{% for c in f.code %}
+<p class="muted"><code>{{ c.path }}:{{ c.start }}-{{ c.end }}</code></p>
+<pre><code{% if c.language %} class="language-{{ c.language }}"{% endif %}>{{ c.snippet }}</code></pre>
+{% endfor %}
+{% for s in f.scans %}<p class="muted">{{ s }}</p>{% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+<h2>Not scored ({{ other | length }})</h2>
+<p class="muted">These results did not pass verification (or were unknown / not applicable) and do not affect scores.</p>
+{% if other %}
+<table>
+<thead><tr><th>Finding</th><th>Verdict</th><th>Verification</th><th>Why</th></tr></thead>
+<tbody>
+{% for f in other %}
+<tr><td>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %}</td><td>{{ f.verdict }}</td><td>{{ f.status }}</td><td>{{ f.why }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+<h2>Run</h2>
+<p>LLM cost ${{ "%.4f" | format(cost.usd) }}: {{ cost.input_tokens }} input tokens ({{ cost.cached_input_tokens }} cached), {{ cost.output_tokens }} output tokens ({{ cost.reasoning_tokens }} reasoning).</p>
+<table>
+<thead><tr><th>Tool</th><th>Version</th><th>Status</th><th class="num">Facts</th></tr></thead>
+<tbody>
+{% for t in tool_runs %}
+<tr><td>{{ t.tool }}</td><td>{{ t.version }}</td><td>{{ t.status }}</td><td class="num">{{ t.fact_count }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% if timings %}
+<p class="muted">Timings: {% for stage, ms in timings %}{{ stage }} {{ ms }} ms{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+{% endif %}
+</body>
+</html>

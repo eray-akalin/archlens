@@ -188,6 +188,14 @@ snippets). Output: `Narrative` (DATA_MODEL §8). Guards:
 - every number in the narrative text must appear in a whitelist built from the report (scores,
   counts); otherwise retry once, then `narrative=None` and the report renders without prose.
 
+Implementation (`archlens.report.synth`, prompts `synth.narrative.md` + `synth.input.md`): the
+whitelist is exactly what the input shows — metric and overall scores, coverage percentages,
+verdict counts, the numbers of findings and metrics, and the 0-10 scale; digits inside check and
+finding ids don't count as numbers; values compare numerically (`4.00` = `4.0`). Finding ids in
+the *text* are checked too: an unknown one left after the retry discards the narrative (it can't
+be dropped like a `cited_findings` entry). Claims and snippets are wrapped as untrusted data.
+Paragraphs for unknown metrics are dropped. Model or budget failures → `narrative=None`.
+
 Report Q&A (`POST /assessments/{id}/ask`) uses `synth.qa.md`, answers only from the report JSON,
 and must cite finding IDs. This is the only place a semantic cache may sit in front of the model.
 

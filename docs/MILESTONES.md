@@ -239,7 +239,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M2.6 Scorer.** RUBRICS.md §4 exactly.
   AC: tests for NA handling, zero applicable weight, coverage gate, critical override of the gate,
   caps, overall with < 5 metrics, rounding; hypothesis tests for order invariance and determinism.
-- [ ] **M2.7 Report.** `AssessmentReport` builder, `report.md`, basic `report.html`, synthesizer
+- [x] **M2.7 Report.** `AssessmentReport` builder, `report.md`, basic `report.html`, synthesizer
   with guards (LLM.md §7).
   AC: Markdown/HTML snapshot tests; synth guard tests (unknown finding IDs, unlisted numbers).
 - [ ] **M2.8 Orchestrator + CLI.** Pipeline, checkpoints (M0.6 store), `--resume`, `archlens assess`.
@@ -347,6 +347,19 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   the cap that applied and is empty without a score — the property test found the Σ_S w = 0 edge;
   `counts` = effective verdict per applicable check; overall uses rounded metric scores; duplicate
   findings per check raise. Tests: 768 offline (+41). Spend: $0.
+- 2026-10-07 — M2.7: `report/{builder,synth,view,render}.py`, `report/templates/report.{md,html}.j2`,
+  `prompts/synth.{narrative,input}.md`. `build_report` scores via the scorer, splits scored/other
+  findings ordered by (metric, check), sums cost as `Decimal` in record-id order, and
+  `with_narrative` adds the synthesizer's calls; `config_fingerprint` records ArchLens, rubric,
+  prompt, model and tool versions. Renderers use one view model; HTML is autoescaped, Markdown
+  escapes inline repo text (`<`, `>`, `&`, `|`, newlines) and fences snippets with more backticks
+  than they contain; rubrics only add titles/severities. AC: syrupy single-file snapshots
+  (`.md`/`.html`, reviewed by hand) incl. a hostile claim and a snippet with ```` and
+  `</code></pre><script>`; synth guard tests for unknown cited ids (retry → drop), unknown ids in
+  the text and unlisted numbers (retry → discard), failures → no narrative. Resolved: the number
+  whitelist mirrors the synthesizer input exactly (incl. coverage % and the 0-10 scale); ids in
+  the text are guarded too; one `render.py` + `view.py` instead of `render_md.py`/`render_html.py`
+  (layout updated). Tests: 800 offline (+32). Spend: $0.
 
 ---
 

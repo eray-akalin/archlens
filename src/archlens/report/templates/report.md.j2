@@ -1,0 +1,93 @@
+# ArchLens report
+
+| | |
+|---|---|
+| Repository | {{ repo | md }} |
+| Commit | `{{ commit }}` |
+| Run | `{{ report.run_id }}`, {{ created }} |
+| ArchLens | {{ report.config.archlens_version }} (schema {{ report.schema_version }}) |
+
+{% if overall is not none %}
+## Overall: {{ overall }} / 10 ({{ overall_grade }})
+{% else %}
+## Overall: not computed
+
+Fewer than 5 metrics have enough verified evidence for a score.
+{% endif %}
+{% if summary %}
+
+## Summary
+
+{{ summary | md }}
+{% endif %}
+
+## Scores
+
+| Metric | Score | Grade | Status | Coverage | Pass | Partial | Fail | N/A | Unknown | Capped by |
+|---|---:|:-:|---|---:|---:|---:|---:|---:|---:|---|
+{% for m in metrics %}
+| {{ m.title | md }} | {{ m.score }} | {{ m.grade }} | {{ m.status }} | {{ m.coverage }}% | {{ m.counts | join(" | ") }} | {{ m.capped_by | join(", ") }} |
+{% endfor %}
+
+Scores are computed by code from verified findings only (0-10; critical fails cap a metric at 4.0,
+critical partials at 6.0; below 60% evidence coverage a metric is not scored).
+
+## Verified findings
+{% for m in metrics %}
+{% if m.findings or m.narrative %}
+
+### {{ m.title | md }}{{ (": " ~ m.score) if m.status == "scored" else "" }}
+
+{% if m.narrative %}
+{{ m.narrative | md }}
+
+{% endif %}
+{% for f in m.findings %}
+#### {{ f.check_id }}{% if f.title %} {{ f.title | md }}{% endif %}: {{ f.verdict }}
+
+{% if f.severity %}Severity {{ f.severity }}. {% endif %}{{ f.claim | md }}
+
+{% for c in f.code %}
+`{{ c.path | md }}:{{ c.start }}-{{ c.end }}`
+
+{{ c.snippet | fence }}{{ c.language }}
+{{ c.snippet }}
+{{ c.snippet | fence }}
+
+{% endfor %}
+{% for s in f.scans %}
+- {{ s | md }}
+{% endfor %}
+{% if f.scans %}
+
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+## Not scored ({{ other | length }})
+
+These results did not pass verification (or were unknown / not applicable) and do not affect
+scores.
+
+{% if other %}
+| Finding | Verdict | Verification | Why |
+|---|---|---|---|
+{% for f in other %}
+| {{ f.check_id }}{% if f.title %} {{ f.title | md }}{% endif %} | {{ f.verdict }} | {{ f.status }} | {{ f.why | md }} |
+{% endfor %}
+{% endif %}
+
+## Run
+
+LLM cost ${{ "%.4f" | format(cost.usd) }}: {{ cost.input_tokens }} input tokens ({{ cost.cached_input_tokens }} cached), {{ cost.output_tokens }} output tokens ({{ cost.reasoning_tokens }} reasoning).
+
+| Tool | Version | Status | Facts |
+|---|---|---|---:|
+{% for t in tool_runs %}
+| {{ t.tool }} | {{ t.version }} | {{ t.status }} | {{ t.fact_count }} |
+{% endfor %}
+{% if timings %}
+
+Timings: {% for stage, ms in timings %}{{ stage }} {{ ms }} ms{% if not loop.last %}, {% endif %}{% endfor %}.
+{% endif %}
