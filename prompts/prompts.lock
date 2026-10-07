@@ -16,8 +16,8 @@
     "sha256": "c912b0593f174f0d8be4ca1b47053667875b5c5e3c708821121b8d787213c18b"
   },
   "skeptic.system": {
-    "version": "1.0.0",
-    "sha256": "5297ca585c49cda7339855cfb32db0efba934c5157035f9c7fcfd77201d89811"
+    "version": "1.1.0",
+    "sha256": "db70c4de52ab8e6ac81ec9116e16e5d3f3e5543c7c13b225133d79980fa7a602"
   },
   "synth.input": {
     "version": "1.0.0",
@@ -28,12 +28,12 @@
     "sha256": "f411c824aaf7f2c35d38810e8ae521db8c5888a25b404ebf30711974dd9c15be"
   },
   "verifier.absence": {
-    "version": "1.0.0",
-    "sha256": "bb9f79dfc12b8ebe5a16c08c3cda5a765a91bac76370fa474f71368a29d923a7"
+    "version": "1.1.0",
+    "sha256": "cd67d451c988f0abbe6c9bf0c10bcb75adb890847b78cf2770ba410f607568e3"
   },
   "verifier.entailment": {
-    "version": "1.0.0",
-    "sha256": "cf6cc0080ecf694ea5212dbf891adc921ebc21920a599a4e76c807c2e9ec13d9"
+    "version": "1.1.0",
+    "sha256": "ab60c4bf8eb7f0cb08bb5e58399037031f0939984c37c13628d4fbb2906848f9"
   },
   "verifier.findings": {
     "version": "1.0.0",

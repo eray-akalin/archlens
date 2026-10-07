@@ -625,6 +625,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
      `partial` for `/private/users/`, a router mounted only when `ENVIRONMENT == "local"` (base.0 —
      the labeled-precision miss).
   Spend: $2.2414 (project total ≈ $3.91).
+- 2026-10-08 — Free fixes for the second eval's failure modes 2–3 (user picked them before M4;
+  variance work waits for the M5.1 ablation). `verifier.entailment`, `verifier.absence` and
+  `skeptic.system` 1.1.0: comments, docstrings and docs that assert what code does are not
+  evidence. Rubric wording that caused slips: SEC-05's `partial` read "string-built SQL … only
+  with constants", which the model applied to constant Alembic SQL — now constant SQL text is
+  `pass` and `partial` is for SQL *built* from constants or allow-listed identifiers (security
+  1.1.0); AUTH-01 treats routes mounted only in local/dev/test environments as deliberate
+  exceptions (auth 1.2.0); DOC-01 spells out that a title-only README is a stub → `fail`
+  (documentation 1.2.0). All three are general rules, not primary-specific. Not re-measured yet
+  (optional VI2 ×2 + base ×3 ≈ $0.85). Tests: 1068. Spend: $0.
 
 ---
 

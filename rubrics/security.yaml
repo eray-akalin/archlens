@@ -1,7 +1,7 @@
 # Reference rubric. Every other metric file follows this shape (see docs/RUBRICS.md §1).
 metric: security
 title: Security
-version: 1.0.0
+version: 1.1.0
 weight: 1.5
 description: >
   Whether the codebase avoids the most common, high-impact security failures: leaked secrets,
@@ -88,11 +88,13 @@ checks:
       Look for raw SQL construction: string concatenation, f-strings, format(), template literals
       or StringBuilder used to build SQL that includes variables. Use search_code with regex for
       patterns like SELECT/INSERT/UPDATE/DELETE near +, f", .format(, ${, string interpolation.
-      ORM query builders and bound parameters (?, :name, %s with params tuple, @param) are safe.
-      - pass: all SQL you found uses bound parameters or an ORM; cite at least one representative
-        query.
-      - partial: string-built SQL exists but only with constants or allow-listed identifiers
-        (e.g. a validated column name); cite it and explain in the claim.
+      ORM query builders and bound parameters (?, :name, %s with params tuple, @param) are safe,
+      and so is a constant SQL string with nothing concatenated or interpolated into it (a
+      migration's DDL, a fixed statement) — raw is not the same as built.
+      - pass: all SQL you found uses bound parameters, an ORM or constant text; cite at least one
+        representative query.
+      - partial: SQL is built by concatenation or interpolation, but only from constants or
+        allow-listed identifiers (e.g. a validated column name); cite it and explain in the claim.
       - fail: any query includes a variable derived from input via string building; cite it.
     rationale: >
       String-built SQL with user input enables SQL injection, typically leading to full data

@@ -1,6 +1,6 @@
 metric: documentation
 title: Documentation
-version: 1.1.0
+version: 1.2.0
 weight: 0.75
 description: >
   Whether a newcomer can understand, set up and run the project: README, API docs, architecture
@@ -23,8 +23,9 @@ checks:
         configuration) and how to run it; cite each part.
       - partial: one of purpose, setup or run instructions is missing or only hinted at; cite
         what is there and say what is missing.
-      - fail: the README is a stub (cite its few lines), or there is no README. If there is no
-        README at all, answer fail with no citations; the absence is verified separately.
+      - fail: the README is a stub — a title or a sentence, with neither setup nor run
+        instructions (cite its few lines) — or there is no README. If there is no README at all,
+        answer fail with no citations; the absence is verified separately.
     rationale: >
       The README is the entry point for every new contributor and operator.
     remediation: >

@@ -1,6 +1,6 @@
 metric: auth
 title: Authentication & authorization
-version: 1.1.0
+version: 1.2.0
 weight: 1.5
 description: >
   Whether the API authenticates callers, keeps unauthenticated access deliberate, authorizes
@@ -19,7 +19,9 @@ checks:
     guidance: |
       Use the route facts to see the API surface. Find how authentication is applied:
       middleware, router-level dependencies, decorators, filters/guards, or per-handler checks.
-      Check routes that read or change user data, not only one example.
+      Check routes that read or change user data, not only one example. Routes mounted only in
+      local, development or test environments (behind an environment check) are deliberate
+      exceptions; mention them in the claim.
       - pass: authentication is enforced on the routes that need it (globally or per router),
         with only deliberate public exceptions; cite where it is enforced.
       - partial: authentication exists but some routes that read or modify protected data lack

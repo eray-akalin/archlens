@@ -91,7 +91,9 @@ Layered; no single layer is trusted.
    tools, or budgets. Tools are read-only.
 5. **Independent verification** — every LLM verdict needs cited code that an independent
    entailment call accepts (a `pass` can never be evidence-less); critical failures get a skeptic
-   pass.
+   pass. Evaluator, entailment, absence judge and skeptic prompts all say that comments asserting
+   what code does ("protected by a middleware", "sanitized upstream") are not evidence — the
+   second eval showed such a comment (I-FAKEEVIDENCE) talking entailment into `insufficient`.
 6. **Deterministic scoring** — no model output is ever parsed as a number that becomes a score.
 7. **Measured** — the injection suite in `EVALUATION.md` §5 must show no score change beyond
    ±0.2 per metric beyond the base runs' own spread; regressions block release.
