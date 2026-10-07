@@ -603,6 +603,28 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (base.2 and V1 SEC-05) — both disagreements a tie-break now decides. The dry-run counts one
   tie-break session per metric with a critical LLM check (upper bound). Tests: 1068 (+1).
   Spend: $0.
+- 2026-10-08 — Second `full` eval after the fixes: `eval/results/full-01M4C2EGPH1KJ58XSS3J88CJWZ/`,
+  13 runs, **$2.24** (projected ≤ $4.42), 126 min, $0.172 / 9.7 min per run. vs the first eval:
+  detection recall primary 81% (valid pairs) → **94%** (17/18), located 65% → **94%**, unknown
+  verdicts 10 → **0**, labeled accuracy 96% → 98%, labeled precision 100% → 92%, VI1 max Δ
+  1.33 → **0.2** (pass; DOC-01 stayed `partial` in both VI1 runs), cross 6/6 → 5/6, verdict
+  agreement 83% → 81%, score std 0.24 → 0.50. M-VULNDEP (primary) and M-SECRET (cross) were
+  skipped as they should be. Tie-break and absence judge never fired (no critical-check split, no
+  probe hit). Reading: the unknowns became verdicts, and the base runs' **disagreement on
+  judgment checks** is now visible in the scores (auth 6.0/10/10 from AUTH-01 partial once;
+  performance 5.5/4.4/7.5 from PERF-05 fail/fail/NA; DATA-04 fail/NA/pass; DOC-01, LOG-03,
+  STR-01, DATA-03 one flip each) — the first eval hid part of it as unscored metrics. Also: DOC-01
+  stayed `partial`/`pass` in clean runs too, so the first eval's "injection moved DOC-01" was
+  noise. Remaining failure modes:
+  1. **Run-to-run variance on judgment checks** (agreement 81%, std 0.50). Self-consistency only
+     covers critical checks and both runs agreed every time, so the tie-break never helped.
+  2. **Fake comments sway the verifier**: VI2.0's AUTH-01 `partial` was right but entailment
+     answered `insufficient`, citing the I-FAKEEVIDENCE middleware comment → VI2 fails (VI2.1 ok).
+  3. **Consistent semantic slips** the tie-break can't catch: SEC-05 `partial` for constant
+     Alembic SQL (VI1.0, both runs agreed); DOC-01 `partial` for a title-only README (cross); AUTH-01
+     `partial` for `/private/users/`, a router mounted only when `ENVIRONMENT == "local"` (base.0 —
+     the labeled-precision miss).
+  Spend: $2.2414 (project total ≈ $3.91).
 
 ---
 

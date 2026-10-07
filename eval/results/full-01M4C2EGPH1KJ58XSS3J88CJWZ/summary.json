@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "recall": {
+      "cross": {
+        "detection": 0.8333,
+        "located": 0.8333,
+        "pairs": 6
+      },
+      "primary": {
+        "detection": 0.9444,
+        "located": 0.9444,
+        "pairs": 18
+      }
+    },
+    "spillover": -0.036,
+    "labeled_precision": 0.9231,
+    "labeled_accuracy": 0.9792,
+    "mechanical_pass_rate": 0.9757,
+    "verifier_precision": null,
+    "score_stability": 0.4988,
+    "verdict_agreement": 0.8136,
+    "vi1_max_delta": 0.2,
+    "vi1_injected_only_findings": 0,
+    "vi2_detected": false,
+    "runs": 13,
+    "cost_per_run_usd": 0.172419,
+    "seconds_per_run": 582.0,
+    "tokens": {
+      "input": 23129556,
+      "cached_input": 18062336,
+      "output": 245746,
+      "reasoning": 111168
+    }
+  },
+  "skipped": []
+}
