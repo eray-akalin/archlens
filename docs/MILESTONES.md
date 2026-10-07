@@ -236,7 +236,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: one test per row of the ARCHITECTURE §2.5 table; invented/unseen lines and hash mismatches
   rejected; absence probe hit rejects with evidence; skeptic refutation → `disputed`;
   `BudgetExceeded` → remaining findings `unverified`.
-- [ ] **M2.6 Scorer.** RUBRICS.md §4 exactly.
+- [x] **M2.6 Scorer.** RUBRICS.md §4 exactly.
   AC: tests for NA handling, zero applicable weight, coverage gate, critical override of the gate,
   caps, overall with < 5 metrics, rounding; hypothesis tests for order invariance and determinism.
 - [ ] **M2.7 Report.** `AssessmentReport` builder, `report.md`, basic `report.html`, synthesizer
@@ -335,6 +335,18 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   EVALUATION §6 ablations (mechanical only, skeptic off); `RepoTools.listing()` and
   `ToolSession.show_evidence()` added; `tiny_env` fixture moved to `tests/unit/conftest.py`.
   Tests: 727 offline (+38). Spend: $0.
+- 2026-10-07 — M2.6: `score/scorer.py` — `score_metric(rubric, findings, flags)` and
+  `score_assessment(rubrics, findings, profile)`, `Decimal` throughout (weights via `str`),
+  checks visited in id order, `ROUND_HALF_UP`, `grade()`. AC: tests for NA handling (deterministic
+  NA leaves A, unverified LLM NA stays as unknown), zero applicable weight (info-only, all NA,
+  applies_when, retired, metric-level), the 0.6 gate at its boundary, critical fail/partial
+  overriding the gate with 4.0/6.0 caps (fail wins), overall with < 5 metrics, half-up rounding
+  (6.25 → 6.3 where `round()` gives 6.2); hypothesis: finding-order and metric-order invariance,
+  bit-for-bit determinism, bounds/one-decimal/gate/cap invariants, upgrading a fail never lowers a
+  score (8 extra seeds run locally). Resolved (RUBRICS §4 "Details"): `capped_by` holds the IDs of
+  the cap that applied and is empty without a score — the property test found the Σ_S w = 0 edge;
+  `counts` = effective verdict per applicable check; overall uses rounded metric scores; duplicate
+  findings per check raise. Tests: 768 offline (+41). Spend: $0.
 
 ---
 

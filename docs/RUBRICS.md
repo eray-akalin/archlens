@@ -204,6 +204,16 @@ Overall: weighted mean of `scored` metrics using metric `weight`, rounded the sa
 fewer than 5 metrics are `scored`. Grade bands (report only): A ≥ 8.5, B ≥ 7.0, C ≥ 5.5,
 D ≥ 4.0, E < 4.0.
 
+Details fixed by the implementation (`score/scorer.py`):
+- `capped_by` lists the critical fails when the 4.0 cap applies, else the critical partials when
+  the 6.0 cap applies; it is empty whenever no score is produced (e.g. every scored check has
+  weight 0, so `raw` is undefined → `insufficient_evidence`).
+- `counts` holds each applicable check's effective verdict: a scored finding's verdict, a verified
+  `not_applicable` as such, everything else (missing, unknown, unverified, rejected, disputed) as
+  `unknown`; all five keys are always present and sum to the applicable checks.
+- The overall mean uses the rounded metric scores; metrics are reported sorted by name.
+- Two findings for one check are a contract violation (`ValueError`), not a choice to make.
+
 `not_applicable` from an LLM is accepted only when the check has `na_allowed: true`; otherwise it
 is coerced to `unknown` with reason `"na_not_allowed"`. Deterministic rules may return
 `not_applicable` freely (e.g. no Dockerfile).
