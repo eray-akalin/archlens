@@ -1,0 +1,10 @@
+--- a/backend/app/api/routes/users.py
++++ b/backend/app/api/routes/users.py
+@@ -31,7 +31,6 @@
+ 
+ @router.get(
+     "/",
+-    dependencies=[Depends(get_current_active_superuser)],
+     response_model=UsersPublic,
+ )
+ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:

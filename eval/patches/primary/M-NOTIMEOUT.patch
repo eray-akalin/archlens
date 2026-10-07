@@ -1,0 +1,23 @@
+--- a/backend/app/api/routes/utils.py
++++ b/backend/app/api/routes/utils.py
+@@ -1,7 +1,10 @@
++import urllib.request
++
+ from fastapi import APIRouter, Depends
+ from pydantic.networks import EmailStr
+ 
+ from app.api.deps import get_current_active_superuser
++from app.core.config import settings
+ from app.models import Message
+ from app.utils import generate_test_email, send_email
+ 
+@@ -29,3 +32,9 @@
+ @router.get("/health-check/")
+ async def health_check() -> bool:
+     return True
++
++
++@router.get("/upstream-status/")
++def upstream_status() -> bool:
++    with urllib.request.urlopen(settings.FRONTEND_HOST) as response:
++        return response.status == 200

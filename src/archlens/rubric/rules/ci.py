@@ -186,7 +186,7 @@ class PermissionsParams(RuleParams):
     pass
 
 
-def _restricted(workflow: Fact) -> bool:
+def is_restricted(workflow: Fact) -> bool:
     """Top-level or every-job `permissions` set and not `write-all`; a job-level `write-all`
     escalates past a restrictive top level, so it never counts as restricted."""
     jobs = [str(j) for j in attr_list(workflow, "jobs")]
@@ -205,7 +205,7 @@ def permissions_restricted(ctx: RuleContext, params: PermissionsParams) -> RuleO
     if (outcome := _no_workflows(ctx, GITHUB)) is not None:
         return outcome
     workflows = _workflows(ctx, GITHUB)
-    open_ = [w for w in workflows if not _restricted(w)]
+    open_ = [w for w in workflows if not is_restricted(w)]
     query = "workflows without restricted `permissions`"
     if not open_:
         return RuleOutcome(

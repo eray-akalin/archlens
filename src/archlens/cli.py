@@ -262,9 +262,17 @@ def eval_(
     for problem in plan.problems:
         typer.echo(f"  problem: {problem}", err=True)
     projection = project(plan, app_config, rubrics)
+    generic = sorted(m.id for m in mutations.values() if m.generic and not m.injection)
     for run in plan.runs:
         cache = "cache on" if run.use_cache else "cache off"
-        typer.echo(f"  {run.name:28} {cache:9} ~${projection.per_run:.4f}")
+        spec = plan.variants.get(run.variant)
+        if spec is None:
+            what = "clean repo"
+        elif spec.all_generic:
+            what = "generic, if their precondition holds: " + ", ".join(generic)
+        else:
+            what = ", ".join(spec.mutations)
+        typer.echo(f"  {run.name:16} {cache:9} ~${projection.per_run:.4f}  {what}")
     typer.echo(
         f"{len(plan.runs)} runs, projected ${projection.total:.2f} (upper bound); "
         f"budget ${projection.budget:.2f}"

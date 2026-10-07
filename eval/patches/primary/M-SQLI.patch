@@ -1,0 +1,34 @@
+--- a/backend/app/api/routes/items.py
++++ b/backend/app/api/routes/items.py
+@@ -2,7 +2,7 @@
+ from typing import Any
+ 
+ from fastapi import APIRouter, HTTPException
+-from sqlmodel import col, func, select
++from sqlmodel import col, func, select, text
+ 
+ from app.api.deps import CurrentUser, SessionDep
+ from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
+@@ -12,11 +12,21 @@
+ 
+ @router.get("/", response_model=ItemsPublic)
+ def read_items(
+-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
++    session: SessionDep,
++    current_user: CurrentUser,
++    skip: int = 0,
++    limit: int = 100,
++    title: str | None = None,
+ ) -> Any:
+     """
+     Retrieve items.
+     """
++
++    if title:
++        rows = session.exec(
++            text(f"SELECT * FROM item WHERE owner_id = '{current_user.id}' AND title LIKE '%{title}%'")
++        ).all()
++        return ItemsPublic(data=[ItemPublic.model_validate(r) for r in rows], count=len(rows))
+ 
+     if current_user.is_superuser:
+         count_statement = select(func.count()).select_from(Item)

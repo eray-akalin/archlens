@@ -437,7 +437,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   `archlens.eval.metrics` (EVALUATION.md §4).
   AC: constraint validation rejects each rule violation in EVALUATION.md §2.1; metric computations
   unit-tested on hand-built reports; `--dry-run` works with zero mutations.
-- [ ] **M3.4 Mutations and injection variants.** Framework, the 13 mutations, the 4 injection
+- [x] **M3.4 Mutations and injection variants.** Framework, the 13 mutations, the 4 injection
   mutations, patches for `primary`, and `eval/variants.yaml` with the default grouping.
   AC: each mutation tested (precondition, apply, reported locations); applying V1–V4, VI1, VI2 to
   `primary` and VX1 to `cross` succeeds; `eval --dry-run` lists every variant with its mutations.
@@ -494,6 +494,21 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   default suite** (32 s → 1.7 s once fixed) — an autouse guard in `tests/conftest.py` now fails
   any non-`scanners`/`live` test that opens an internet socket or runs external scanners.
   Tests: 1000 offline (+36). Spend: $0.
+- 2026-10-07 — M3.4: 13 defect + 4 injection mutations in `eval/mutations/` (one module each, plus
+  `_helpers.py` for line/YAML edits and `git apply` patches, and `_facts.py` for fact-based
+  preconditions that reuse the target rules' own predicates), the 5 `primary` patches in
+  `eval/patches/primary/`, `eval/variants.yaml` (V1–V4, VI1, VI2, VX1 = `all_generic`) and the
+  11-run `full` suite (dry-run: $3.23 projected, budget $5). `eval --dry-run` lists each run's
+  mutations. AC: 32 offline unit tests on a synthetic repo (registry, preconditions incl. "already
+  defective" skips, apply determinism, in-bounds changed lines, the target deterministic rule
+  flips) and `-m scanners` `test_eval_variants.py` applies every variant to the fetched repos and
+  checks the deterministic expected verdicts (7/7). Applied on the pinned repos: V1 M-SECRET,
+  M-AUTHOFF, M-CIPERMS, M-README (**M-ROOT skipped**: primary has no non-root USER); V2 all four
+  (osv-scanner reports nothing on primary, so M-VULNDEP applies); V3, V4, VI1, VI2 all; VX1 on
+  cross M-LATEST, M-NOTESTS, M-README (others' preconditions fail). Found by the tests: primary
+  has dangling symlinks under `.agents/`, so the runner copies with `symlinks=True`; M-NOTESTS
+  reported a line past EOF when the test step ended the file; `patch_changes` double-reported a
+  replaced line. Tests: 1032 offline (+32). Spend: $0.
 
 ---
 

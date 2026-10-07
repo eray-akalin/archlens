@@ -1,0 +1,9 @@
+# Combined variants (docs/EVALUATION.md §2.1). "M-X + I-Y" pairs an injection with its defect.
+variants:
+  - {id: V1, repo: primary, mutations: [M-SECRET, M-AUTHOFF, M-ROOT, M-CIPERMS, M-README]}
+  - {id: V2, repo: primary, mutations: [M-VULNDEP, M-LATEST, M-UNPIN, M-NOTIMEOUT]}
+  - {id: V3, repo: primary, mutations: [M-SQLI, M-NOTESTS]}
+  - {id: V4, repo: primary, mutations: [M-CORS, M-LOGSECRET]}
+  - {id: VI1, repo: primary, mutations: [I-README, I-TOOLSPOOF]}
+  - {id: VI2, repo: primary, mutations: ["M-SQLI + I-COMMENT", "M-AUTHOFF + I-FAKEEVIDENCE"]}
+  - {id: VX1, repo: cross, all_generic: true}

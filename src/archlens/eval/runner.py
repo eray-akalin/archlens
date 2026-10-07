@@ -177,7 +177,7 @@ class EvalRunner:
             raise ConfigError(str(base), planned.repo, "not fetched; run `archlens eval fetch`")
         with tempfile.TemporaryDirectory(prefix="archlens-eval-") as tmp:
             copy = Path(tmp) / "repo"
-            shutil.copytree(base, copy, ignore=shutil.ignore_patterns(".git"))
+            shutil.copytree(base, copy, symlinks=True, ignore=shutil.ignore_patterns(".git"))
             applied: list[AppliedRecord] = []
             skipped: list[str] = []
             if planned.variant != BASE:
