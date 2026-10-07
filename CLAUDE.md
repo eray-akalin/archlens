@@ -73,7 +73,8 @@ Commands for modules that don't exist yet are the target interface; build toward
    call is recorded (`LLMCallRecord`) with model, prompt version, tokens, cost.
 7. **Tests never touch the network.** Use the record/replay cassettes and `FakeLLM`. Tests that
    need real calls are marked `live` and skipped by default. Sole exception: the opt-in `scanners`
-   suite may query the OSV API with package names (ADR-014).
+   suite may query the OSV API with package names (ADR-014). An autouse guard in
+   `tests/conftest.py` blocks internet sockets and external scanners in every other test.
 8. **Money is a resource.** Before any command that calls a real LLM in bulk (eval, multi-repo
    assess) run its `--dry-run`, show the projected cost, and wait for confirmation. Never run
    `azd up`, `azd down`, or `az` commands that create or delete resources without asking.

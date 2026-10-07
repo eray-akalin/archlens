@@ -97,6 +97,12 @@ invalid file:
 
 Patches for `M-SQLI` and `M-AUTHOFF` must edit different route modules, because both appear in VI2.
 
+In `eval/variants.yaml` an entry is a mutation id or `"M-X + I-Y"` (an injection paired with its
+defect); `all_generic: true` (VX1) expands to every generic mutation whose precondition holds.
+Rules 1, 3 and 4 are checked when the plan is built; rule 2 when the variant is applied, from the
+files each mutation actually changed. A mutation whose precondition fails on the base repo is
+skipped (with its pair) and listed in the run's `skipped`.
+
 Default grouping for `primary`:
 
 | Variant | Mutations |
@@ -192,6 +198,11 @@ uv run archlens eval report eval/results/<run_id>               # regenerate tab
   `commit_sha` is recorded as `<base sha>+<variant id>`.
 - The exact LLM cache is disabled for base (stability) runs and enabled otherwise, so re-running a
   crashed eval doesn't pay twice.
-- Results: `eval/results/<run_id>/{config.yaml, variants/<variant>.json, summary.json, table.md}`.
-  Append-only.
+- Results: `eval/results/<run_id>/{config.yaml, variants/<repo>.<variant>.<n>.json, summary.json,
+  table.md}`. Append-only: an existing results directory is never written to.
+- Budget: a run starts only if the money already spent plus the run's `--dry-run` projection
+  stays within `budget_usd`; skipped runs are listed in `summary.json`. Each assessment still has
+  its own `ARCHLENS_RUN_BUDGET_USD` guard.
+- Ablation switches other than the verifier ones (`verifier: mechanical`, `skeptic: false`) are
+  rejected by the plan until M5.1.
 - The README "Results" table is filled from `table.md` of the latest accepted run per config.

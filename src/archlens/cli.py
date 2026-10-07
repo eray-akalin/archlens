@@ -18,7 +18,12 @@ from ulid import ULID
 from archlens import __version__
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
+from archlens.eval.config import load_eval_config
+from archlens.eval.metrics import render_table, summarize
+from archlens.eval.mutations import registry as mutation_registry
 from archlens.eval.repos import DEFAULT_REPOS_FILE, fetch, load_repos
+from archlens.eval.runner import EvalOutcome, EvalRunner, build_plan, load_results, project
+from archlens.eval.variants import load_variants
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.index.embed import CachedEmbedder
@@ -228,14 +233,107 @@ def eval_(
         Path | None, typer.Option(help="Eval config YAML, e.g. eval/configs/full.yaml.")
     ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Print projected cost only.")] = False,
+    yes: Annotated[bool, typer.Option("--yes", help="Skip the spending confirmation.")] = False,
 ) -> None:
-    """Run the evaluation harness against the eval set (subcommands: fetch)."""
+    """Run the evaluation harness (EVALUATION.md §7); subcommands: fetch, report."""
     if ctx.invoked_subcommand is not None:
         return
     if config is None:
         typer.echo(ctx.get_help())
         raise typer.Exit(code=1)
-    _not_implemented("M3.3")
+    try:
+        settings = load_settings()
+        app_config = load_config(settings)
+        rubrics = load_rubrics()
+        eval_config = load_eval_config(config)
+        variants_file = eval_config.variants_file
+        variants = load_variants(variants_file) if variants_file.exists() else []
+        mutations = mutation_registry()
+        plan = build_plan(
+            eval_config,
+            repos=load_repos(eval_config.repos_file),
+            variants=variants,
+            mutations=mutations,
+            rubrics=rubrics,
+        )
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    for problem in plan.problems:
+        typer.echo(f"  problem: {problem}", err=True)
+    projection = project(plan, app_config, rubrics)
+    for run in plan.runs:
+        cache = "cache on" if run.use_cache else "cache off"
+        typer.echo(f"  {run.name:28} {cache:9} ~${projection.per_run:.4f}")
+    typer.echo(
+        f"{len(plan.runs)} runs, projected ${projection.total:.2f} (upper bound); "
+        f"budget ${projection.budget:.2f}"
+    )
+    if plan.problems:
+        raise typer.Exit(code=1)
+    if dry_run:
+        return
+    if not yes and not typer.confirm("Spend real money on these runs?", default=False):
+        raise typer.Exit(code=1)
+    storage = open_storage(settings)
+    clients: list[LLMClient] = []
+
+    def context_for(run_id: str, use_cache: bool) -> RunContext:
+        boundary = new_boundary()
+        cache = storage.cache if use_cache else None
+        llm = LLMClient.from_config(app_config, cache_store=cache, boundary=boundary)
+        clients.append(llm)
+        embed = app_config.models.roles.embed.deployment
+        return RunContext(
+            run_id=run_id,
+            config=app_config,
+            storage=storage,
+            llm=llm,
+            embedder=CachedEmbedder(ClientEmbedder(llm, embed), storage.cache),
+            boundary=boundary,
+            work_dir=settings.data_dir / "runs" / run_id,
+            tools_dir=settings.tools_dir,
+            rubrics=rubrics,
+        )
+
+    runner = EvalRunner(
+        plan=plan,
+        mutations=mutations,
+        cache_dir=settings.data_dir / "eval" / "repos",
+        results_dir=Path("eval/results"),
+        context_factory=context_for,
+        eval_run_id=f"{eval_config.name}-{ULID()}",
+        app_config=app_config,
+        tools_dir=settings.tools_dir,
+    )
+
+    async def go() -> EvalOutcome:
+        try:
+            return await runner.run(projection.per_run)
+        finally:
+            for client in clients:
+                await client.aclose()
+
+    try:
+        outcome = asyncio.run(go())
+    except ArchLensError as exc:
+        typer.echo(f"eval failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"results: {outcome.directory} ({len(outcome.records)} runs)")
+    if outcome.skipped:
+        typer.echo(f"skipped for budget: {', '.join(outcome.skipped)}")
+
+
+@eval_app.command("report")
+def eval_report(
+    results: Annotated[Path, typer.Argument(help="eval/results/<run_id> directory.")],
+) -> None:
+    """Recompute summary metrics and rewrite table.md from the recorded runs."""
+    records = load_results(results)
+    config = load_eval_config(results / "config.yaml")
+    table = render_table(summarize(records), config.name)
+    (results / "table.md").write_text(table)
+    typer.echo(table)
 
 
 @eval_app.command("fetch")

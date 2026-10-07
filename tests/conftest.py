@@ -37,3 +37,28 @@ def tiny_service(tmp_path: Path) -> "MaterializedRepo":
     from tests.fixture_repos import materialize_tiny_service
 
     return materialize_tiny_service(tmp_path / "tiny_service")
+
+
+@pytest.fixture(autouse=True)
+def _offline_guard(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLAUDE.md rule 7: outside `scanners`/`live` tests, no internet socket may be opened and no
+    external scanner may run (osv-scanner would query the OSV API)."""
+    names = {mark.name for mark in request.node.iter_markers()}
+    if names & {"scanners", "live"}:
+        return
+    import socket
+
+    from archlens.facts import runner
+
+    real_connect = socket.socket.connect
+
+    def connect(sock: socket.socket, address: object) -> None:
+        if isinstance(address, tuple):  # AF_INET/AF_INET6; unix sockets pass a path
+            raise RuntimeError(f"network access in an offline test: {address!r}")
+        real_connect(sock, address)  # type: ignore[arg-type]
+
+    def no_scanners(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("external scanners ran in an offline test; pass scanners=False")
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(runner, "run_scanners", no_scanners)

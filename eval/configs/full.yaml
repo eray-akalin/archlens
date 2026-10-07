@@ -1,0 +1,16 @@
+# The `full` eval config (EVALUATION.md §6): every pipeline feature on.
+# Base runs only until the mutations land (M3.4), which add V1-V4, VI1, VI2 and VX1.
+name: full
+budget_usd: 5.0
+seed: 0
+repos_file: eval/repos.yaml
+variants_file: eval/variants.yaml
+features:
+  facts_in_context: true
+  deterministic_rules: true
+  verifier: full
+  self_consistency: true
+  skeptic: true
+suite:
+  - {repo: primary, variant: base, runs: 3}
+  - {repo: cross, variant: base, runs: 1}

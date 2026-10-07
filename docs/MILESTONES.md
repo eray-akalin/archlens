@@ -432,7 +432,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   → user picks → `eval/repos.yaml`; `archlens eval fetch`.
   AC: both repos cloned into the cache with ingest limits respected; `archlens facts` runs cleanly
   on both; `primary` profile has `has_http_api`, `has_database`, `has_dockerfile`, `has_ci` true.
-- [ ] **M3.3 Eval runner and metrics.** `archlens.eval.runner` (variants file + constraint
+- [x] **M3.3 Eval runner and metrics.** `archlens.eval.runner` (variants file + constraint
   validation, suites, `--dry-run` cost projection, budget cap, results layout) and
   `archlens.eval.metrics` (EVALUATION.md §4).
   AC: constraint validation rejects each rule violation in EVALUATION.md §2.1; metric computations
@@ -477,6 +477,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   Offline tests use a local origin over `file://` (pinned commit, cache reuse, limits, stale
   checkout, unknown SHA). Note: eShopOnWeb has no lockfile, so osv-scanner reports no advisories
   there. Tests: 964 offline (+9). Spend: $0.
+- 2026-10-07 — M3.3: `eval/{mutation,variants,config,runner,metrics}.py`, `eval/mutations/` (empty
+  registry until M3.4), `eval/configs/full.yaml` (base runs only for now), `archlens eval --config …
+  [--dry-run] [--yes]` and `archlens eval report <dir>`. Plan = static §2.1 checks + suite
+  expansion (base runs exact-cache off, others on); runs apply variants to fresh copies of the
+  fetched checkout, precondition-failing mutations are skipped (with their pair), the commit is
+  recorded as `<sha>+<variant>`, the budget cap uses spent + per-run projection, results are
+  append-only. Metrics: detection/located recall per repo, spillover minus base flips, labeled
+  precision/accuracy, mechanical pass rate, audit precision, score stability, verdict agreement,
+  VI1/VI2 injection resistance, cost/time/tokens; `table.md`. AC: each §2.1 violation rejected
+  (rules 1, 3, 4 static; rule 2 at apply, injection pairs allowed), metrics unit-tested on
+  hand-built reports, `--dry-run` works with zero mutations (4 runs, ≤ $1.18 projected; the 3
+  primary base runs at $0.29 each); runner e2e on tiny_service with toy mutations. Found by the
+  tests: rule 4 counted M-NOTESTS as its own CI conflict; the runner didn't pass `scanners` to
+  assessments, so its test ran real scanners and osv-scanner **reached the OSV API from the
+  default suite** (32 s → 1.7 s once fixed) — an autouse guard in `tests/conftest.py` now fails
+  any non-`scanners`/`live` test that opens an internet socket or runs external scanners.
+  Tests: 1000 offline (+36). Spend: $0.
 
 ---
 
