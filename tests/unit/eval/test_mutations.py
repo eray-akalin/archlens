@@ -33,7 +33,7 @@ from archlens.ingest.snapshot import build_snapshot
 from archlens.models import Fact, FactSet, IngestLimits, RepoProfile
 from archlens.profile import build_profile
 from archlens.rubric import load_rubrics
-from tests.unit.rubric.helpers import deterministic_results, fact, profile
+from tests.unit.rubric.helpers import deterministic_results, fact, profile, tool_run
 
 REPO = Path(__file__).parents[3]
 RUBRICS = load_rubrics(REPO / "rubrics")
@@ -189,8 +189,9 @@ def test_mutations_fail_cleanly_without_a_target(tmp_path: Path) -> None:
 # --- preconditions on hand-built facts ---------------------------------------------------------
 
 
-def fact_set(*facts: Fact) -> FactSet:
-    return FactSet(commit_sha="0" * 40, facts=list(facts), tool_runs=[])
+def fact_set(*facts: Fact, failed: str | None = None) -> FactSet:
+    runs = [tool_run(t, "error" if t == failed else "ok") for t in ("gitleaks", "osv-scanner")]
+    return FactSet(commit_sha="0" * 40, facts=list(facts), tool_runs=runs)
 
 
 def test_preconditions_skip_repos_that_already_have_the_defect() -> None:
@@ -216,6 +217,15 @@ def test_preconditions_skip_repos_that_already_have_the_defect() -> None:
     for mutation_id in ("M-NOTESTS", "M-CIPERMS", "M-UNPIN", "M-README", "M-SQLI", "I-README"):
         assert not MUTATIONS[mutation_id].precondition(nothing, py), mutation_id
     assert MUTATIONS["I-TOOLSPOOF"].precondition(nothing, py)
+
+
+def test_scanner_preconditions_need_a_clean_scan() -> None:
+    py = profile(lang_python=True)
+    assert MUTATIONS["M-SECRET"].precondition(fact_set(), py)
+    assert not MUTATIONS["M-SECRET"].precondition(fact_set(failed="gitleaks"), py)
+    assert not MUTATIONS["M-VULNDEP"].precondition(fact_set(failed="osv-scanner"), py)
+    no_runs = FactSet(commit_sha="0" * 40, facts=[], tool_runs=[])
+    assert not MUTATIONS["M-SECRET"].precondition(no_runs, py)
 
 
 def test_unpinned_actions_skip_unpin() -> None:

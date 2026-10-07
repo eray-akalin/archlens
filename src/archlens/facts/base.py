@@ -63,8 +63,11 @@ class ScanContext:
         tools_dir: Path,
         max_file_bytes: int = 2_000_000,
     ) -> "ScanContext":
-        """Context with a fresh SnippetReader; `workdir` is created if missing."""
+        """Context with a fresh SnippetReader; `workdir` is created if missing. Paths are made
+        absolute: tools run with `workdir` as cwd, so a relative root would point nowhere (and
+        some tools report that as a clean scan)."""
         workdir.mkdir(parents=True, exist_ok=True)
+        root, workdir, tools_dir = root.resolve(), workdir.resolve(), tools_dir.resolve()
         reader = SnippetReader(root, max_file_bytes=max_file_bytes)
         return cls(root, snapshot, workdir, tools, tools_dir, reader)
 

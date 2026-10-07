@@ -14,13 +14,20 @@ def _str(fact: Fact, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
+def ran_ok(facts: FactSet, tool: str) -> bool:
+    """The tool ran cleanly, so the absence of its facts means something."""
+    return any(r.tool == tool and r.status == "ok" for r in facts.tool_runs)
+
+
 def no_secrets(facts: FactSet) -> bool:
     excludes = NoneFoundParams().exclude_globs
-    return not any(not glob_match(_str(f, "path"), excludes) for f in facts.by_kind("secret"))
+    return ran_ok(facts, "gitleaks") and not any(
+        not glob_match(_str(f, "path"), excludes) for f in facts.by_kind("secret")
+    )
 
 
 def no_severe_vulns(facts: FactSet) -> bool:
-    return all(
+    return ran_ok(facts, "osv-scanner") and all(
         severity_rank(f.severity) < severity_rank("high") for f in facts.by_kind("vuln_dependency")
     )
 

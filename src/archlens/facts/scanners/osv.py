@@ -2,8 +2,13 @@
 
 Command (osv-scanner 2.6.0)::
 
-    osv-scanner scan source --recursive --no-resolve --allow-no-lockfiles
+    osv-scanner scan source --recursive --no-resolve --allow-no-lockfiles --no-ignore
         --config <work>/osv-scanner.toml --format json --verbosity error <repo>
+
+`--no-ignore`: without it osv-scanner honours `.gitignore` files, including those of a repository
+that merely contains the snapshot (e.g. a checkout under a gitignored data dir), and silently
+reports nothing. Results are kept only for non-vendored files listed in the snapshot, so the
+snapshot alone decides the scope (as for semgrep's `--no-git-ignore`).
 
 Reads lockfiles and manifests as text; never executes repo code. `--no-resolve` disables
 transitive resolution through package registries, and `--call-analysis` is never enabled (its
@@ -92,15 +97,18 @@ class OsvAdapter(SubprocessAdapter):
         config = ctx.workdir / "osv-scanner.toml"
         config.write_text("")
         return [
-            "scan", "source", "--recursive", "--no-resolve", "--allow-no-lockfiles",
+            "scan", "source", "--recursive", "--no-resolve", "--allow-no-lockfiles", "--no-ignore",
             "--config", str(config), "--format", "json", "--verbosity", "error",
         ]  # fmt: skip
 
     def parse(self, stdout: str, ctx: ScanContext, version: str) -> list[Fact]:
         facts: list[Fact] = []
         source = f"osv-scanner@{version}"
+        in_scope = {f.path for f in ctx.snapshot.files if not f.is_vendored}
         for result in json.loads(stdout or "{}").get("results", []):
             path = ctx.rel(result["source"]["path"])
+            if path not in in_scope:
+                continue
             for pkg in result.get("packages", []):
                 info = pkg["package"]
                 vulns: list[dict[str, Any]] = pkg.get("vulnerabilities", [])

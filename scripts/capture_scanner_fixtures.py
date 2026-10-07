@@ -61,7 +61,7 @@ def capture(adapter: SubprocessAdapter, root: Path, input_label: str) -> None:
         )
         assert proc.returncode in adapter.ok_exit_codes, proc.stderr
         text = proc.stdout
-        for real in {str(root.resolve()), str(root)}:
+        for real in sorted({str(root.resolve()), str(root)}, key=len, reverse=True):
             text = text.replace(real, ROOT_TOKEN)
         data = json.loads(redact(text))
         shown = " ".join(SubprocessAdapter._placeholders(argv[1:], ctx))  # pyright: ignore[reportPrivateUsage]

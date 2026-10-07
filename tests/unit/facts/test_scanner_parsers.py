@@ -74,6 +74,35 @@ def test_osv(tiny_service: MaterializedRepo, tmp_path: Path) -> None:
     )
 
 
+def test_osv_keeps_only_snapshot_files(tiny_service: MaterializedRepo, tmp_path: Path) -> None:
+    """`--no-ignore` makes osv-scanner see everything; the snapshot decides the scope."""
+    vendored = tiny_service.root / "node_modules" / "x" / "requirements.txt"
+    vendored.parent.mkdir(parents=True)
+    vendored.write_text("PyYAML==5.3\n")
+    ctx = ctx_for(tiny_service.root, tmp_path)
+    data = json.loads(stored_output("osv-scanner", tiny_service.root))
+    kept = data["results"][0]
+    data["results"] += [
+        {**kept, "source": {**kept["source"], "path": str(vendored)}},
+        {**kept, "source": {**kept["source"], "path": str(tmp_path / "elsewhere.txt")}},
+    ]
+    facts = OsvAdapter().parse(json.dumps(data), ctx, "2.6.0")
+    assert {e.path for f in facts for e in f.evidence if isinstance(e, CodeEvidence)} == {
+        "requirements.txt"
+    }
+    assert "--no-ignore" in OsvAdapter().options(ctx)
+
+
+def test_scan_context_paths_are_absolute(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "repo").mkdir()
+    (tmp_path / "repo" / "a.py").write_text("x = 1\n")
+    monkeypatch.chdir(tmp_path)
+    snapshot = build_snapshot(Path("repo"), limits=IngestLimits())
+    ctx = ScanContext.create(Path("repo"), snapshot, Path("work"), TOOLS, Path("tools"))
+    assert ctx.root == tmp_path.resolve() / "repo"
+    assert ctx.workdir.is_absolute() and ctx.tools_dir.is_absolute()
+
+
 @pytest.mark.parametrize(
     ("score", "severity"),
     [(9.8, "critical"), (7.0, "high"), (5.3, "medium"), (0.1, "low"), (0, None)],
