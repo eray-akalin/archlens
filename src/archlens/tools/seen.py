@@ -47,6 +47,17 @@ class SeenLines:
             for session, paths in sorted(self._seen.items())
         }
 
+    def update(self, data: Mapping[str, JsonValue]) -> None:
+        """Add the lines of a `dump` (e.g. a metric's checkpointed sessions on resume)."""
+        for session, paths in _DUMP.validate_python(data).items():
+            for path, ranges in paths.items():
+                for start, end in ranges:
+                    self.add(session, path, start, end)
+
+    def subset(self, prefix: str) -> dict[str, JsonValue]:
+        """`dump` restricted to sessions whose id starts with `prefix`."""
+        return {s: v for s, v in self.dump().items() if s.startswith(prefix)}
+
     @classmethod
     def load(cls, data: Mapping[str, JsonValue]) -> "SeenLines":
         """Inverse of `dump`. Raises pydantic.ValidationError for a malformed checkpoint."""

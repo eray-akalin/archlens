@@ -174,7 +174,12 @@ tests/                   unit/, integration/, fixtures/{repos,scanners}/, casset
 - `RunContext` carries `run_id`, settings, storage, LLM client, budget guard, telemetry tracer,
   and the seen-lines ledger.
 - Checkpoints: after each stage, `checkpoint.save(run_id, stage, output)`; the evaluate stage
-  checkpoints per metric. `archlens assess --resume <run_id>` skips completed stages/metrics.
+  checkpoints per metric (`evaluate/<metric>`: its results plus its sessions' seen lines, which
+  the verifier needs after a resume). LLM call records and stage timings are checkpointed too, so
+  a resumed run's cost covers every call. `archlens assess <target> --resume <run_id>` skips
+  completed stages/metrics; the repository is re-read (remote: re-cloned at the recorded commit)
+  and must match the checkpointed snapshot, otherwise the resume fails. The index file lives in
+  `<data_dir>/runs/<run_id>/index.sqlite` so it survives the clone.
 - Concurrency: `ARCHLENS_MAX_CONCURRENCY` bounds concurrent LLM sessions; a token-bucket limiter
   keyed on `ARCHLENS_TPM_LIMIT` paces requests; 429s are retried with the server's `retry-after`.
 - Failure semantics: a stage-level exception fails the run (with checkpoint kept); a check-level

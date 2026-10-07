@@ -242,7 +242,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M2.7 Report.** `AssessmentReport` builder, `report.md`, basic `report.html`, synthesizer
   with guards (LLM.md §7).
   AC: Markdown/HTML snapshot tests; synth guard tests (unknown finding IDs, unlisted numbers).
-- [ ] **M2.8 Orchestrator + CLI.** Pipeline, checkpoints (M0.6 store), `--resume`, `archlens assess`.
+- [x] **M2.8 Orchestrator + CLI.** Pipeline, checkpoints (M0.6 store), `--resume`, `archlens assess`.
   AC: offline e2e on tiny_service (cassettes) produces a valid `assessment.json` detecting the
   planted defects for security, testing and cicd; killing the run mid-evaluate and resuming skips
   completed stages and metrics.
@@ -360,6 +360,23 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   whitelist mirrors the synthesizer input exactly (incl. coverage % and the 0-10 scale); ids in
   the text are guarded too; one `render.py` + `view.py` instead of `render_md.py`/`render_html.py`
   (layout updated). Tests: 800 offline (+32). Spend: $0.
+- 2026-10-07 — M2.8: `orchestrator/{context,checkpoint,pipeline,projection}.py`, `archlens assess`
+  (`--resume`, `--no-cache`, `--metrics`, `--no-scanners`, `--dry-run`, hidden `--cassettes`).
+  Fixed stage DAG with typed checkpoints; metrics evaluated concurrently in a `TaskGroup` (a
+  failure cancels the rest; finished metrics keep their checkpoints); `RunState` tracks stages,
+  metrics and cost. AC: offline e2e on tiny_service (`tests/integration/test_assess_offline.py`)
+  produces a valid `assessment.json` + report.md/html and every DEFECTS.md row for security,
+  testing and cicd comes out as expected and verified (scanner checks `unknown` with scanners
+  off); a run killed in the testing session after the other metrics checkpointed resumes without
+  re-extracting facts or re-evaluating them, and their citations still verify from the restored
+  ledger; budget exhaustion degrades to `unknown` + no narrative; resume guards (missing run,
+  existing id, changed repo). **Deviation:** the AC says cassettes; the e2e uses a scripted
+  FakeLLM instead (recording costs money and breaks on every prompt change) — recording a
+  cassette of a real tiny_service run is proposed for M2.9 with approval. Resolved: the index
+  file lives in the run dir; LLM records and timings are checkpointed; `SeenLines.update/subset`;
+  `--dry-run` heuristics projection ($0.11 upper bound for tiny_service's 3 metrics). CLI checked
+  by hand in replay mode with an empty cassette dir (fails cleanly at index with a resume hint,
+  no network). Tests: 807 offline (+7). Spend: $0.
 
 ---
 

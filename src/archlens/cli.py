@@ -4,6 +4,7 @@ The only module that writes to stdout directly. Commands that are not implemente
 code 1 and name the milestone (docs/MILESTONES.md) that delivers them.
 """
 
+import asyncio
 import json
 import tempfile
 from collections import Counter
@@ -11,16 +12,27 @@ from pathlib import Path
 from typing import Annotated, NoReturn
 
 import typer
+from ulid import ULID
 
 from archlens import __version__
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
+from archlens.index.embed import CachedEmbedder
 from archlens.ingest import ingest
+from archlens.llm.client import LLMClient
+from archlens.llm.embedder import ClientEmbedder
 from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, update_lock
+from archlens.llm.untrusted import new_boundary
+from archlens.models import AssessmentReport
 from archlens.models.schemas import export_schemas
+from archlens.orchestrator.context import RunContext, RunOptions
+from archlens.orchestrator.pipeline import ARTIFACTS, run_assessment
+from archlens.orchestrator.projection import project_cost
 from archlens.profile import build_profile
+from archlens.rubric import load_rubrics
+from archlens.storage import open_storage
 
 app = typer.Typer(
     name="archlens",
@@ -67,9 +79,91 @@ def assess(
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Bypass the LLM exact cache.")
     ] = False,
+    metrics: Annotated[
+        str | None, typer.Option(help="Comma-separated metrics (default: every rubric).")
+    ] = None,
+    no_scanners: Annotated[
+        bool, typer.Option("--no-scanners", help="Extractors only (no external tools).")
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Print the projected LLM cost and exit.")
+    ] = False,
+    cassettes: Annotated[
+        Path | None,
+        typer.Option(hidden=True, help="Cassette dir for ARCHLENS_LLM_RECORD_MODE=record/replay."),
+    ] = None,
 ) -> None:
     """Run the full pipeline: ingest, facts, profile, index, evaluate, verify, score, report."""
-    _not_implemented("M2.8")
+    try:
+        settings = load_settings()
+        config = load_config(settings)
+        rubrics = load_rubrics()
+        selected = tuple(m.strip() for m in metrics.split(",") if m.strip()) if metrics else None
+        names = sorted(selected or rubrics)
+        unknown = sorted(set(names) - set(rubrics))
+        if unknown:
+            raise ConfigError("--metrics", ",".join(unknown), f"available: {sorted(rubrics)}")
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    if dry_run:
+        projection = project_cost(config, [rubrics[name] for name in names])
+        for line in projection.lines:
+            typer.echo(f"  {line.item:40} ${line.usd:.4f}")
+        budget = settings.run_budget_usd
+        typer.echo(f"projected (upper bound): ${projection.total:.4f}; run budget ${budget:.2f}")
+        return
+    run_id = resume or str(ULID())
+    storage = open_storage(settings)
+    boundary = new_boundary()
+    cache = None if no_cache else storage.cache
+    llm = LLMClient.from_config(
+        config, cache_store=cache, boundary=boundary, cassette_dir=cassettes
+    )
+    embedder = CachedEmbedder(
+        ClientEmbedder(llm, config.models.roles.embed.deployment), storage.cache
+    )
+    ctx = RunContext(
+        run_id=run_id,
+        config=config,
+        storage=storage,
+        llm=llm,
+        embedder=embedder,
+        boundary=boundary,
+        work_dir=settings.data_dir / "runs" / run_id,
+        tools_dir=settings.tools_dir,
+        rubrics=rubrics,
+    )
+    options = RunOptions(target=target, metrics=selected, scanners=not no_scanners)
+
+    async def run() -> AssessmentReport:
+        try:
+            return await run_assessment(ctx, options, resume=resume is not None)
+        finally:
+            await llm.aclose()
+
+    typer.echo(f"run {run_id}")
+    try:
+        report = asyncio.run(run())
+    except ArchLensError as exc:
+        typer.echo(f"run {run_id} failed: {exc}", err=True)
+        typer.echo(f"resume with: archlens assess {target} --resume {run_id}", err=True)
+        raise typer.Exit(code=1) from exc
+    run_out = out / run_id
+    run_out.mkdir(parents=True, exist_ok=True)
+
+    async def copy() -> None:
+        for name in ARTIFACTS:
+            data = await storage.artifacts.get(run_id, name)
+            if data is not None:
+                (run_out / name).write_bytes(data)
+
+    asyncio.run(copy())
+    for metric in report.metric_scores:
+        score = f"{metric.score:.1f}" if metric.score is not None else "-"
+        typer.echo(f"  {metric.metric:14} {score:>5}  {metric.status}")
+    overall = f"{report.overall_score:.1f}" if report.overall_score is not None else "not computed"
+    typer.echo(f"overall: {overall}; cost ${report.cost.usd:.4f}; report: {run_out}/report.md")
 
 
 @app.command()

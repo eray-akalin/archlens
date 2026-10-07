@@ -222,7 +222,10 @@ and must cite finding IDs. This is the only place a semantic cache may sit in fr
   states the budget stop.
 - **Projection** (`--dry-run`): per metric, use the median recorded cost of that metric from past
   runs in `ARCHLENS_DATA_DIR` when ≥ 3 exist; otherwise heuristics in `config/models.yaml`
-  (`estimates.tokens_per_metric`).
+  (`estimates.tokens_per_metric`). Implemented so far: the heuristics (`orchestrator/projection.py`
+  — evaluator sessions incl. a consistency rerun, a third of a session per skeptic, one
+  verifier estimate per LLM check, one synthesizer call; an upper bound since every LLM check
+  counts as applicable). Medians from recorded runs come with the eval harness (M3).
 
 ## 10. Testing without the network
 
