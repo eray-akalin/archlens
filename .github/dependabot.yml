@@ -15,6 +15,10 @@ updates:
     groups:
       python:
         patterns: ["*"]
+    ignore:
+      # 0.26.0 segfaults on files > 256 lines (py-tree-sitter#472); pyproject pins <0.26
+      - dependency-name: tree-sitter
+        versions: ["0.26.0"]
 
   # Base image digests in the Dockerfile's ARG defaults (python, uv).
   - package-ecosystem: docker

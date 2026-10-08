@@ -640,7 +640,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M4 — Azure (week 3; must start with ≥ 10 days of credit left)
 
-- [ ] **M4.1 Container image.** Multi-stage Dockerfile, pinned base digest, scanners at pinned
+- [x] **M4.1 Container image.** Multi-stage Dockerfile, pinned base digest, scanners at pinned
   versions with checksums, non-root, healthcheck; GHCR push in `deploy.yml`.
   AC: image passes ArchLens's own container checks (CTR-01…07).
 - [ ] **M4.2 Storage (Azure).** Blob, Cosmos, Queue implementations of the M0.6 Protocols.
@@ -662,6 +662,24 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: end-to-end from the browser.
 
 **Log**
+
+- 2026-10-08 — M4.1: `Dockerfile` (multi-stage; `python:3.12-slim-trixie` and the uv image pinned
+  by digest in `ARG` defaults), `.dockerignore` (allow-list: no `.env`, data or results can enter
+  the context), `scripts/fetch_scanners.py` (versions and sha256 from `config/tools.yaml` — the
+  four Go binaries' checksums now filled from each release's official checksum file — https only,
+  checked before writing; semgrep and checkov in their own virtualenvs). Runtime: uid 10001,
+  `/data` as data dir, `git` + `ca-certificates`, `HEALTHCHECK` on `GET /healthz`, default
+  `archlens serve`. Pulled forward from M4.3: a FastAPI app with only `/healthz` (fastapi,
+  uvicorn; httpx for tests) so the HEALTHCHECK checks something real. CI job `image` builds it
+  and smoke-tests the CLI, all six scanners at their pinned versions, uid and `/healthz` (green on
+  bbe0221). `deploy.yml` (GHCR push, commit-SHA tag) is `workflow_dispatch` only until the user
+  approves publishing. AC: on a clean copy of this repo CTR-01…07 all `pass` (CTR-07 hadolint 0
+  errors; DL3008 ignored with a reason, numeric `USER` for DL3066). The repo as a whole also
+  contains the tiny_service fixture's planted container defects, so a full self-assessment fails
+  CTR-01/02/03/06/07 by design. **Open decision:** the Semgrep Rules License allows internal use
+  only (no redistribution, no use as a service): rules aren't in the image, the CLI fetches them,
+  and the hosted API (M4.4) needs another SEC-03 source. Dependabot: ignore tree-sitter 0.26.0
+  (its PR segfaulted CI, as expected). Tests: 1075 (+7). Spend: $0.
 
 ---
 
