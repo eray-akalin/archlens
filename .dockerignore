@@ -1,0 +1,12 @@
+# Allow-list: the build context holds only what the image needs (never .env, data or results).
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!config/
+!rubrics/
+!prompts/
+!scripts/fetch_scanners.py
+**/__pycache__
+**/*.pyc

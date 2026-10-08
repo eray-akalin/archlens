@@ -492,8 +492,12 @@ def serve(
     host: Annotated[str, typer.Option(help="Bind address.")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Port.")] = 8000,
 ) -> None:
-    """Start the HTTP API."""
-    _not_implemented("M4.3")
+    """Start the HTTP API (only `GET /healthz` until M4.3)."""
+    import uvicorn
+
+    from archlens.api import create_app
+
+    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
 
 
 @app.command()

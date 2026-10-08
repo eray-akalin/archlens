@@ -116,3 +116,5 @@ Layered; no single layer is trusted.
 
 ArchLens must pass its own rubric: no secrets in git (`.env` is gitignored), pinned actions with
 minimal `permissions:`, OIDC for Azure, non-root container, pinned base image, Dependabot enabled.
+The image's build context is an allow-list (`.dockerignore`), so `.env`, data and results can't
+reach it; scanner binaries are checksum-verified at build time (AZURE.md §4).

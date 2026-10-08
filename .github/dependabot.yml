@@ -16,7 +16,7 @@ updates:
       python:
         patterns: ["*"]
 
-  # The Dockerfile arrives in M4.1; until then this entry reports "no dependency files".
+  # Base image digests in the Dockerfile's ARG defaults (python, uv).
   - package-ecosystem: docker
     directory: /
     schedule:

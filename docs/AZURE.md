@@ -110,6 +110,19 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
   (uv), and `docker`.
 - Dockerfile: multi-stage, pinned base image digest, scanners installed at pinned versions from
   `config/tools.yaml` with checksum verification, non-root `USER`, `HEALTHCHECK` for the API image.
+  As built (M4.1): `python:3.12-slim-trixie` and `ghcr.io/astral-sh/uv` pinned by digest in `ARG`
+  defaults (Dependabot `docker` bumps them); `scripts/fetch_scanners.py` downloads the four Go
+  binaries over https and checks each sha256 from `config/tools.yaml` (taken from the releases'
+  official checksum files) before writing it; semgrep and checkov get one virtualenv each so their
+  dependencies can't clash with ArchLens's. Runtime: uid 10001, `ARCHLENS_DATA_DIR=/data`,
+  `git` + `ca-certificates` only, default command `archlens serve` (API), `HEALTHCHECK` on
+  `GET /healthz`. The CI `image` job builds it and smoke-tests the CLI, every scanner and the
+  health route. **Semgrep registry rules are not in the image**: the Semgrep Rules License allows
+  internal use only — no redistribution and no offering them as a service. The CLI fetches them at
+  run time (local use is internal use); the hosted API needs a decision before M4.4 (rules we
+  write, a permissively licensed rule set, or SEC-03 without semgrep in cloud mode).
+- `deploy.yml` is manual (`workflow_dispatch`) until publishing to GHCR is approved; then the
+  push-to-main trigger and the `azd deploy` step (M4.4) are added.
 
 ## 5. Cost guardrails
 

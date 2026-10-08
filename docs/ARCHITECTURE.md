@@ -159,7 +159,7 @@ src/archlens/
   security/              redact.py, url_policy.py
   orchestrator/          pipeline.py, checkpoint.py, context.py
   storage/               base.py (Protocols), local.py, azure.py
-  api/                   app.py (FastAPI), routes.py, auth.py
+  api/                   app.py (FastAPI; `GET /healthz` since M4.1), routes.py, auth.py
   worker/                main.py (queue consumer for Container Apps Job)
   mcp/                   server.py (M5)
   telemetry/             otel.py, metrics.py

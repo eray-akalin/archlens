@@ -22,6 +22,6 @@ def test_version() -> None:
 
 
 def test_stub_command_fails_and_names_milestone() -> None:
-    result = runner.invoke(app, ["serve"])
+    result = runner.invoke(app, ["worker"])
     assert result.exit_code == 1
     assert "M4.3" in result.output

@@ -1,0 +1,40 @@
+name: deploy
+
+# Builds the image and pushes it to GHCR tagged with the commit SHA (docs/AZURE.md §4). Manual
+# only for now: publishing is outward-facing, so the push-to-main trigger and the `azd deploy`
+# step (M4.4, environment `prod` with a required reviewer) are added once approved.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          docker build --platform linux/amd64 --tag "$image" .
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+
+      - name: Push to GHCR
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
+          docker logout ghcr.io

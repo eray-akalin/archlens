@@ -42,3 +42,32 @@ jobs:
       # ARCHLENS_LIVE_TESTS=1, which CI never sets. Includes the schema drift test.
       - name: Tests
         run: uv run pytest
+
+  # The image (docs/AZURE.md §4): build it and check that the CLI, every pinned scanner and the
+  # API health route work inside it. Nothing is pushed here; deploy.yml publishes.
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: docker build --platform linux/amd64 --tag archlens:ci .
+
+      - name: Smoke test
+        run: |
+          docker run --rm archlens:ci archlens --version
+          docker run --rm archlens:ci sh -c \
+            'gitleaks version && osv-scanner --version && hadolint --version &&
+             actionlint -version && semgrep --version && checkov --version'
+          docker run --rm archlens:ci id -u | grep -qx 10001
+          docker run --detach --name api --publish 8000:8000 archlens:ci
+          ok=""
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/healthz; then ok=1; break; fi
+            sleep 2
+          done
+          docker rm --force api
+          test -n "$ok"

@@ -1,12 +1,12 @@
 # External scanners, pinned to the versions the adapters were verified against (2026-10-06).
-# The Dockerfile (M4.1) installs exactly these and records each `checksum` (sha256 of the
-# linux-amd64 release artifact). Local dev: scripts/install_tools.sh. Exact commands and why each
+# The image installs exactly these (scripts/fetch_scanners.py); `checksum` is the sha256 of the
+# linux-amd64 release artifact, taken from each release's official checksum file (2026-10-08). Local dev: scripts/install_tools.sh. Exact commands and why each
 # tool never executes repo code are in the adapter docstrings (src/archlens/facts/scanners/).
 tools:
-  gitleaks:     {version: 8.30.1, checksum: null, timeout_s: 120}   # dir mode, --redact
-  osv-scanner:  {version: 2.6.0, checksum: null, timeout_s: 180}    # --no-resolve; queries the OSV API
+  gitleaks:     {version: 8.30.1, checksum: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb, timeout_s: 120}   # dir mode, --redact
+  osv-scanner:  {version: 2.6.0, checksum: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108, timeout_s: 180}    # --no-resolve; queries the OSV API
   semgrep:      {version: 1.179.0, timeout_s: 300, rulesets: ["p/default"], metrics: "off"}
-  hadolint:     {version: 2.15.1, checksum: null, timeout_s: 60}
+  hadolint:     {version: 2.15.1, checksum: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507, timeout_s: 60}
   checkov:      {version: 3.3.20, timeout_s: 300}
-  actionlint:   {version: 1.7.12, checksum: null, timeout_s: 60}
+  actionlint:   {version: 1.7.12, checksum: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8, timeout_s: 60}
   lizard:       {version: 1.24.1, timeout_s: 120}                   # Python package, used via its API
