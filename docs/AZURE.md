@@ -119,8 +119,10 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
   `GET /healthz`. The CI `image` job builds it and smoke-tests the CLI, every scanner and the
   health route. **Semgrep registry rules are not in the image**: the Semgrep Rules License allows
   internal use only — no redistribution and no offering them as a service. The CLI fetches them at
-  run time (local use is internal use); the hosted API needs a decision before M4.4 (rules we
-  write, a permissively licensed rule set, or SEC-03 without semgrep in cloud mode).
+  run time (local use is internal use). Decided (2026-10-10, option c): the hosted image sets
+  `ARCHLENS_SEMGREP_REGISTRY_RULES=false`, which adds semgrep to `tools.yaml`'s `disabled` list, so
+  semgrep never runs there and SEC-03 is `unknown` (`tool_not_run`) — honest rather than a fake
+  pass. Rules we write ourselves can bring it back later.
 - `deploy.yml` is manual (`workflow_dispatch`) until publishing to GHCR is approved; then the
   push-to-main trigger and the `azd deploy` step (M4.4) are added.
 

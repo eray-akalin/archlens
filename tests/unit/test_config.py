@@ -146,6 +146,12 @@ def test_tiebreak_role(config_dir: Path) -> None:
     assert overridden.reasoning_effort == "medium"  # other params kept
 
 
+def test_semgrep_registry_rules_switch(config_dir: Path) -> None:
+    assert load_config(settings_for(config_dir)).tools.disabled == []
+    hosted = load_config(settings_for(config_dir, semgrep_registry_rules="false"))
+    assert hosted.tools.disabled == ["semgrep"]
+
+
 def _edit(path: Path, old: str, new: str) -> None:
     text = path.read_text()
     assert old in text, f"fixture drift: {old!r} not in {path.name}"

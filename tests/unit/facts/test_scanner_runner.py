@@ -2,6 +2,7 @@
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import ClassVar
 
@@ -112,6 +113,8 @@ def test_gitleaks_runs_first_and_feeds_the_redactor(tmp_path: Path) -> None:
             )
 
     class Probe:
+        tool = "probe"
+
         def run(self, ctx: ScanContext) -> tuple[list[Fact], ToolRunRecord]:
             seen.append("probe")
             evidence = ctx.reader.evidence("cfg.py", 1)
@@ -124,3 +127,20 @@ def test_gitleaks_runs_first_and_feeds_the_redactor(tmp_path: Path) -> None:
     assert seen == ["gitleaks", "probe"]
     assert [r.tool for r in results.tool_runs] == ["gitleaks", "probe"]
     assert "zz-opaque" not in json.dumps([f.model_dump() for f in results.facts])
+
+
+def test_disabled_tools_never_run(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "a.py").write_text("x = 1\n")
+
+    class Boom:
+        tool = "semgrep"
+
+        def run(self, ctx: ScanContext) -> tuple[list[Fact], ToolRunRecord]:
+            raise AssertionError("a disabled tool ran")
+
+    ctx = ctx_for(root, tmp_path)
+    ctx = replace(ctx, tools=ctx.tools.model_copy(update={"disabled": ["semgrep"]}))
+    results = run_scanners(ctx, [Boom()])
+    assert results.tool_runs == []  # no record → rules that need it answer unknown

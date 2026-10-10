@@ -10,3 +10,6 @@ tools:
   checkov:      {version: 3.3.20, timeout_s: 300}
   actionlint:   {version: 1.7.12, checksum: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8, timeout_s: 60}
   lizard:       {version: 1.24.1, timeout_s: 120}                   # Python package, used via its API
+# Tools listed here never run. ARCHLENS_SEMGREP_REGISTRY_RULES=false (the image's default) adds
+# semgrep: its registry rules are licensed for internal use only.
+disabled: []

@@ -50,6 +50,7 @@ ENV PATH="/app/.venv/bin:/opt/scanners/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ARCHLENS_DATA_DIR=/data \
+    ARCHLENS_SEMGREP_REGISTRY_RULES=false \
     ARCHLENS_TOOLS_DIR=/home/archlens/.cache/archlens/tools
 USER 10001
 EXPOSE 8000

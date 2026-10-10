@@ -236,7 +236,9 @@ API surface (FastAPI):
 `archlens.config.Settings` (pydantic-settings, env prefix `ARCHLENS_`). See `.env.example` for the
 full list. Non-secret defaults also live in `config/models.yaml` (model routing, reasoning effort,
 token caps) and `config/pricing.yaml` (USD per 1M tokens per deployment — user-maintained; verify
-against the Azure pricing page before eval runs).
+against the Azure pricing page before eval runs). `config/tools.yaml` pins scanner versions and
+checksums and lists `disabled` tools; `ARCHLENS_SEMGREP_REGISTRY_RULES=false` (the image's default)
+disables semgrep for licensing reasons.
 
 ## 8. Observability
 

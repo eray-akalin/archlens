@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     max_concurrency: Annotated[int, Field(ge=1)] = 4
     tpm_limit: Annotated[int, Field(ge=1)] = 200_000
     run_budget_usd: Annotated[float, Field(gt=0)] = 1.00
+    # Semgrep registry rules are licensed for internal use only (no redistribution, no use as a
+    # service): false in the hosted image, which then runs no semgrep at all (docs/AZURE.md §4).
+    semgrep_registry_rules: bool = True
     # Storage
     storage: Literal["local", "azure"] = "local"
     data_dir: Path = Path(".archlens")
@@ -174,6 +177,8 @@ class ToolsConfig(_ConfigFile):
     """`config/tools.yaml`: pinned scanner versions and timeouts."""
 
     tools: dict[str, ToolConfig]
+    # never run (no run record, so the rules that need them answer `unknown`, `tool_not_run`)
+    disabled: list[str] = Field(default_factory=list[str])
 
 
 @dataclass(frozen=True)
@@ -208,6 +213,8 @@ def load_config(settings: Settings | None = None) -> AppConfig:
     models = _apply_deployment_overrides(_parse(ModelsConfig, config_dir / "models.yaml"), settings)
     pricing = _parse(PricingConfig, config_dir / "pricing.yaml")
     tools = _parse(ToolsConfig, config_dir / "tools.yaml")
+    if not settings.semgrep_registry_rules and "semgrep" not in tools.disabled:
+        tools = tools.model_copy(update={"disabled": [*tools.disabled, "semgrep"]})
     _check_prices(models, pricing, source=str(config_dir / "pricing.yaml"))
     return AppConfig(settings=settings, models=models, pricing=pricing, tools=tools)
 

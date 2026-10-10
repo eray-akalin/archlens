@@ -102,7 +102,7 @@ Type: **D** = deterministic, **L** = LLM. Severity: C/H/M/L.
 |---|---|---|---|---|
 | SEC-01 | No secrets committed | D | C | `secrets.none_found` |
 | SEC-02 | No dependencies with known critical/high vulnerabilities | D | C | `vulns.max_severity` |
-| SEC-03 | No high-severity static-analysis findings | D | H | `sast.max_severity` |
+| SEC-03 | No high-severity static-analysis findings | D | H | `sast.max_severity`; `unknown` where semgrep is disabled (hosted image, AZURE.md §4) |
 | SEC-04 | Untrusted input validated at boundaries | L | H | `applies_when: {any: [has_http_api, has_message_consumer]}`; `fact_kinds: [route, sast_finding]` |
 | SEC-05 | Database queries parameterized (no string-built SQL) | L | C | `applies_when: {any: [has_database]}` |
 | SEC-06 | CORS and security headers safely configured | L | M | `applies_when: {any: [has_http_api]}`; `absence_allowed`; `na_allowed: true` |

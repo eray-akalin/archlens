@@ -680,6 +680,10 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   only (no redistribution, no use as a service): rules aren't in the image, the CLI fetches them,
   and the hosted API (M4.4) needs another SEC-03 source. Dependabot: ignore tree-sitter 0.26.0
   (its PR segfaulted CI, as expected). Tests: 1075 (+7). Spend: $0.
+- 2026-10-10 — Semgrep licensing, user's option (c): `ToolsConfig.disabled` (tools that never run
+  → no run record → dependent rules answer `unknown`/`tool_not_run`) and
+  `ARCHLENS_SEMGREP_REGISTRY_RULES` (default true for the CLI; the image sets false, which disables
+  semgrep). Tests: 1077 (+2). Spend: $0.
 
 ---
 

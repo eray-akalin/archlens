@@ -23,6 +23,9 @@ __all__ = ["Adapter", "ScanResults", "default_adapters", "run_scanners"]
 
 
 class Adapter(Protocol):
+    @property
+    def tool(self) -> str: ...
+
     def run(self, ctx: ScanContext) -> tuple[list[Fact], ToolRunRecord]: ...
 
 
@@ -53,6 +56,7 @@ def run_scanners(
     Never raises for tool problems; they are recorded as error/timeout statuses.
     """
     adapters = adapters if adapters is not None else default_adapters()
+    adapters = [a for a in adapters if a.tool not in ctx.tools.disabled]
     first = [a for a in adapters if isinstance(a, GitleaksAdapter)]
     rest = [a for a in adapters if not isinstance(a, GitleaksAdapter)]
     facts: list[Fact] = []
