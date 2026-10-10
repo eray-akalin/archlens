@@ -74,6 +74,22 @@ STAGES = ("ingest", "facts", "profile", "index", "evaluate", "verify", "score", 
 ARTIFACTS = ("assessment.json", "report.md", "report.html")
 
 
+def queued_state(run_id: str, repo_url: str | None, ref: str | None) -> RunState:
+    """A run's state before it starts: queued, every stage pending."""
+    return RunState(
+        run_id=run_id,
+        repo_url=repo_url,
+        ref=ref,
+        status="queued",
+        stages=[
+            StageState(stage=s, status="pending", started_at=None, finished_at=None, error=None)
+            for s in STAGES
+        ],
+        metrics_done=[],
+        cost_usd=0.0,
+    )
+
+
 class Pipeline:
     def __init__(self, ctx: RunContext, options: RunOptions) -> None:
         self.ctx = ctx
@@ -315,20 +331,12 @@ class Pipeline:
         existing = await self.ctx.storage.run_state.load(self.ctx.run_id)
         if resume and existing is None:
             raise ArchLensError(f"no run {self.ctx.run_id} to resume")
-        if not resume and existing is not None:
+        queued = existing is not None and existing.status == "queued"  # created by the API
+        if not resume and existing is not None and not queued:
             raise ArchLensError(f"run {self.ctx.run_id} already exists; resume it instead")
         target = self.options.target
-        self.state = existing or RunState(
-            run_id=self.ctx.run_id,
-            repo_url=target if is_remote(target) else None,
-            ref=self.options.ref,
-            status="queued",
-            stages=[
-                StageState(stage=s, status="pending", started_at=None, finished_at=None, error=None)
-                for s in STAGES
-            ],
-            metrics_done=[],
-            cost_usd=0.0,
+        self.state = existing or queued_state(
+            self.ctx.run_id, target if is_remote(target) else None, self.options.ref
         )
         self.state.status = "running"
         self.previous_records = await self.cp.load_records()

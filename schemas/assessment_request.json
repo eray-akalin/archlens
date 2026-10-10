@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.2.0",
+  "additionalProperties": false,
+  "description": "Body of `POST /assessments`. The URL is checked by the URL policy before anything else.",
+  "properties": {
+    "repo_url": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Repo Url",
+      "type": "string"
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ref"
+    },
+    "metrics": {
+      "anyOf": [
+        {
+          "items": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metrics"
+    }
+  },
+  "required": [
+    "repo_url"
+  ],
+  "title": "AssessmentRequest",
+  "type": "object"
+}

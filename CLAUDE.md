@@ -48,6 +48,7 @@ uv run pytest -m scanners                 # needs scanners (scripts/install_tool
 ARCHLENS_LIVE_TESTS=1 uv run pytest -m live   # real LLM calls; costs money; only when asked
 uv run archlens assess <path-or-url> --out runs/   # full pipeline
 uv run archlens facts <path>              # fact layer only, no LLM
+uv run archlens serve                     # API (needs ARCHLENS_API_KEYS); worker: archlens worker --once
 uv run archlens eval fetch                # clones the pinned eval repos into the data dir
 uv run archlens eval --config eval/configs/full.yaml --dry-run   # prints projected cost
 uv run archlens eval label-sheet primary [--read]   # manual labels sheet ↔ eval/labels/primary.yaml

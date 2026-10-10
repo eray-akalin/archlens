@@ -645,7 +645,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: image passes ArchLens's own container checks (CTR-01…07).
 - [ ] **M4.2 Storage (Azure).** Blob, Cosmos, Queue implementations of the M0.6 Protocols.
   AC: the M0.6 contract suite passes against Azure (marked `live`).
-- [ ] **M4.3 API and worker.** FastAPI routes (ARCHITECTURE §6, without `/ask`), API-key auth, URL
+- [x] **M4.3 API and worker.** FastAPI routes (ARCHITECTURE §6, without `/ask`), API-key auth, URL
   policy, quotas; `archlens worker --once`.
   AC: URL policy tests (SECURITY.md §7); API tests with the local storage backend; artifacts
   endpoint returns 404 for artifacts a run didn't produce.
@@ -684,6 +684,22 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   → no run record → dependent rules answer `unknown`/`tool_not_run`) and
   `ARCHLENS_SEMGREP_REGISTRY_RULES` (default true for the CLI; the image sets false, which disables
   semgrep). Tests: 1077 (+2). Spend: $0.
+- 2026-10-10 — M4.3: `archlens.security.url_policy` (https, host allow-list, no userinfo, default
+  port only, no IP literal, no query/fragment, `/<owner>/<repo>[.git]`, normalized), API routes
+  (`api/routes.py`, `api/auth.py`: `X-API-Key`, constant-time compare, key fingerprint only,
+  per-key scoping with plain 404s, quotas, CSP + nosniff on HTML), `JobStore` and `JobQueue`
+  protocols with local implementations (file-per-message queue with visibility timeout and
+  receipts, flock), contracts `AssessmentRequest`/`AssessmentAccepted`/`Job` (DATA_MODEL §10,
+  `SCHEMA_VERSION` 1.2.0, schemas regenerated), `worker/main.py` + `archlens worker [--once]`.
+  The pipeline now treats an API-queued `RunState` as a fresh start (`queued_state()` shared).
+  AC: 28 URL-policy tests, 15 API tests on the local backend (incl. 404 for artifacts a run
+  didn't produce, other keys' runs, path tricks), 6 worker tests, 3 queue/job contract tests;
+  local smoke test: `serve` → 401 without a key, 202 + queued status, report 404 before the run;
+  `worker --once` on an empty queue. Resolved: the settings for keys/hosts/quotas already
+  existed from M0 (comma-separated) and are used as is; quotas count the last 24 h; a run that
+  fails is not retried (its state records it), a worker that dies is (resume), at most 2
+  deliveries. The queued job in the smoke test was not run (it would call the LLM). Tests: 1128
+  (+51). Spend: $0.
 
 ---
 

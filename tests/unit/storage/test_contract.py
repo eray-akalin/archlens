@@ -1,11 +1,12 @@
 """Storage contract: every backend must pass these (local now, Azure in M4.2)."""
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from archlens.errors import StorageKeyError
-from archlens.models import RunState, StageState
+from archlens.models import Job, RunState, StageState
 from archlens.storage import Storage
 from tests.unit.storage.conftest import FakeClock, StorageFactory
 
@@ -155,3 +156,60 @@ async def test_concurrent_writes_to_different_keys(storage: Storage) -> None:
     assert await storage.checkpoints.keys(RUN) == sorted(f"evaluate/{m}" for m in metrics)
     for m in metrics:
         assert await storage.cache.get("metric", m) == m.encode()
+
+
+# --- jobs and queue (M4.3) ---------------------------------------------------------------------
+
+
+def job(run_id: str, key_id: str = "aaaa1111bbbb2222", hours_ago: int = 0) -> Job:
+    created = datetime(2026, 10, 10, 12, tzinfo=UTC) - timedelta(hours=hours_ago)
+    return Job(
+        run_id=run_id, key_id=key_id, repo_url="https://github.com/o/r", ref=None, metrics=None,
+        created_at=created,
+    )  # fmt: skip
+
+
+async def test_job_round_trip_and_by_key(make_storage: StorageFactory) -> None:
+    storage = make_storage()
+    await storage.jobs.create(job(RUN, hours_ago=1))
+    await storage.jobs.create(job(OTHER, hours_ago=30))
+    await storage.jobs.create(job("01J9ZQ3V5Y7K8M2N4P6R8T0VX1", key_id="cccc3333dddd4444"))
+    reopened = make_storage()
+    assert await reopened.jobs.get(RUN) == job(RUN, hours_ago=1)
+    assert await reopened.jobs.get("01J9ZQ3V5Y7K8M2N4P6R8T0VX2") is None
+    since = datetime(2026, 10, 9, 12, tzinfo=UTC)
+    assert [j.run_id for j in await reopened.jobs.by_key("aaaa1111bbbb2222", since)] == [RUN]
+    everything = datetime(2026, 1, 1, tzinfo=UTC)
+    assert len(await reopened.jobs.by_key("aaaa1111bbbb2222", everything)) == 2
+    with pytest.raises(StorageKeyError):
+        await reopened.jobs.by_key("../x", since)
+
+
+async def test_queue_delivers_in_order_and_deletes(storage: Storage) -> None:
+    assert await storage.queue.receive(60) is None
+    await storage.queue.send(RUN)
+    await storage.queue.send(OTHER)
+    first = await storage.queue.receive(60)
+    second = await storage.queue.receive(60)
+    assert first is not None and second is not None
+    assert (first.run_id, second.run_id) == (RUN, OTHER) and first.dequeue_count == 1
+    assert await storage.queue.receive(60) is None  # both hidden
+    await storage.queue.delete(first)
+    await storage.queue.delete(second)
+    assert await storage.queue.receive(0) is None
+
+
+async def test_undeleted_message_comes_back_after_visibility(
+    storage: Storage, clock: FakeClock
+) -> None:
+    await storage.queue.send(RUN)
+    first = await storage.queue.receive(60)
+    assert first is not None
+    clock.now += 61
+    again = await storage.queue.receive(60)
+    assert again is not None and again.run_id == RUN and again.dequeue_count == 2
+    with pytest.raises(StorageKeyError, match="stale receipt"):
+        await storage.queue.delete(first)  # the first receiver lost the message
+    await storage.queue.delete(again)
+    clock.now += 120
+    assert await storage.queue.receive(60) is None

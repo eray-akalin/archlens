@@ -6,10 +6,11 @@ name or document ID: artifact names come from API URLs, so this is a path-traver
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from archlens.errors import StorageKeyError
-from archlens.models import RunState
+from archlens.models import Job, RunState
 
 _RUN_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _ARTIFACT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -18,6 +19,7 @@ _CHECKPOINT_KEY = re.compile(
 )  # "facts", "evaluate/security"
 _NAMESPACE = re.compile(r"^[a-z0-9_]{1,32}$")
 _CACHE_KEY = re.compile(r"^[A-Za-z0-9:_.-]{1,256}$")
+_KEY_ID = re.compile(r"^[a-f0-9]{8,64}$")
 
 
 def _check(pattern: re.Pattern[str], kind: str, value: str) -> str:
@@ -36,6 +38,10 @@ def check_artifact_name(value: str) -> str:
 
 def check_checkpoint_key(value: str) -> str:
     return _check(_CHECKPOINT_KEY, "checkpoint key", value)
+
+
+def check_key_id(value: str) -> str:
+    return _check(_KEY_ID, "key id", value)
 
 
 def check_cache_key(namespace: str, key: str) -> tuple[str, str]:
@@ -75,9 +81,36 @@ class CheckpointStore(Protocol):
     async def keys(self, run_id: str) -> list[str]: ...
 
 
+class JobStore(Protocol):
+    """Hosted-API jobs (who asked for which run, and when) for quotas and access checks."""
+
+    async def create(self, job: Job) -> None: ...
+    async def get(self, run_id: str) -> Job | None: ...
+    async def by_key(self, key_id: str, since: datetime) -> list[Job]: ...
+
+
+@dataclass(frozen=True)
+class QueueMessage:
+    message_id: str
+    run_id: str
+    receipt: str  # proves this receiver holds the message (Azure: pop receipt)
+    dequeue_count: int
+
+
+class JobQueue(Protocol):
+    """At-least-once delivery: a received message is hidden for `visibility_s` and comes back
+    unless deleted, so a worker that dies mid-run is retried."""
+
+    async def send(self, run_id: str) -> None: ...
+    async def receive(self, visibility_s: int) -> QueueMessage | None: ...
+    async def delete(self, message: QueueMessage) -> None: ...
+
+
 @dataclass(frozen=True)
 class Storage:
     artifacts: ArtifactStore
     run_state: RunStateStore
     cache: CacheStore
     checkpoints: CheckpointStore
+    jobs: JobStore
+    queue: JobQueue

@@ -31,7 +31,7 @@ from archlens.models import (
     Verdict,
 )
 from archlens.orchestrator.context import RunContext, RunOptions
-from archlens.orchestrator.pipeline import run_assessment
+from archlens.orchestrator.pipeline import queued_state, run_assessment
 from archlens.rubric import load_rubrics
 from archlens.storage import Storage, open_local_storage
 from tests.fixture_repos import MaterializedRepo, answer_key
@@ -318,6 +318,13 @@ async def test_run_ids_and_resume_guards(tiny_service: MaterializedRepo, tmp_pat
     await run(tiny_service, tmp_path, llm, run_id="once")
     with pytest.raises(ArchLensError, match="already exists"):
         await run(tiny_service, tmp_path, FakeLLM(), run_id="once")
+    # a run the API queued is a fresh start, not a resume
+    storage = open_local_storage(tmp_path / "data")
+    await storage.run_state.save(queued_state("queued", None, None))
+    queued = await run(
+        tiny_service, tmp_path, FakeLLM(evaluator_script() | later_script()), run_id="queued"
+    )
+    assert queued[0].run_id == "queued"
     (tiny_service.root / "app" / "main.py").write_text("changed = True\n")
     with pytest.raises(IngestError, match="repository changed since run once started"):
         await run(tiny_service, tmp_path, FakeLLM(), run_id="once", resume=True)

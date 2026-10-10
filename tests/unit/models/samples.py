@@ -8,6 +8,7 @@ from archlens.models import (
     AbsenceProbe,
     AppliesWhen,
     AssessmentReport,
+    AssessmentRequest,
     CheckResult,
     CheckSpec,
     Citation,
@@ -20,6 +21,7 @@ from archlens.models import (
     FactSet,
     FileEntry,
     Finding,
+    Job,
     LLMCallRecord,
     LLMCheckOutput,
     MetricEvaluationOutput,
@@ -317,6 +319,17 @@ SAMPLES: dict[str, BaseModel] = {
     "check_result": check_result(),
     "finding": verified_finding(),
     "run_state": run_state(),
+    "assessment_request": AssessmentRequest(
+        repo_url="https://github.com/o/r", ref="main", metrics=["security", "testing"]
+    ),
+    "job": Job(
+        run_id="01J0000000000000000000000",
+        key_id="0123abcd4567ef89",
+        repo_url="https://github.com/o/r",
+        ref=None,
+        metrics=None,
+        created_at=NOW,
+    ),
     "llm_call_record": llm_call_record(),
     "rubric": rubric(),
     "metric_evaluation_output": MetricEvaluationOutput(

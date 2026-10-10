@@ -5,7 +5,7 @@
 | Repository | https://github.com/example/tiny-service |
 | Commit | `0123456789ab` |
 | Run | `01JRUN0000000000000000000`, 2026-10-07T12:00:00+00:00 |
-| ArchLens | 0.1.0 (schema 1.1.0) |
+| ArchLens | 0.1.0 (schema 1.2.0) |
 
 ## Overall: not computed
 

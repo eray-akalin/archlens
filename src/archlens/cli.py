@@ -9,8 +9,9 @@ import json
 import logging
 import tempfile
 from collections import Counter
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, NoReturn
+from typing import Annotated
 
 import typer
 from ulid import ULID
@@ -72,11 +73,6 @@ eval_app = typer.Typer(help="Evaluation harness (docs/EVALUATION.md).")
 app.add_typer(schema_app, name="schema")
 app.add_typer(prompts_app, name="prompts")
 app.add_typer(eval_app, name="eval")
-
-
-def _not_implemented(milestone: str) -> NoReturn:
-    typer.echo(f"not implemented yet (milestone {milestone})", err=True)
-    raise typer.Exit(code=1)
 
 
 def _version_callback(value: bool) -> None:
@@ -492,17 +488,75 @@ def serve(
     host: Annotated[str, typer.Option(help="Bind address.")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Port.")] = 8000,
 ) -> None:
-    """Start the HTTP API (only `GET /healthz` until M4.3)."""
+    """Start the HTTP API (docs/ARCHITECTURE.md §6)."""
     import uvicorn
 
-    from archlens.api import create_app
+    from archlens.api import ApiState, create_app
+    from archlens.api.auth import ApiKeys
 
-    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
+    try:
+        settings = load_settings()
+        load_config(settings)  # fail fast on a broken config, before accepting jobs
+        rubrics = load_rubrics()
+        storage = open_storage(settings)
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    keys = ApiKeys.from_settings(settings.api_keys)
+    if not keys.keys:
+        typer.echo("warning: ARCHLENS_API_KEYS is empty; assessment routes answer 401", err=True)
+    state = ApiState(
+        storage=storage, keys=keys, allowed_hosts=tuple(settings.allowed_repo_hosts),
+        max_concurrent=settings.max_concurrent_runs_per_key,
+        runs_per_day=settings.runs_per_day_per_key, metrics=frozenset(rubrics),
+        clock=lambda: datetime.now(UTC),
+    )  # fmt: skip
+    uvicorn.run(create_app(state), host=host, port=port, log_level="warning")
 
 
 @app.command()
 def worker(
     once: Annotated[bool, typer.Option("--once", help="Process one queued job and exit.")] = False,
 ) -> None:
-    """Consume assessment jobs from the queue."""
-    _not_implemented("M4.3")
+    """Consume assessment jobs from the queue (until it is empty, or one with --once)."""
+    from archlens.models import Job
+    from archlens.worker import process_next
+
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    try:
+        settings = load_settings()
+        config = load_config(settings)
+        rubrics = load_rubrics()
+        storage = open_storage(settings)
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    async def run(job: Job, options: RunOptions, resume: bool) -> AssessmentReport:
+        boundary = new_boundary()
+        llm = LLMClient.from_config(config, cache_store=storage.cache, boundary=boundary)
+        embed = config.models.roles.embed.deployment
+        ctx = RunContext(
+            run_id=job.run_id, config=config, storage=storage, llm=llm,
+            embedder=CachedEmbedder(ClientEmbedder(llm, embed), storage.cache),
+            boundary=boundary, work_dir=settings.data_dir / "runs" / job.run_id,
+            tools_dir=settings.tools_dir, rubrics=rubrics,
+        )  # fmt: skip
+        try:
+            return await run_assessment(ctx, options, resume=resume)
+        finally:
+            await llm.aclose()
+
+    async def consume() -> int:
+        done = 0
+        while (run_id := await process_next(storage, run)) is not None:
+            done += 1
+            state = await storage.run_state.load(run_id)
+            typer.echo(f"run {run_id}: {state.status if state else 'unknown'}")
+            if once:
+                break
+        return done
+
+    processed = asyncio.run(consume())
+    if processed == 0:
+        typer.echo("queue empty")

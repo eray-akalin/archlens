@@ -1,6 +1,6 @@
-"""HTTP API (docs/ARCHITECTURE.md §6). M4.1 ships `GET /healthz` for the image's HEALTHCHECK; the
-assessment routes come with M4.3."""
+"""HTTP API (docs/ARCHITECTURE.md §6): assessment routes behind an API key, plus `GET /healthz`."""
 
 from archlens.api.app import create_app
+from archlens.api.routes import ApiState
 
-__all__ = ["create_app"]
+__all__ = ["ApiState", "create_app"]

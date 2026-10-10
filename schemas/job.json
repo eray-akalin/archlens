@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.2.0",
+  "additionalProperties": false,
+  "description": "One queued assessment. `key_id` is a fingerprint of the API key, never the key itself.",
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "repo_url": {
+      "title": "Repo Url",
+      "type": "string"
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Ref"
+    },
+    "metrics": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Metrics"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "key_id",
+    "repo_url",
+    "ref",
+    "metrics",
+    "created_at"
+  ],
+  "title": "Job",
+  "type": "object"
+}

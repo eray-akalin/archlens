@@ -159,7 +159,7 @@ src/archlens/
   security/              redact.py, url_policy.py
   orchestrator/          pipeline.py, checkpoint.py, context.py
   storage/               base.py (Protocols), local.py, azure.py
-  api/                   app.py (FastAPI; `GET /healthz` since M4.1), routes.py, auth.py
+  api/                   app.py (FastAPI factory, `GET /healthz`), routes.py, auth.py (X-API-Key)
   worker/                main.py (queue consumer for Container Apps Job)
   mcp/                   server.py (M5)
   telemetry/             otel.py, metrics.py
@@ -230,6 +230,18 @@ API surface (FastAPI):
 - `POST /assessments/{run_id}/ask` `{question}` → answer grounded in the report (report Q&A, added
   in M5.4; the only place a semantic cache may be used)
 - `GET /healthz`
+
+As built (M4.3): `POST /assessments` checks the API key, the URL policy, the ref and the metric
+names, then the quotas (per key: `ARCHLENS_MAX_CONCURRENT_RUNS_PER_KEY` runs queued or running,
+`ARCHLENS_RUNS_PER_DAY_PER_KEY` in the last 24 h), and writes a `Job`, a `queued` `RunState` and a
+queue message. Runs are visible only to the key that created them — another key's run, a
+malformed id or an artifact the run didn't produce are all `404`. HTML artifacts are served with
+`Content-Security-Policy: default-src 'none'` and `nosniff`. Storage gained two protocols:
+`JobStore` (create, get, by_key) and `JobQueue` (send, receive with a visibility timeout,
+delete with the receipt — Azure Storage Queue semantics; the local backend is file-per-message
+with an flock). `archlens worker [--once]` takes a message, runs the pipeline (resuming when
+the state says `running`: an earlier attempt died), deletes the message when the run ends either
+way, and marks the run failed after 2 deliveries that never finished.
 
 ## 7. Configuration
 

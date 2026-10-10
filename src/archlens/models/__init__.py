@@ -15,6 +15,7 @@ from archlens.models.enums import (
 )
 from archlens.models.evidence import MAX_EVIDENCE_SPAN, CodeEvidence, Evidence, ScanEvidence
 from archlens.models.facts import Fact, FactSet, ToolRunRecord, ToolStatus
+from archlens.models.jobs import AssessmentAccepted, AssessmentRequest, Job
 from archlens.models.llm_output import (
     Citation,
     EntailmentBatchOutput,
@@ -52,7 +53,9 @@ __all__ = [
     "SEVERITY_RANK",
     "AbsenceProbe",
     "AppliesWhen",
+    "AssessmentAccepted",
     "AssessmentReport",
+    "AssessmentRequest",
     "CheckResult",
     "CheckSpec",
     "CheckType",
@@ -71,6 +74,7 @@ __all__ = [
     "FileEntry",
     "Finding",
     "IngestLimits",
+    "Job",
     "LLMCallRecord",
     "LLMCheckOutput",
     "MetricEvaluationOutput",

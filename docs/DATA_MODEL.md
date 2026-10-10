@@ -1,7 +1,7 @@
 # Data model
 
 These Pydantic v2 models are the contracts between pipeline stages. They live in
-`src/archlens/models/`. `SCHEMA_VERSION = "1.1.0"` is stored in `AssessmentReport` and bumped on
+`src/archlens/models/`. `SCHEMA_VERSION = "1.2.0"` is stored in `AssessmentReport` and bumped on
 any change to a serialized model (semver). `archlens schema export` writes JSON Schemas to
 `schemas/`; CI fails if they drift from the models.
 
@@ -344,3 +344,27 @@ class RunState(BaseModel):
     metrics_done: list[str]
     cost_usd: float
 ```
+
+## 10. Hosted-API jobs (1.2.0)
+
+```python
+class AssessmentRequest(BaseModel):    # body of POST /assessments
+    repo_url: str                      # ≤ 300 chars; checked by the URL policy (SECURITY.md §7)
+    ref: str | None = None             # ≤ 200 chars; validated like a git ref
+    metrics: list[str] | None = None   # ≤ 20 names; unknown names → 400
+
+class AssessmentAccepted(BaseModel):   # 202 response
+    run_id: str
+
+class Job(BaseModel):                  # one queued assessment (JobStore)
+    run_id: str
+    key_id: str                        # 16 hex chars of sha256(API key) — never the key
+    repo_url: str                      # normalized: https://host/owner/repo
+    ref: str | None
+    metrics: list[str] | None          # sorted, de-duplicated
+    created_at: datetime               # aware; quotas count jobs of the last 24 h
+```
+
+A job's progress is its `RunState` (§9), created `queued` by the API; the pipeline treats a
+`queued` state as a fresh start and anything else as a resume.
+
