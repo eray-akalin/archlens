@@ -756,6 +756,15 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   with a marker module on 3.3.20. The adapter now passes `--directory=<repo>` as one token, which
   checkov's config lookup does not match; a `scanners` test with a repo `skip-check` config fails
   on the old form. Spend: $0.
+- 2026-10-11 — checkov adapter immune to hidden directories: its kubernetes runner skipped every
+  file under a root whose absolute path contains `/.` (CTR-06 false pass on a local assess of a
+  `.claude/worktrees/...` checkout). For such a root it now scans `<work>/checkov-root`, a
+  symlink to the snapshot (checkov follows it; `ScanContext.rel` resolves `file_abs_path` and
+  `parsing_errors` back to repo paths; `repo_file_path` is unused). The link is made in
+  `target_args`, inside the runner's OSError guard; a scratch dir with a hidden component is
+  status error (→ unknown), not a silent gap. Plain roots run unchanged, so the fixture stays.
+  Tests: argv/link/path mapping without checkov, a hidden-scratch-dir error, and a `scanners`
+  run under a hidden dir. Spend: $0.
 
 ---
 

@@ -88,8 +88,8 @@ def main() -> None:
         for adapter in (GitleaksAdapter(), OsvAdapter(), SemgrepAdapter(), HadolintAdapter()):
             capture(adapter, tiny, label)
     for adapter in (CheckovAdapter(), ActionlintAdapter()):
-        # from a temp copy: checkov's kubernetes runner skips every file under a hidden
-        # directory, which includes the whole input in a `.claude/worktrees/...` checkout
+        # from a temp copy: under a hidden directory (a `.claude/worktrees/...` checkout) checkov
+        # scans through a symlink in the workdir, and its paths would escape the __ROOT__ swap
         with tempfile.TemporaryDirectory() as tmp:
             copy = Path(tmp) / "input"
             shutil.copytree(FIXTURES / adapter.tool / "input", copy)

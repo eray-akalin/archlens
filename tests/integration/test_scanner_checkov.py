@@ -18,10 +18,12 @@ REPO = Path(__file__).parents[2]
 INPUT = REPO / "tests" / "fixtures" / "scanners" / "checkov" / "input"
 
 
-def test_checkov_ignores_repo_config(tmp_path: Path) -> None:
-    """A repo `.checkov.yaml` is not loaded: here it would skip CKV_K8S_8; with
-    `external-checks-dir`/`-git` it would make checkov import Python from the repo."""
-    root = tmp_path / "repo"
+@pytest.mark.parametrize("parent", ["plain", ".hidden"])
+def test_checkov_scans_the_repo_without_its_config(parent: str, tmp_path: Path) -> None:
+    """Under a hidden directory (scanned through a symlink) the kubernetes findings are still
+    there and map back to repo paths. A repo `.checkov.yaml` is never loaded: here it would skip
+    CKV_K8S_8; with `external-checks-dir`/`-git` it would make checkov import Python."""
+    root = tmp_path / parent / "input"
     shutil.copytree(INPUT, root)
     (root / ".checkov.yaml").write_text("skip-check:\n  - CKV_K8S_8\n")
     settings = Settings(_env_file=None, config_dir=REPO / "config")  # pyright: ignore[reportCallIssue]
@@ -35,6 +37,7 @@ def test_checkov_ignores_repo_config(tmp_path: Path) -> None:
     facts, record = CheckovAdapter().run(ctx)
     assert record.status == "ok", record.error
     findings = [f for f in facts if f.kind == "iac_finding"]
+    assert {str(f.attributes["framework"]) for f in findings} == {"kubernetes", "bicep"}
     assert "CKV_K8S_8" in {str(f.attributes["check_id"]) for f in findings}
     assert {e.path for f in findings for e in f.evidence if isinstance(e, CodeEvidence)} == {
         "k8s/deployment.yaml",

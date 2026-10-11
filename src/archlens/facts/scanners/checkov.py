@@ -11,6 +11,14 @@ A repo config could suppress checks (`skip-check`) or make checkov import Python
 a git URL (`external-checks-dir`, `external-checks-git`), i.e. execute repository code. The
 `scanners` suite pins this down.
 
+Hidden directories: checkov's kubernetes runner silently skips every file whose absolute path
+contains `/.` (no result block, no parse error), so a root such as a `.claude/worktrees/...`
+checkout would read as clean. For a root with a hidden component the adapter scans
+`<work>/checkov-root`, a symlink to it; checkov follows it and `ScanContext.rel` resolves the
+reported paths (`file_abs_path`, `parsing_errors`) back to the repo. If the scratch dir has a
+hidden component too, the run is status error rather than a silent gap. Hidden directories inside
+the repo stay skipped (checkov's default, all frameworks).
+
 No `--quiet`: it drops `results.parsing_errors`, the files checkov could not parse and so never
 checked (e.g. Bicep with user-defined `type` declarations). Each becomes an `iac_parse_error`
 fact; a summary that counts more parse errors than it lists is unparseable output (status error),
@@ -28,7 +36,7 @@ Severity (DATA_MODEL §4): reported severity when present; OSS checkov usually r
 """
 
 import json
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, cast
 
 from pydantic import JsonValue
@@ -48,6 +56,7 @@ _SEVERITY: dict[str, Severity] = {
     "LOW": "low",
     "INFO": "info",
 }
+_LINK = "checkov-root"
 
 
 def is_iac(path: str) -> bool:
@@ -72,6 +81,17 @@ def parse_error(path: str, framework: str, source: str, version: str) -> Fact:
     return make_fact("iac_parse_error", source, {"path": path, "framework": framework}, [evidence])
 
 
+def has_hidden_part(path: Path) -> bool:
+    """True if a component of `path` starts with "." (what checkov's `/.` test matches)."""
+    return any(part.startswith(".") for part in path.parts)
+
+
+def scan_dir(ctx: ScanContext) -> Path:
+    """Directory checkov scans: the snapshot root, or `<workdir>/checkov-root` (a symlink to it,
+    made by `CheckovAdapter.target_args`) when the root has a hidden component."""
+    return ctx.workdir / _LINK if has_hidden_part(ctx.root) else ctx.root
+
+
 class CheckovAdapter(SubprocessAdapter):
     tool = "checkov"
     binary = "checkov"
@@ -80,11 +100,19 @@ class CheckovAdapter(SubprocessAdapter):
         return [f.path for f in files if f.readable and not f.is_vendored and is_iac(f.path)]
 
     def target_args(self, ctx: ScanContext, targets: list[str]) -> list[str]:
-        return []  # the directory is passed in options (--directory=)
+        """None (the directory is in `options`). Makes the `scan_dir` symlink: here, because the
+        runner records an OSError from this call as status error instead of raising."""
+        directory = scan_dir(ctx)
+        if has_hidden_part(directory):
+            raise OSError("checkov skips files under hidden directories; the scratch dir has one")
+        if directory != ctx.root:
+            directory.unlink(missing_ok=True)
+            directory.symlink_to(ctx.root, target_is_directory=True)
+        return []
 
     def options(self, ctx: ScanContext) -> list[str]:
         return [
-            f"--directory={ctx.root}", "--framework", *FRAMEWORKS, "--skip-download",
+            f"--directory={scan_dir(ctx)}", "--framework", *FRAMEWORKS, "--skip-download",
             "--skip-results-upload", "--soft-fail", "-o", "json", "--compact",
         ]  # fmt: skip
 
