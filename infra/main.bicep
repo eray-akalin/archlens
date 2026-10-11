@@ -24,6 +24,9 @@ param cosmosFreeTier string = 'true'
 @description('USD budget guard per assessment (ARCHLENS_RUN_BUDGET_USD).')
 param runBudgetUsd string = '1.00'
 
+@description('Entra object ID of the developer who runs the live storage contract suite; empty = no roles. Scoped to the test container, queue and *-test Cosmos containers.')
+param developerPrincipalId string = ''
+
 var tags = { project: 'archlens', 'azd-env-name': 'archlens' }
 var suffix = uniqueString(resourceGroup().id)
 var prefix = 'archlens'
@@ -50,6 +53,7 @@ module storage 'modules/storage.bicep' = {
     name: 'archlens${suffix}'
     tags: tags
     principalId: identity.outputs.principalId
+    developerPrincipalId: developerPrincipalId
   }
 }
 
@@ -61,6 +65,7 @@ module cosmos 'modules/cosmos.bicep' = {
     tags: tags
     principalId: identity.outputs.principalId
     freeTier: bool(cosmosFreeTier)
+    developerPrincipalId: developerPrincipalId
   }
 }
 

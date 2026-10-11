@@ -98,7 +98,11 @@ Key wiring:
   the queue. Storage layout (`archlens.storage.azure`): Blob `artifacts/runs/<run_id>/{artifacts,
   checkpoints}/…`; Cosmos `runs`, `jobs` (partitioned by key fingerprint, so quota queries stay in
   one partition) and `cache` (per-item TTL; expiry also checked on read). The planned `findings`
-  container is dropped: findings live in the report JSON in Blob.
+  container is dropped: findings live in the report JSON in Blob. Test-only copies for the live
+  storage contract suite: blob container `contract-tests`, queue `assessments-test`, Cosmos
+  `runs-test`/`jobs-test`/`cache-test`; the developer in `ARCHLENS_DEVELOPER_PRINCIPAL_ID` gets
+  data roles on those only. Run it with `ARCHLENS_LIVE_TESTS=1 ARCHLENS_AZURE_STORAGE_ACCOUNT=…
+  ARCHLENS_AZURE_COSMOS_ENDPOINT=… uv run pytest -m live tests/unit/storage` (it empties them).
 - Worker job: queue-triggered scale rule (prefer managed identity on the scale rule; if the target
   API version doesn't support it, use a queue-scoped SAS connection string in a job secret and
   note it in ADR form); runs `archlens worker --once`, writes artifacts to Blob, state to Cosmos.

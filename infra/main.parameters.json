@@ -6,6 +6,7 @@
     "imageTag": { "value": "${ARCHLENS_IMAGE_TAG}" },
     "aiAccountName": { "value": "${ARCHLENS_AI_ACCOUNT}" },
     "apiKeys": { "value": "${ARCHLENS_API_KEYS}" },
-    "cosmosFreeTier": { "value": "${ARCHLENS_COSMOS_FREE_TIER=true}" }
+    "cosmosFreeTier": { "value": "${ARCHLENS_COSMOS_FREE_TIER=true}" },
+    "developerPrincipalId": { "value": "${ARCHLENS_DEVELOPER_PRINCIPAL_ID=}" }
   }
 }

@@ -238,7 +238,8 @@ queue message. Runs are visible only to the key that created them — another ke
 malformed id or an artifact the run didn't produce are all `404`. HTML artifacts are served with
 `Content-Security-Policy: default-src 'none'` and `nosniff`. Storage gained two protocols:
 `JobStore` (create, get, by_key) and `JobQueue` (send, receive with a visibility timeout,
-delete with the receipt — Azure Storage Queue semantics; the local backend is file-per-message
+delete with the receipt, where a stale receipt is a quiet no-op as on Azure, which answers it like a
+deleted message — Azure Storage Queue semantics; the local backend is file-per-message
 with an flock). `archlens worker [--once]` takes a message, runs the pipeline (resuming when
 the state says `running`: an earlier attempt died), deletes the message when the run ends either
 way, and marks the run failed after 2 deliveries that never finished.

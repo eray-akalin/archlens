@@ -1,8 +1,9 @@
 """In-memory stand-ins for the Azure SDK calls the azure backend makes, so the storage contract
 suite runs against `archlens.storage.azure` offline. They mimic the behaviors the backend relies
 on: NotFound errors, blob prefix listing, Cosmos partitions and the two query shapes it issues,
-queue visibility timeouts, pop receipts (`PopReceiptMismatch`) and dequeue counts. The `live`
-suite checks the real services."""
+queue visibility timeouts (1 s … 7 days), pop receipts (a stale one is a 404 `MessageNotFound`,
+as for a deleted message — verified against the service) and dequeue counts. The `live` suite
+checks the real services."""
 
 import json
 from collections.abc import AsyncIterator, Callable
@@ -108,6 +109,8 @@ class FakeQueue:
         self.messages.append(_Message(str(ULID()), content, self.clock()))
 
     async def receive_message(self, visibility_timeout: int) -> _Message | None:
+        if not 1 <= visibility_timeout <= 7 * 24 * 3600:
+            raise HttpResponseError(message="outside the permissible range")  # as the service
         now = self.clock()
         for message in self.messages:
             if message.visible_at <= now:
@@ -119,10 +122,6 @@ class FakeQueue:
 
     async def delete_message(self, message: str, pop_receipt: str) -> None:
         found = next((m for m in self.messages if m.id == message), None)
-        if found is None:
-            raise ResourceNotFoundError(message="MessageNotFound")
-        if found.pop_receipt != pop_receipt:
-            error = HttpResponseError(message="PopReceiptMismatch")
-            error.error_code = "PopReceiptMismatch"  # pyright: ignore[reportAttributeAccessIssue]
-            raise error
+        if found is None or found.pop_receipt != pop_receipt:
+            raise ResourceNotFoundError(message="MessageNotFound")  # what the service answers
         self.messages.remove(found)

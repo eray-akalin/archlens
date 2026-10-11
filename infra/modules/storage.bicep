@@ -6,6 +6,9 @@ param tags object
 param principalId string
 param queueName string = 'assessments'
 
+@description('Entra object ID of a developer who runs the live storage contract suite; empty = none. Gets data roles on the test container and queue only.')
+param developerPrincipalId string = ''
+
 var blobContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' // Storage Blob Data Contributor
 var queueContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88' // Storage Queue Data Contributor
 
@@ -48,6 +51,39 @@ resource queues 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
 resource queue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
   parent: queues
   name: queueName
+}
+
+// The live storage contract suite (tests/unit/storage, `-m live`) works here, never on the real
+// container and queue: a test message on `assessments` would start the worker.
+resource testContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobs
+  name: 'contract-tests'
+  properties: { publicAccess: 'None' }
+}
+
+resource testQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queues
+  name: '${queueName}-test'
+}
+
+resource devBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(developerPrincipalId)) {
+  name: guid(testContainer.id, developerPrincipalId, blobContributor)
+  scope: testContainer
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobContributor)
+    principalId: developerPrincipalId
+    principalType: 'User'
+  }
+}
+
+resource devQueueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(developerPrincipalId)) {
+  name: guid(testQueue.id, developerPrincipalId, queueContributor)
+  scope: testQueue
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', queueContributor)
+    principalId: developerPrincipalId
+    principalType: 'User'
+  }
 }
 
 resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05-01' = {

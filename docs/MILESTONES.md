@@ -643,7 +643,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M4.1 Container image.** Multi-stage Dockerfile, pinned base digest, scanners at pinned
   versions with checksums, non-root, healthcheck; GHCR push in `deploy.yml`.
   AC: image passes ArchLens's own container checks (CTR-01…07).
-- [ ] **M4.2 Storage (Azure).** Blob, Cosmos, Queue implementations of the M0.6 Protocols.
+- [x] **M4.2 Storage (Azure).** Blob, Cosmos, Queue implementations of the M0.6 Protocols.
   AC: the M0.6 contract suite passes against Azure (marked `live`).
 - [x] **M4.3 API and worker.** FastAPI routes (ARCHITECTURE §6, without `/ask`), API-key auth, URL
   policy, quotas; `archlens worker --once`.
@@ -812,6 +812,18 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   verification run (the M4.4 run's own trace was lost to sampling, see above). Resolved: `kind`
   is a KQL keyword (column renamed); diagnostics are excluded by requiring `archlens.repo`
   (cost-per-run) or skipping stage `diag` (counters). Spend: $0.
+- 2026-10-12 — M4.2 done: the storage contract suite passes against Azure (`-m live`, 33 passed,
+  1 skipped — the fake-clock visibility test, replaced on live by one that waits on the service's
+  clock). Isolation: test-only blob container, queue and `*-test` Cosmos containers in Bicep (a
+  message on the real queue would start the worker); the developer (`ARCHLENS_DEVELOPER_PRINCIPAL_ID`)
+  gets data roles on those only; each live test starts by emptying them; every opened client is
+  closed (`make_storage` became an async fixture). **Two contract changes from the real service:**
+  (1) deleting with a stale pop receipt is answered with the same 404 `MessageNotFound` as
+  deleting a gone message (probed directly; the docs-based `PopReceiptMismatch` → error mapping was
+  wrong and the fakes had copied it), so a stale delete is now a quiet no-op on every backend —
+  also what the worker needs when a run outlives its visibility window; (2) the service rejects a
+  visibility timeout of 0 — the azure backend clamps to 1 s … 7 days and the fake enforces the
+  range. Spend: data-plane calls only (≈ $0).
 
 ---
 

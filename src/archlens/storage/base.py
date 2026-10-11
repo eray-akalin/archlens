@@ -99,8 +99,11 @@ class QueueMessage:
 
 
 class JobQueue(Protocol):
-    """At-least-once delivery: a received message is hidden for `visibility_s` and comes back
-    unless deleted, so a worker that dies mid-run is retried."""
+    """At-least-once delivery: a received message is hidden for `visibility_s` (at least 1 s on
+    Azure) and comes back unless deleted, so a worker that dies mid-run is retried. `delete`
+    with a stale receipt — the message came back and someone else holds it — leaves it alone
+    and returns quietly, like deleting a message that is gone: Azure answers both with the same
+    404 `MessageNotFound`, so neither can be told apart (verified against the service)."""
 
     async def send(self, run_id: str) -> None: ...
     async def receive(self, visibility_s: int) -> QueueMessage | None: ...

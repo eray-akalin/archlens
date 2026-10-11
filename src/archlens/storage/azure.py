@@ -22,14 +22,14 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import cast
 
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import ResourceNotFoundError
 from azure.cosmos.aio import ContainerProxy, CosmosClient
 from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
 from azure.storage.queue.aio import QueueClient
 
 from archlens.config import Settings
-from archlens.errors import ConfigError, StorageKeyError
+from archlens.errors import ConfigError
 from archlens.models import Job, RunState
 from archlens.storage.base import (
     QueueMessage,
@@ -193,7 +193,9 @@ class StorageQueueJobQueue:
         await self._queue.send_message(check_run_id(run_id))
 
     async def receive(self, visibility_s: int) -> QueueMessage | None:
-        message = await self._queue.receive_message(visibility_timeout=visibility_s)
+        # the service takes 1 s … 7 days and rejects 0 ("outside the permissible range")
+        visibility = min(max(visibility_s, 1), 7 * 24 * 3600)
+        message = await self._queue.receive_message(visibility_timeout=visibility)
         if message is None:
             return None
         return QueueMessage(
@@ -207,11 +209,7 @@ class StorageQueueJobQueue:
         try:
             await self._queue.delete_message(message.message_id, message.receipt)
         except ResourceNotFoundError:
-            return  # already gone
-        except HttpResponseError as exc:
-            if getattr(exc, "error_code", None) == "PopReceiptMismatch":  # set by azure-core
-                raise StorageKeyError(f"stale receipt for message {message.message_id}") from exc
-            raise
+            return  # gone, or a stale receipt: the service answers both with 404 MessageNotFound
 
 
 def open_azure_storage(settings: Settings, *, clock: Clock = time.time) -> Storage:

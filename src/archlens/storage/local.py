@@ -26,7 +26,6 @@ from pathlib import Path
 
 from ulid import ULID
 
-from archlens.errors import StorageKeyError
 from archlens.models import Job, MutableContract, RunState
 from archlens.storage.base import (
     QueueMessage,
@@ -266,7 +265,7 @@ class LocalJobQueue:
             if data is None:
                 return
             if _QueueEntry.model_validate_json(data).receipt != message.receipt:
-                raise StorageKeyError(f"stale receipt for message {message.message_id}")
+                return  # stale: redelivered to someone else, who now owns it
             self._path(message.message_id).unlink()
 
     async def delete(self, message: QueueMessage) -> None:

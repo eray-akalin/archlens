@@ -200,16 +200,37 @@ async def test_queue_delivers_in_order_and_deletes(storage: Storage) -> None:
 
 
 async def test_undeleted_message_comes_back_after_visibility(
-    storage: Storage, clock: FakeClock
+    storage: Storage, clock: FakeClock, backend: str
 ) -> None:
+    if backend == "azure":
+        pytest.skip("the real queue keeps the service's time; see test_real_visibility_timeout")
     await storage.queue.send(RUN)
     first = await storage.queue.receive(60)
     assert first is not None
     clock.now += 61
     again = await storage.queue.receive(60)
     assert again is not None and again.run_id == RUN and again.dequeue_count == 2
-    with pytest.raises(StorageKeyError, match="stale receipt"):
-        await storage.queue.delete(first)  # the first receiver lost the message
-    await storage.queue.delete(again)
+    await storage.queue.delete(first)  # stale: the first receiver lost it, nothing happens
+    clock.now += 120  # past `again`'s window: the stale delete really left the message there
+    third = await storage.queue.receive(60)
+    assert third is not None and third.dequeue_count == 3
+    await storage.queue.delete(third)
     clock.now += 120
     assert await storage.queue.receive(60) is None
+
+
+async def test_real_visibility_timeout(storage: Storage, backend: str) -> None:
+    """The service's own clock and pop receipts: a message not deleted within its visibility
+    window comes back; deleting it with the first receiver's stale receipt changes nothing."""
+    if backend != "azure":
+        pytest.skip("only the real queue has a clock that moves by itself")
+    await storage.queue.send(RUN)
+    first = await storage.queue.receive(1)
+    assert first is not None
+    await asyncio.sleep(3)
+    again = await storage.queue.receive(30)
+    assert again is not None and again.run_id == RUN and again.dequeue_count == 2
+    await storage.queue.delete(first)  # stale: quietly ignored, `again` still holds it
+    await storage.queue.delete(again)
+    await asyncio.sleep(2)  # past any visibility window used above
+    assert await storage.queue.receive(1) is None
