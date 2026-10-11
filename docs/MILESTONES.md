@@ -728,6 +728,14 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   CTR-06 is a separate task. The `ai.bicep` change (system-assigned identity) applies on its next
   deployment. Still needed for the M4.4 AC: OpenTelemetry (one trace per run with stage spans and
   token metrics; ARCHITECTURE §8) — the settings exist, the instrumentation doesn't yet. Spend: $0.
+- 2026-10-11 — OpenTelemetry for the M4.4 AC: `archlens.telemetry` (Azure Monitor exporter only
+  when enabled; otherwise OTel API no-ops), run/stage/metric spans in the pipeline (stage spans
+  attached as current context), `llm <stage>` spans + `archlens.llm.tokens`/`cost_usd` from
+  `LLMClient`, verdict/verification counters and run duration at the end; CLI setup + flush.
+  Tests with in-memory exporters: span tree of an offline e2e run (one trace, 8 stage spans under
+  the root, 10 metric spans under evaluate, attribute keys only `archlens.*`/`gen_ai.*`), a
+  failing run marks root and stage ERROR, an LLM call span with token counters. Tool-call spans
+  are left out (ARCHITECTURE §8 lists them; not needed for the AC). Tests: 1166 (+3). Spend: $0.
 - 2026-10-11 — CTR-06 no longer passes over files checkov could not parse. The adapter dropped
   `--quiet` (it strips `results.parsing_errors` and keeps only the count) and emits an
   `iac_parse_error` fact per unparsed file (DATA_MODEL §4; a new fact kind, `Fact` unchanged, so

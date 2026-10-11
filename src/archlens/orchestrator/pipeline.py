@@ -14,10 +14,16 @@ import logging
 import tempfile
 import time
 from collections.abc import Awaitable, Callable
+from contextvars import Token
 from pathlib import Path
 
+from opentelemetry import context as otel_context
+from opentelemetry import trace
+from opentelemetry.context import Context
+from opentelemetry.trace import Span
 from pydantic import BaseModel
 
+from archlens import telemetry
 from archlens.errors import ArchLensError, IngestError
 from archlens.evaluate.consistency import evaluate_llm_checks
 from archlens.evaluate.deterministic import llm_checks, run_deterministic_checks
@@ -100,19 +106,32 @@ class Pipeline:
         self.timings: dict[str, int] = {}
         self.previous_records: list[LLMCallRecord] = []
         self.state: RunState | None = None
+        self._spans: dict[str, tuple[Span, Token[Context]]] = {}  # open stage spans + tokens
 
     async def run(self, *, resume: bool = False) -> AssessmentReport:
-        """Run (or resume) the assessment; returns the report also stored as artifacts."""
-        await self._start(resume)
-        try:
-            with tempfile.TemporaryDirectory(prefix="archlens-") as tmp:
-                report = await self._stages(Path(tmp))
-        except BaseException as exc:
-            await self._fail(exc)
-            raise
-        state = self._state()
-        state.status = "done"
-        await self._save_state()
+        """Run (or resume) the assessment; returns the report also stored as artifacts. One
+        OpenTelemetry trace per run (root span `archlens.run`)."""
+        target = self.options.target
+        attributes = {
+            "archlens.run_id": self.ctx.run_id,
+            "archlens.repo": target if is_remote(target) else "local",
+            "archlens.resume": resume,
+        }
+        started = time.monotonic()
+        tracer = telemetry.tracer()
+        with tracer.start_as_current_span("archlens.run", attributes=attributes) as root:
+            await self._start(resume)
+            try:
+                with tempfile.TemporaryDirectory(prefix="archlens-") as tmp:
+                    report = await self._stages(Path(tmp))
+            except BaseException as exc:
+                await self._fail(exc)
+                telemetry.fail(root, exc)
+                raise
+            state = self._state()
+            state.status = "done"
+            await self._save_state()
+            telemetry.record_report(report, time.monotonic() - started)
         return report
 
     # --- stages ---
@@ -220,7 +239,11 @@ class Pipeline:
             recorded = await self.cp.load(key, MetricCheckpoint)
             if recorded is None:
                 deterministic = run_deterministic_checks(rubric, rule_ctx)
-                judged = await evaluate_llm_checks(evaluator, rubric, llm_checks(rubric, flags))
+                span = f"metric {rubric.metric}"
+                with telemetry.tracer().start_as_current_span(
+                    span, attributes={"archlens.metric": rubric.metric}
+                ):
+                    judged = await evaluate_llm_checks(evaluator, rubric, llm_checks(rubric, flags))
                 recorded = MetricCheckpoint(
                     results=[*deterministic, *judged],
                     ledger=self.ledger.subset(f"{rubric.metric}:"),
@@ -350,6 +373,9 @@ class Pipeline:
         )  # fmt: skip
         await self._save_state()
         logger.info("stage %s: running", name)
+        span = telemetry.tracer().start_span(f"stage {name}", attributes={"archlens.stage": name})
+        token = otel_context.attach(trace.set_span_in_context(span))  # LLM spans nest under it
+        self._spans[name] = (span, token)
         return time.monotonic()
 
     async def _finish(self, name: str, started: float | None) -> None:
@@ -359,8 +385,19 @@ class Pipeline:
             stage.finished_at = self.ctx.clock()
             await self.cp.save_timings(self.timings)
         stage.status = "done"
+        self._end_span(name)
         await self._save_records()
         await self._save_state()
+
+    def _end_span(self, name: str, exc: BaseException | None = None) -> None:
+        opened = self._spans.pop(name, None)
+        if opened is None:
+            return
+        span, token = opened
+        if exc is not None:
+            telemetry.fail(span, exc)
+        otel_context.detach(token)
+        span.end()
 
     async def _fail(self, exc: BaseException) -> None:
         state = self._state()
@@ -369,6 +406,8 @@ class Pipeline:
                 stage.status = "failed"
                 stage.error = redact(f"{type(exc).__name__}: {exc}")[:500]
                 stage.finished_at = self.ctx.clock()
+        for name in reversed(list(self._spans)):
+            self._end_span(name, exc)
         state.status = "failed"
         await self._save_records()
         await self._save_state()
