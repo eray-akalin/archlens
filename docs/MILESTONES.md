@@ -775,6 +775,17 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (downloaded providers/modules), so a committed cache is not flagged. Tests: parser (hidden
   dir, hidden file, vendored cache and `.github/` excluded), rule claims (hidden only, mixed),
   and a `scanners` run with IaC only under `.infra/`. Tests: 1177 (+2 offline). Spend: $0.
+- 2026-10-11 — M4.4 provisioning (user approved steps 1–4): `Microsoft.App` registered, azd 1.35.1
+  installed (auth via the az CLI), `azd provision` into `rg-archlens-ai` with image
+  `0d686a2`. First run: everything up except the worker job — `ExpressEnvironmentResourceNotSupported`:
+  an environment created without `environmentMode` (not settable before API 2026-07-01) comes out
+  `Express`, which supports neither jobs nor OpenTelemetry. `aca-env.bicep` now uses 2026-07-01 with
+  `environmentMode: 'WorkloadProfiles'`; the re-provision switched the existing environment in place
+  (18 min) and created the job. Smoke: `/healthz` ok, 401 without a key, `POST /assessments` → 202;
+  KEDA (managed identity) started a worker execution for run `01M4NB4J1BW3Z8SPSMYHHDEECD`. **Open:**
+  the run's outcome, report via `GET`, the App Insights trace, the live storage contract suite
+  (needs data-plane roles for the developer), then tick M4.2/M4.4. Spend so far: provisioning $0;
+  the AC run ≈ $0.2 (LLM) pending.
 
 ---
 
