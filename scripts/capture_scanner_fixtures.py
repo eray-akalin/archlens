@@ -88,11 +88,12 @@ def main() -> None:
         for adapter in (GitleaksAdapter(), OsvAdapter(), SemgrepAdapter(), HadolintAdapter()):
             capture(adapter, tiny, label)
     for adapter in (CheckovAdapter(), ActionlintAdapter()):
-        capture(
-            adapter,
-            FIXTURES / adapter.tool / "input",
-            f"`tests/fixtures/scanners/{adapter.tool}/input/`",
-        )
+        # from a temp copy: checkov's kubernetes runner skips every file under a hidden
+        # directory, which includes the whole input in a `.claude/worktrees/...` checkout
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "input"
+            shutil.copytree(FIXTURES / adapter.tool / "input", copy)
+            capture(adapter, copy, f"`tests/fixtures/scanners/{adapter.tool}/input/`")
 
 
 if __name__ == "__main__":

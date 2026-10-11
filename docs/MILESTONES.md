@@ -728,6 +728,20 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   CTR-06 is a separate task. The `ai.bicep` change (system-assigned identity) applies on its next
   deployment. Still needed for the M4.4 AC: OpenTelemetry (one trace per run with stage spans and
   token metrics; ARCHITECTURE §8) — the settings exist, the instrumentation doesn't yet. Spend: $0.
+- 2026-10-11 — CTR-06 no longer passes over files checkov could not parse. The adapter dropped
+  `--quiet` (it strips `results.parsing_errors` and keeps only the count) and emits an
+  `iac_parse_error` fact per unparsed file (DATA_MODEL §4; a new fact kind, `Fact` unchanged, so
+  no `SCHEMA_VERSION` bump); a summary that counts parse errors it doesn't list is unparseable
+  output (status error → unknown). Choice (simplest reading of "never pass on missing data"):
+  unparsed files only block a pass — `unknown` with reason `iac_unparsed`, since a checkov parser
+  limit (valid Bicep with user-defined types) is not a repo defect; fail/partial findings stand
+  and the claim names the unparsed files. Rule logic is not a versioned rubric field (RUBRICS
+  §6), so `container` stays 1.0.0. Fixture re-captured with an unparseable `typed.bicep` (136 KB
+  now: `passed_checks` are no longer stripped). Found on the way: checkov 3.3.20's kubernetes
+  runner skips every file whose absolute path contains a hidden directory (e.g. a local
+  `archlens assess` of a `.claude/worktrees/...` checkout; remote clones and eval copies live
+  in `/tmp` and are unaffected) — the capture script now copies inputs to a temp dir; the
+  adapter side is a separate task. Spend: $0.
 
 ---
 

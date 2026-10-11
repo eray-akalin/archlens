@@ -16,7 +16,7 @@ from archlens.facts.scanners.lizard_ import LizardAdapter
 from archlens.facts.scanners.osv import OsvAdapter, cvss_to_severity, group_severity, is_manifest
 from archlens.facts.scanners.semgrep import SemgrepAdapter, map_severity
 from archlens.ingest.snapshot import build_snapshot
-from archlens.models import CodeEvidence, Fact, IngestLimits
+from archlens.models import CodeEvidence, Fact, IngestLimits, ScanEvidence
 from tests.fixture_repos import MaterializedRepo
 
 REPO = Path(__file__).parents[3]
@@ -156,11 +156,28 @@ def test_checkov(tmp_path: Path) -> None:
     facts = CheckovAdapter().parse(
         stored_output("checkov", root), ctx_for(root, tmp_path), "3.3.20"
     )
-    assert len(facts) > 10
-    assert {str(f.attributes["framework"]) for f in facts} == {"kubernetes"}
-    assert {f.severity for f in facts} == {None}  # OSS checkov reports no severity
-    evidence = facts[0].evidence[0]
+    findings = [f for f in facts if f.kind == "iac_finding"]
+    assert len(findings) > 10
+    assert {str(f.attributes["framework"]) for f in findings} == {"kubernetes", "bicep"}
+    assert {f.severity for f in findings} == {None}  # OSS checkov reports no severity
+    evidence = findings[0].evidence[0]
     assert isinstance(evidence, CodeEvidence) and evidence.path == "k8s/deployment.yaml"
+    assert {p for p, _ in located(findings)} == {"k8s/deployment.yaml", "infra/storage.bicep"}
+    # typed.bicep (a user-defined type) can't be parsed, so checkov never checked it
+    (unparsed,) = [f for f in facts if f.kind == "iac_parse_error"]
+    assert unparsed.attributes == {"path": "infra/typed.bicep", "framework": "bicep"}
+    (scan,) = unparsed.evidence
+    assert isinstance(scan, ScanEvidence) and scan.query == "parse error @ infra/typed.bicep"
+
+
+def test_checkov_parse_errors_counted_but_not_listed(tmp_path: Path) -> None:
+    """`--quiet` drops the list but keeps the count; that must not read as a clean scan."""
+    root = FIXTURES / "checkov" / "input"
+    data = json.loads(stored_output("checkov", root))
+    for block in data:
+        block["results"].pop("parsing_errors")
+    with pytest.raises(ValueError, match="did not list"):
+        CheckovAdapter().parse(json.dumps(data), ctx_for(root, tmp_path), "3.3.20")
 
 
 def test_actionlint(tmp_path: Path) -> None:

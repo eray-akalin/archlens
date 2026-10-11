@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import JsonValue
 
-from archlens.models import CodeEvidence, Fact, Severity, ToolStatus
+from archlens.facts.scanners.checkov import parse_error
+from archlens.models import CodeEvidence, Fact, ScanEvidence, Severity, ToolStatus
 from archlens.rubric.rules.docker import is_pinned_image, runs_as_non_root
 from tests.unit.rubric.helpers import fact, first_scan, make_ctx, run
 
@@ -256,6 +257,49 @@ def test_iac(findings: list[Fact], verdict: str, tmp_path: Path) -> None:
 def test_iac_skipped(tmp_path: Path) -> None:
     outcome = run("iac.max_severity", make_ctx(tmp_path, status={"checkov": "skipped"}))
     assert (outcome.verdict, outcome.reason) == ("not_applicable", "tool_skipped")
+
+
+def unparsed(path: str) -> Fact:
+    return parse_error(path, "bicep", "checkov@9.9.9", "9.9.9")
+
+
+def test_iac_unparsed_files_block_a_pass(tmp_path: Path) -> None:
+    errors = [unparsed("infra/modules/cosmos.bicep"), unparsed("infra/ai.bicep")]
+    outcome = run("iac.max_severity", make_ctx(tmp_path, errors))
+    assert (outcome.verdict, outcome.reason) == ("unknown", "iac_unparsed")
+    assert outcome.claim == (
+        "checkov: 2 IaC files could not be parsed and went unchecked "
+        "(infra/ai.bicep, infra/modules/cosmos.bicep); no misconfigurations in the files it parsed."
+    )
+    assert {e.query for e in outcome.evidence if isinstance(e, ScanEvidence)} >= {
+        "parse error @ infra/ai.bicep",
+        "parse error @ infra/modules/cosmos.bicep",
+    }
+
+
+def test_iac_unparsed_files_long_list_is_cut(tmp_path: Path) -> None:
+    errors = [unparsed(f"infra/m{i}.bicep") for i in range(7)]
+    outcome = run("iac.max_severity", make_ctx(tmp_path, errors))
+    assert "7 IaC files" in outcome.claim and "infra/m4.bicep, ...)" in outcome.claim
+    assert "infra/m5.bicep" not in outcome.claim
+
+
+@pytest.mark.parametrize(
+    ("findings", "verdict"), [([iac("medium")], "partial"), ([iac("high")], "fail")]
+)
+def test_iac_findings_stand_with_unparsed_files(
+    findings: list[Fact], verdict: str, tmp_path: Path
+) -> None:
+    outcome = run("iac.max_severity", make_ctx(tmp_path, [*findings, unparsed("infra/ai.bicep")]))
+    assert outcome.verdict == verdict
+    assert outcome.claim.endswith(
+        " 1 IaC file could not be parsed and went unchecked (infra/ai.bicep)."
+    )
+
+
+def test_iac_skipped_ignores_parse_errors(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path, [unparsed("infra/ai.bicep")], status={"checkov": "skipped"})
+    assert run("iac.max_severity", ctx).verdict == "not_applicable"
 
 
 # --- deploy.resource_limits --------------------------------------------------------------------

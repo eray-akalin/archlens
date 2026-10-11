@@ -123,6 +123,7 @@ Initial fact kinds (extend as rules need them; document additions here):
 | `dockerfile` | AST | `path`, `base_images`, `external_bases` (no stage aliases/scratch), `stages`, `stage_aliases`, `final_base`, `user` (final stage), `has_healthcheck` |
 | `hadolint_finding` | hadolint | `code`, `level`, `message` |
 | `iac_finding` | checkov | `check_id`, `check_name`, `resource`, `framework` |
+| `iac_parse_error` | checkov | `path`, `framework` (a file checkov could not parse and so never checked, from `results.parsing_errors`; `ScanEvidence` only) |
 | `ci_workflow` | AST (YAML) | `path`, `system`, `name`, `triggers`, `permissions`, `jobs`, `job_permissions`, `environments` |
 | `ci_step` | AST (YAML) | `path`, `system`, `job`, `uses`, `run` (redacted, ≤ 500 chars), `run_kind` (`test`/`lint`/`build`/`deploy`/`other`; deploy > test > lint > build), `pinned`, `with_keys` |
 | `actionlint_finding` | actionlint | `kind`, `message` |
