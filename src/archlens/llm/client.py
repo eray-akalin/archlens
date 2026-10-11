@@ -20,6 +20,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, JsonValue, SecretStr, ValidationError
 from ulid import ULID
 
+from archlens import telemetry
 from archlens.config import AppConfig, ModelsConfig, Price, PricingConfig, RoleConfig
 from archlens.errors import ConfigError, InvalidModelOutput, LLMError, ProviderError
 from archlens.llm.budget import BudgetGuard
@@ -470,6 +471,7 @@ class LLMClient:
             attempt=attempt,
         )
         self._records.append(record)
+        telemetry.record_llm_call(record)
         return record
 
     @staticmethod

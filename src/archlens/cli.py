@@ -16,7 +16,7 @@ from typing import Annotated
 import typer
 from ulid import ULID
 
-from archlens import __version__
+from archlens import __version__, telemetry
 from archlens.config import load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
 from archlens.eval.config import load_eval_config
@@ -137,6 +137,7 @@ def assess(
         typer.echo(f"projected (upper bound): ${projection.total:.4f}; run budget ${budget:.2f}")
         return
     run_id = resume or str(ULID())
+    telemetry.setup(settings)
     storage = open_storage(settings)
     boundary = new_boundary()
     cache = None if no_cache else storage.cache
@@ -168,6 +169,7 @@ def assess(
         finally:
             await llm.aclose()
             await storage.aclose()
+            telemetry.shutdown()
 
     typer.echo(f"run {run_id}")
     try:
@@ -500,6 +502,7 @@ def serve(
     except ArchLensError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+    telemetry.setup(settings)
     keys = ApiKeys.from_settings(settings.api_keys)
     if not keys.keys:
         typer.echo("warning: ARCHLENS_API_KEYS is empty; assessment routes answer 401", err=True)
@@ -529,6 +532,7 @@ def worker(
     except ArchLensError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+    telemetry.setup(settings)
 
     async def run(job: Job, options: RunOptions, resume: bool) -> AssessmentReport:
         boundary = new_boundary()
@@ -556,6 +560,7 @@ def worker(
                     break
         finally:
             await storage.aclose()
+            telemetry.shutdown()  # the job exits right after: flush spans and metrics first
         return done
 
     processed = asyncio.run(consume())

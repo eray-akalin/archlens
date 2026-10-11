@@ -262,3 +262,9 @@ disables semgrep for licensing reasons.
   the app-side version is also more granular).
 - Local mode: console exporter off by default; `ARCHLENS_OTEL_ENABLED=true` + connection string
   sends to Application Insights.
+- As built (`archlens.telemetry`): the pipeline opens `archlens.run`, a `stage <name>` span per
+  stage that runs (attached as the current context, so work inside nests under it) and a
+  `metric <name>` span per metric session; `LLMClient` adds an `llm <stage>` span per call
+  (`gen_ai.*` token attributes) and the token/cost counters. Attributes are ids, names and
+  numbers only — no repository text. Tool-call spans are not emitted yet. `assess`, `worker` and
+  `serve` call `setup()`; `assess` and `worker` flush on exit.
