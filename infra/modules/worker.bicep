@@ -11,8 +11,19 @@ param env array
 param storageAccountName string
 param queueName string
 
+@description('API Management instance in front of Azure OpenAI; empty = the app calls Azure OpenAI directly.')
+param apimName string = ''
+
 @secure()
 param appInsightsConnectionString string
+
+// The app's APIM subscription (apim.bicep); its key goes straight into a secret, never an output.
+resource apimSubscription 'Microsoft.ApiManagement/service/subscriptions@2024-05-01' existing = if (!empty(apimName)) {
+  name: '${apimName}/archlens-app'
+}
+
+var llmSecret = empty(apimName) ? [] : [{ name: 'llm-key', value: apimSubscription!.listSecrets().primaryKey }]
+var llmEnv = empty(apimName) ? [] : [{ name: 'ARCHLENS_LLM_API_KEY', secretRef: 'llm-key' }]
 
 resource worker 'Microsoft.App/jobs@2025-01-01' = {
   name: name
@@ -26,7 +37,7 @@ resource worker 'Microsoft.App/jobs@2025-01-01' = {
       triggerType: 'Event'
       replicaTimeout: 1200
       replicaRetryLimit: 1
-      secrets: [{ name: 'appinsights', value: appInsightsConnectionString }]
+      secrets: concat([{ name: 'appinsights', value: appInsightsConnectionString }], llmSecret)
       eventTriggerConfig: {
         parallelism: 1
         replicaCompletionCount: 1
@@ -52,7 +63,7 @@ resource worker 'Microsoft.App/jobs@2025-01-01' = {
           image: image
           command: ['archlens', 'worker', '--once']
           resources: { cpu: json('1'), memory: '2Gi' }
-          env: concat(env, [
+          env: concat(env, llmEnv, [
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights' }
             { name: 'OTEL_SERVICE_NAME', value: 'archlens-worker' } // App Insights role name
           ])

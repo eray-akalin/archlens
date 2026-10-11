@@ -824,6 +824,18 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   also what the worker needs when a run outlives its visibility window; (2) the service rejects a
   visibility timeout of 0 — the azure backend clamps to 1 s … 7 days and the fake enforces the
   range. Spend: data-plane calls only (≈ $0).
+- 2026-10-12 — M4.5 **blocked** (not ticked): APIM Consumption can't be created in any region the
+  subscription allows — polandcentral and switzerlandnorth (the only one listing it) both answer
+  `ApiManagementCreationDisabledForLocation`; BasicV2 ~$150/month; Developer ~$48/month. That
+  undercuts ADR-009 ("Consumption by default") — raised with the user. Built anyway, off by
+  default: `modules/apim.bicep` (API `openai/v1`, `POST /*`, `archlens-app` subscription, App
+  Insights logger + diagnostics at 100%), `apim/policies/base.xml` (rate limit per subscription,
+  key stripped, managed-identity auth, retry), `enableApim`/`apimSku`/`apimLocation` parameters;
+  the *OpenAI User* role follows whoever calls Azure OpenAI; the apps read the subscription key
+  with `listSecrets` in their own module (Bicep refuses a conditional module's secure output, and
+  an output would expose the key). `Microsoft.ApiManagement` registered. Provisioned with APIM off:
+  apps unchanged (direct, managed identity), `/healthz` 200. checkov: 16 passed, 8 skipped (APIM
+  VNet/public access added, Consumption has no VNet). Spend: $0.
 
 ---
 

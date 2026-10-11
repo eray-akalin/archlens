@@ -112,6 +112,20 @@ Key wiring:
 - App → Storage/Cosmos: user-assigned MI with data-plane roles only (SECURITY.md §7).
 - Telemetry: `APPLICATIONINSIGHTS_CONNECTION_STRING` + `ARCHLENS_OTEL_ENABLED=true`.
 
+APIM availability (checked 2026-10-12): in the regions the subscription policy allows, the ARM
+SKU list offers Consumption only in switzerlandnorth, and creating it fails there as well as in
+polandcentral (`ApiManagementCreationDisabledForLocation`: "non-availability or low capacity");
+BasicV2 (italynorth, switzerlandnorth) costs ~$150/month; Developer (~$48/month, polandcentral
+among others) works. So APIM is behind `enableApim` (azd env `ARCHLENS_ENABLE_APIM`, default
+`false`): off, the apps call Azure OpenAI directly with the workload identity (it holds *OpenAI
+User*); on, `modules/apim.bicep` deploys the gateway (`apimSku`, `apimLocation`), APIM's identity
+gets *OpenAI User* instead, and the apps read the `archlens-app` subscription key straight into a
+secret (`listSecrets` inside api/worker.bicep — never a deployment output) with
+`ARCHLENS_LLM_AUTH=key` and `ARCHLENS_LLM_KEY_HEADER=Ocp-Apim-Subscription-Key`. Policy
+`apim/policies/base.xml`: rate limit per subscription (`apimRateLimitCalls`, default 120/min),
+subscription key stripped, `authentication-managed-identity`, retry on 429/5xx; request logs to
+App Insights (100%).
+
 APIM tier notes (verified against the policy reference): on **Consumption**, `llm-token-limit` and
 `llm-emit-token-metric` are not supported; `llm-semantic-cache-*`, `llm-content-safety`,
 `authentication-managed-identity`, `rate-limit`, `retry` and backends are. `apim.bicep` includes
