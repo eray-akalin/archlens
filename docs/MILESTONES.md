@@ -700,6 +700,20 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   fails is not retried (its state records it), a worker that dies is (resume), at most 2
   deliveries. The queued job in the smoke test was not run (it would call the LLM). Tests: 1128
   (+51). Spend: $0.
+- 2026-10-11 — M4.2 (code; **not ticked**: its AC is the contract suite against real Azure, which
+  needs the M4.4 resources). `storage/azure.py`: Blob artifacts + checkpoints, Cosmos run state,
+  jobs (partition `/key_id`) and cache (sha256 ids, base64 values, per-item TTL, expiry checked
+  against the injected clock like the local cache), Storage Queue (pop receipts; a
+  `PopReceiptMismatch` → stale receipt, a missing message → already gone), managed identity via
+  `DefaultAzureCredential`, clients connect lazily. `Storage.aclose()` closes them; `assess` now
+  runs in one event loop (the Azure clients are loop-bound), and the worker and the API lifespan
+  close storage. The contract suite also runs on `azure-fake` (the real backend code over
+  in-memory SDK fakes: NotFound errors, prefix listing, partitions, the two query shapes,
+  visibility and receipts) — 70 storage tests. Resolved: Cosmos containers are runs/jobs/cache;
+  the planned `findings` container is dropped (AZURE.md updated). User decisions: Azure for
+  Students credit ≈ $99 for a year (≥ 10 days holds); Dependabot PR #2 had already been closed by
+  Dependabot after the ignore rule (it reopened as #3, pyright only, green). Tests: 1163 (+35).
+  Spend: $0.
 
 ---
 

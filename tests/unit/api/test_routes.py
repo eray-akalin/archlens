@@ -172,3 +172,17 @@ async def test_report_and_artifacts(env: Env) -> None:
     assert get(env, f"{base}/artifacts/report.md").status_code == 404  # still not produced
     assert get(env, f"{base}/artifacts/report.html", key=OTHER_KEY).status_code == 404
     assert get(env, f"{base}/artifacts/..%2Fstate.json").status_code == 404
+
+
+def test_server_shutdown_closes_storage(tmp_path: Path) -> None:
+    closed: list[bool] = []
+
+    async def close() -> None:
+        closed.append(True)
+
+    local = open_local_storage(tmp_path / "data")
+    storage = Storage(**{**vars(local), "close": close})
+    state = ApiState(storage, ApiKeys((KEY,)), ("github.com",), 1, 3, frozenset(), Clock())
+    with TestClient(create_app(state)) as client:  # runs the lifespan
+        assert client.get("/healthz").status_code == 200
+    assert closed == [True]

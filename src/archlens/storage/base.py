@@ -5,6 +5,7 @@ name or document ID: artifact names come from API URLs, so this is a path-traver
 """
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -114,3 +115,8 @@ class Storage:
     checkpoints: CheckpointStore
     jobs: JobStore
     queue: JobQueue
+    close: Callable[[], Awaitable[None]] | None = None  # releases network clients (Azure)
+
+    async def aclose(self) -> None:
+        if self.close is not None:
+            await self.close()

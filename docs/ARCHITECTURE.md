@@ -158,7 +158,7 @@ src/archlens/
                          prompts.py, session.py (tool loop), untrusted.py
   security/              redact.py, url_policy.py
   orchestrator/          pipeline.py, checkpoint.py, context.py
-  storage/               base.py (Protocols), local.py, azure.py
+  storage/               base.py (Protocols), local.py, azure.py (Blob, Cosmos, Storage Queue; MI auth)
   api/                   app.py (FastAPI factory, `GET /healthz`), routes.py, auth.py (X-API-Key)
   worker/                main.py (queue consumer for Container Apps Job)
   mcp/                   server.py (M5)

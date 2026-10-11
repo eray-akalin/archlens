@@ -62,7 +62,7 @@ infra/
     identity.bicep             user-assigned MI + role assignments
     monitoring.bicep           Log Analytics, App Insights (daily cap, sampling)
     storage.bicep              account, blob container, queue, lifecycle policy
-    cosmos.bicep               account (free tier or serverless), db `archlens`, containers: runs, findings, cache
+    cosmos.bicep               account (free tier or serverless), db `archlens`, containers: runs (/run_id), jobs (/key_id), cache (/namespace, TTL on)
     aca-env.bicep              Container Apps environment (Consumption)
     api.bicep                  Container App: ingress, min 0 replicas, secrets, env
     worker.bicep               Container Apps Job: event trigger on queue, parallelism 1
@@ -78,7 +78,11 @@ infra/
 ```
 
 Key wiring:
-- API: `POST /assessments` writes a `RunState` to Cosmos and a message `{run_id}` to the queue.
+- API: `POST /assessments` writes a `Job` and a `RunState` to Cosmos and a message `{run_id}` to
+  the queue. Storage layout (`archlens.storage.azure`): Blob `artifacts/runs/<run_id>/{artifacts,
+  checkpoints}/…`; Cosmos `runs`, `jobs` (partitioned by key fingerprint, so quota queries stay in
+  one partition) and `cache` (per-item TTL; expiry also checked on read). The planned `findings`
+  container is dropped: findings live in the report JSON in Blob.
 - Worker job: queue-triggered scale rule (prefer managed identity on the scale rule; if the target
   API version doesn't support it, use a queue-scoped SAS connection string in a job secret and
   note it in ADR form); runs `archlens worker --once`, writes artifacts to Blob, state to Cosmos.

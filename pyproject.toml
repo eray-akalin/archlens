@@ -5,7 +5,11 @@ description = "Evidence-backed architecture assessment for Git repositories"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "aiohttp>=3.11",
+    "azure-cosmos>=4.9",
     "azure-identity>=1.19",
+    "azure-storage-blob>=12.24",
+    "azure-storage-queue>=12.12",
     "fastapi>=0.115",
     "jinja2>=3.1",
     "lizard>=1.17",

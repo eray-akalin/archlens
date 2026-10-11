@@ -159,29 +159,27 @@ def assess(
     )
     options = RunOptions(target=target, metrics=selected, scanners=not no_scanners)
 
-    async def run() -> AssessmentReport:
+    async def run() -> tuple[AssessmentReport, dict[str, bytes]]:
+        # one event loop for the whole run: Azure clients are bound to the loop that opened them
         try:
-            return await run_assessment(ctx, options, resume=resume is not None)
+            report = await run_assessment(ctx, options, resume=resume is not None)
+            produced = {n: d for n in ARTIFACTS if (d := await storage.artifacts.get(run_id, n))}
+            return report, produced
         finally:
             await llm.aclose()
+            await storage.aclose()
 
     typer.echo(f"run {run_id}")
     try:
-        report = asyncio.run(run())
+        report, produced = asyncio.run(run())
     except ArchLensError as exc:
         typer.echo(f"run {run_id} failed: {exc}", err=True)
         typer.echo(f"resume with: archlens assess {target} --resume {run_id}", err=True)
         raise typer.Exit(code=1) from exc
     run_out = out / run_id
     run_out.mkdir(parents=True, exist_ok=True)
-
-    async def copy() -> None:
-        for name in ARTIFACTS:
-            data = await storage.artifacts.get(run_id, name)
-            if data is not None:
-                (run_out / name).write_bytes(data)
-
-    asyncio.run(copy())
+    for name, data in produced.items():
+        (run_out / name).write_bytes(data)
     for metric in report.metric_scores:
         score = f"{metric.score:.1f}" if metric.score is not None else "-"
         typer.echo(f"  {metric.metric:14} {score:>5}  {metric.status}")
@@ -549,12 +547,15 @@ def worker(
 
     async def consume() -> int:
         done = 0
-        while (run_id := await process_next(storage, run)) is not None:
-            done += 1
-            state = await storage.run_state.load(run_id)
-            typer.echo(f"run {run_id}: {state.status if state else 'unknown'}")
-            if once:
-                break
+        try:
+            while (run_id := await process_next(storage, run)) is not None:
+                done += 1
+                state = await storage.run_state.load(run_id)
+                typer.echo(f"run {run_id}: {state.status if state else 'unknown'}")
+                if once:
+                    break
+        finally:
+            await storage.aclose()
         return done
 
     processed = asyncio.run(consume())

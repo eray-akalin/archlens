@@ -50,4 +50,17 @@ def test_open_storage_selects_backend(tmp_path: Path) -> None:
     assert open_storage(_settings(storage="local", data_dir=tmp_path)).artifacts is not None
     with pytest.raises(ConfigError) as info:
         open_storage(_settings(storage="azure", data_dir=tmp_path))
-    assert info.value.field == "ARCHLENS_STORAGE"
+    assert info.value.field == "ARCHLENS_AZURE_STORAGE_ACCOUNT"
+    with pytest.raises(ConfigError) as info:
+        open_storage(_settings(storage="azure", azure_storage_account="acct"))
+    assert info.value.field == "ARCHLENS_AZURE_COSMOS_ENDPOINT"
+
+
+async def test_open_azure_storage_connects_lazily() -> None:
+    settings = _settings(
+        storage="azure", azure_storage_account="acct",
+        azure_cosmos_endpoint="https://acct.documents.azure.com:443/",
+    )  # fmt: skip
+    storage = open_storage(settings)  # no network until a store is used (offline guard)
+    assert type(storage.queue).__name__ == "StorageQueueJobQueue"
+    await storage.aclose()
