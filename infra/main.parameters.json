@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "${AZURE_LOCATION=polandcentral}" },
+    "imageTag": { "value": "${ARCHLENS_IMAGE_TAG}" },
+    "aiAccountName": { "value": "${ARCHLENS_AI_ACCOUNT}" },
+    "apiKeys": { "value": "${ARCHLENS_API_KEYS}" },
+    "cosmosFreeTier": { "value": "${ARCHLENS_COSMOS_FREE_TIER=true}" }
+  }
+}

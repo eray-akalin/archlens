@@ -719,6 +719,15 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   on push to `main`; `THIRD_PARTY_NOTICES.md` (licenses verified via the GitHub API) ships in the
   image. Found: the project declares no license, yet M4.1 labelled the image `MIT` — the label is
   removed; choosing a license is the user's call. Spend: $0.
+- 2026-10-11 — M4.4 files (**not ticked**: needs `azd provision`, which costs money and waits for
+  approval): `azure.yaml`, `infra/main.bicep`, `infra/main.parameters.json`, `infra/modules/
+  {identity,monitoring,storage,cosmos,aca-env,api,worker}.bicep` (AZURE.md §3 "As written").
+  `az bicep build`/`lint` clean; checkov 13 passed, 0 failed, 6 skipped with reasons. Found on the
+  way: checkov silently skipped `ai.bicep` and `cosmos.bicep` (parse errors), so ArchLens's own
+  CTR-06 self-check had passed them unchecked — both rewritten to parse; surfacing parse errors in
+  CTR-06 is a separate task. The `ai.bicep` change (system-assigned identity) applies on its next
+  deployment. Still needed for the M4.4 AC: OpenTelemetry (one trace per run with stage spans and
+  token metrics; ARCHITECTURE §8) — the settings exist, the instrumentation doesn't yet. Spend: $0.
 
 ---
 

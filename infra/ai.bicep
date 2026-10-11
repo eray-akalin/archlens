@@ -14,16 +14,9 @@ param accountName string = 'archlens-ai-${uniqueString(resourceGroup().id)}'
 @description('Entra object ID of a developer calling the models locally with ARCHLENS_LLM_AUTH=entra. Empty = no role assignment.')
 param developerPrincipalId string = ''
 
-type modelDeployment = {
-  @description('Deployment name, referenced by ARCHLENS_MODEL_<ROLE>.')
-  name: string
-  model: string
-  version: string
-  @description('Thousands of tokens per minute.')
-  capacity: int
-}
-
-param deployments modelDeployment[] = [
+// A plain array (no user-defined type) so checkov's Bicep parser can read this file.
+@description('Deployments: {name (ARCHLENS_MODEL_<ROLE>), model, version, capacity (thousands of TPM)}.')
+param deployments array = [
   { name: 'gpt-5-mini', model: 'gpt-5-mini', version: '2025-08-07', capacity: 200 }
   { name: 'gpt-4.1-mini', model: 'gpt-4.1-mini', version: '2025-04-14', capacity: 100 }
   { name: 'text-embedding-3-small', model: 'text-embedding-3-small', version: '1', capacity: 100 }
@@ -32,11 +25,16 @@ param deployments modelDeployment[] = [
 var tags = { project: 'archlens' }
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  // checkov:skip=CKV_AZURE_236: local development calls the models with a key (ARCHLENS_LLM_AUTH=key);
+  // the hosted app uses its managed identity. Turn local auth off once nobody needs the key.
+  // checkov:skip=CKV_AZURE_134: public endpoint; the hosted app calls it with Entra tokens, and
+  // network isolation needs Container Apps VNet integration (tracked for later).
   name: accountName
   location: location
   tags: tags
   kind: 'AIServices'
   sku: { name: 'S0' }
+  identity: { type: 'SystemAssigned' } // CKV_AZURE_238 (applies on the next deployment)
   properties: {
     customSubDomainName: accountName
     publicNetworkAccess: 'Enabled'

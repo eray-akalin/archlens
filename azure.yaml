@@ -1,0 +1,9 @@
+# azd project (docs/AZURE.md §3). Infrastructure only: the image is built and published to GHCR by
+# .github/workflows/deploy.yml, and a new version ships by provisioning with its tag
+# (`azd env set ARCHLENS_IMAGE_TAG <sha> && azd provision`). Resource group: the existing
+# rg-archlens-ai (`azd env set AZURE_RESOURCE_GROUP rg-archlens-ai`).
+name: archlens
+infra:
+  provider: bicep
+  path: infra
+  module: main

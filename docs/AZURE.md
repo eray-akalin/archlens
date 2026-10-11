@@ -77,6 +77,21 @@ infra/
   budget.bicep                 subscription-scope budget + alerts
 ```
 
+As written for M4.4 (2026-10-11): `azure.yaml` is infrastructure-only — the image comes from
+GHCR, and a new version ships with `azd env set ARCHLENS_IMAGE_TAG <sha> && azd provision`.
+`infra/main.bicep` (resource-group scope, `rg-archlens-ai`) wires `identity`, `monitoring`,
+`storage`, `cosmos`, `aca-env`, `api` and `worker` and grants the workload identity *Cognitive
+Services OpenAI User* on the phase-1 account, which the app calls directly
+(`ARCHLENS_LLM_AUTH=entra`) until APIM (M4.5); `apim`, `redis` and `swa` come with M4.5, M5.4
+and M4.7. Parameters come from the azd environment (`infra/main.parameters.json`):
+`ARCHLENS_IMAGE_TAG`, `ARCHLENS_AI_ACCOUNT`, `ARCHLENS_API_KEYS` (secret),
+`ARCHLENS_COSMOS_FREE_TIER`. Storage is ZRS with shared-key access off; Cosmos has local auth
+and key-based metadata writes off. checkov passes the whole `infra/` tree (`ai.bicep` lost its
+user-defined `type`, which checkov couldn't parse); six findings are skipped inline with reasons:
+public endpoints on Storage, Cosmos and the AI account (Entra-only access; network isolation needs
+Container Apps VNet integration, tracked for later), no geo-replication, and key auth kept on
+the AI account for local development.
+
 Key wiring:
 - API: `POST /assessments` writes a `Job` and a `RunState` to Cosmos and a message `{run_id}` to
   the queue. Storage layout (`archlens.storage.azure`): Blob `artifacts/runs/<run_id>/{artifacts,
@@ -130,8 +145,8 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
 - `deploy.yml` builds and pushes the public image on every push to `main` (approved 2026-10-11;
   docs-only changes skip it) and on demand; `azd deploy` joins it in M4.4. The image ships
   `THIRD_PARTY_NOTICES.md` (licenses and source links of the bundled scanners: hadolint is GPL-3.0,
-  the semgrep engine LGPL-2.1). GHCR creates a new package as private: its visibility is switched
-  to public once, in the package settings.
+  the semgrep engine LGPL-2.1). The package came out public (it inherits the public repository's
+  visibility; anonymous pulls verified 2026-10-11).
 
 ## 5. Cost guardrails
 
