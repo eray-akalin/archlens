@@ -49,6 +49,9 @@ def setup(settings: Settings) -> bool:
         connection_string=secret.get_secret_value(),
         logger_name=NAME,
         instrumentation_options={"fastapi": {"enabled": True}},
+        # Keep every span. Without a sampler setting the distro (1.8) installs a per-span
+        # RateLimitedSampler at 5 spans/s, which split run traces and dropped their root span.
+        sampling_ratio=1.0,
     )
     _configured = True
     logger.info("OpenTelemetry exporting to Application Insights")

@@ -39,6 +39,7 @@ resource api 'Microsoft.App/containerApps@2025-01-01' = {
           resources: { cpu: json('0.5'), memory: '1Gi' }
           env: concat(env, [
             { name: 'ARCHLENS_API_KEYS', secretRef: 'api-keys' }
+            { name: 'OTEL_SERVICE_NAME', value: 'archlens-api' } // App Insights role name
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights' }
           ])
           probes: [

@@ -1,4 +1,4 @@
-// Log Analytics + workspace-based Application Insights (AZURE.md §5: daily cap, sampling).
+// Log Analytics + workspace-based Application Insights (AZURE.md §5: daily cap, no sampling).
 param location string
 param prefix string
 param tags object
@@ -25,7 +25,9 @@ resource insights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: workspace.id
-    SamplingPercentage: 50
+    // No sampling: a run is one trace, and the SDK applies this setting per trace, so 50% lost
+    // whole runs. Volume is under 1 MB a day; the workspace's daily cap is the cost guardrail.
+    SamplingPercentage: 100
     DisableLocalAuth: false // the OpenTelemetry exporter authenticates with the connection string
   }
 }

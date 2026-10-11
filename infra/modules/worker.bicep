@@ -54,6 +54,7 @@ resource worker 'Microsoft.App/jobs@2025-01-01' = {
           resources: { cpu: json('1'), memory: '2Gi' }
           env: concat(env, [
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights' }
+            { name: 'OTEL_SERVICE_NAME', value: 'archlens-worker' } // App Insights role name
           ])
         }
       ]

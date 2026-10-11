@@ -24,7 +24,7 @@ everything else inside free grants. Everything is Bicep + azd; nothing exists on
 | Resource | SKU / mode | Est. cost | When |
 |---|---|---|---|
 | Azure OpenAI (Foundry resource) + deployments | Global Standard, capacity within quota | pay per token | M0 |
-| Log Analytics + Application Insights | pay-as-you-go, daily cap 0.2 GB, sampling | ~$0–2 | M4 |
+| Log Analytics + Application Insights | pay-as-you-go, daily cap 0.2 GB, no sampling | ~$0–2 | M4 |
 | Storage account | Standard LRS; blob container `artifacts`, queue `assessments`, lifecycle 30 d | < $1 | M4 |
 | Cosmos DB (NoSQL) | free tier (1000 RU/s shared DB, 25 GB) — or serverless if free tier is already used in the subscription | $0 | M4 |
 | Container Apps environment | Consumption | $0 (free grant) | M4 |
@@ -60,7 +60,7 @@ infra/
   main.bicep                   params: location, apimSku, enableRedis, alertEmail, imageTag
   modules/
     identity.bicep             user-assigned MI + role assignments
-    monitoring.bicep           Log Analytics, App Insights (daily cap, sampling)
+    monitoring.bicep           Log Analytics, App Insights (daily cap, no sampling)
     storage.bicep              account, blob container, queue, lifecycle policy
     cosmos.bicep               account (free tier or serverless), db `archlens`, containers: runs (/run_id), jobs (/key_id), cache (/namespace, TTL on)
     aca-env.bicep              Container Apps environment (Consumption)
@@ -151,7 +151,10 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
 ## 5. Cost guardrails
 
 - Default parameters are the free/cheap ones (`apimSku=Consumption`, `enableRedis=false`).
-- App Insights daily cap + adaptive sampling.
+- Log Analytics daily cap (0.2 GB). No sampling: the SDK takes the App Insights sampling
+  percentage from the service and samples per trace, so 50% dropped whole runs (seen 2026-10-12);
+  a run is under 1 MB, so the cap is the guardrail. API and worker report as `archlens-api` and
+  `archlens-worker` (`OTEL_SERVICE_NAME`).
 - `ARCHLENS_RUN_BUDGET_USD` per run (default $1.00) and `budget_usd` per eval config.
 - Container Apps min replicas 0; worker job timeout 20 min, retry limit 1.
 - Weekly check: Cost Management → cost by resource. Record spend in the milestone log.
