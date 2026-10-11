@@ -1,0 +1,8 @@
+// Verdicts per rubric metric over all reported findings (`archlens.check.verdicts`): how often
+// each metric passes, fails, or ends unknown / not applicable.
+let since = ago(30d);
+AppMetrics
+| where TimeGenerated > since and Name == "archlens.check.verdicts"
+| summarize n = sum(Sum) by metric = tostring(Properties.metric), verdict = tostring(Properties.verdict)
+| evaluate pivot(verdict, sum(n))
+| order by metric asc

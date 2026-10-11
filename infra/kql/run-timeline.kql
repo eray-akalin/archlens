@@ -1,0 +1,11 @@
+// Stage and metric-session spans of the latest run (or set run_id): where the time went.
+let run_id = "";
+let op = toscalar(AppDependencies
+    | where TimeGenerated > ago(30d) and Name == "archlens.run"
+    | where run_id == "" or tostring(Properties["archlens.run_id"]) == run_id
+    | top 1 by TimeGenerated desc
+    | project OperationId);
+AppDependencies
+| where OperationId == op and (Name startswith "stage " or Name startswith "metric " or Name == "archlens.run")
+| project start = TimeGenerated, span = Name, seconds = round(DurationMs / 1000.0, 1), ok = Success
+| order by start asc

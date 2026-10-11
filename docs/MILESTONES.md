@@ -655,7 +655,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [ ] **M4.5 💰 APIM (Consumption).** Import the Azure OpenAI API, managed-identity backend auth,
   `base.xml` policies; app switched to the APIM URL.
   AC: LLM traffic visible in APIM logs; rate-limit policy verified.
-- [ ] **M4.6 Observability.** KQL queries in `infra/kql/` (cost per run, tokens per metric,
+- [x] **M4.6 Observability.** KQL queries in `infra/kql/` (cost per run, tokens per metric,
   verdict mix, verifier outcomes).
   AC: queries return data for the M4.4 run.
 - [ ] **M4.7 Web UI.** Static Web App: submit URL, poll status, render the HTML report.
@@ -802,6 +802,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   out at 120 s before it); Azure SDK spans dominate the volume (~2 MB a run — fine under the cap;
   dropping `azure_sdk` instrumentation is an option for M4.6). Spend: $0.1854 + diagnostic job
   seconds (project total ≈ $4.10).
+- 2026-10-12 — M4.6: `infra/kql/{cost-per-run,cost-per-metric,verdict-mix,verifier-outcomes,
+  run-timeline}.kql` + `scripts/kql.sh` (resolves the workspace from the azd env; read-only).
+  Metrics carry no run id (cardinality), so cost per run comes from each trace (root span joined
+  with its `llm` spans) and cost per metric from the counters. AC, against the workspace:
+  cost-per-metric sums to $0.1851 for the M4.4 run (its $0.1854 rounded per metric; security,
+  auth and performance cost most; run-level = index embeddings); verdict-mix and
+  verifier-outcomes cover the three hosted runs; cost-per-run and run-timeline show the traced
+  verification run (the M4.4 run's own trace was lost to sampling, see above). Resolved: `kind`
+  is a KQL keyword (column renamed); diagnostics are excluded by requiring `archlens.repo`
+  (cost-per-run) or skipping stage `diag` (counters). Spend: $0.
 
 ---
 

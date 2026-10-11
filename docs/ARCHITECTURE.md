@@ -267,4 +267,8 @@ disables semgrep for licensing reasons.
   `metric <name>` span per metric session; `LLMClient` adds an `llm <stage>` span per call
   (`gen_ai.*` token attributes) and the token/cost counters. Attributes are ids, names and
   numbers only — no repository text. Tool-call spans are not emitted yet. `assess`, `worker` and
-  `serve` call `setup()`; `assess` and `worker` flush on exit.
+  `serve` call `setup()`; `assess` and `worker` flush on exit. Sampling is off
+  (`sampling_ratio=1.0`; the distro's default per-span rate limiter split traces).
+- Saved queries (`infra/kql/`, run with `scripts/kql.sh <file>`): `cost-per-run` (from each
+  run's trace), `cost-per-metric` (tokens by kind and USD from the counters), `verdict-mix`,
+  `verifier-outcomes`, `run-timeline` (stage and metric spans of a run).

@@ -1,0 +1,23 @@
+// Cost, tokens, LLM calls and duration per run, from each run's trace (ARCHITECTURE.md §8):
+// the `archlens.run` root span joined with the `llm <stage>` spans of the same operation.
+// Runs whose trace was not exported (sampling before 2026-10-12) are missing here; their cost
+// still counts in cost-per-metric.kql.
+let since = ago(30d);
+let runs = AppDependencies
+    | where TimeGenerated > since and Name == "archlens.run"
+    | project OperationId, started = TimeGenerated, run_id = tostring(Properties["archlens.run_id"]),
+        repo = tostring(Properties["archlens.repo"]), ok = Success, duration_s = round(DurationMs / 1000.0, 1)
+    | where isnotempty(repo);  // a real run always has a repo (URL or "local"); diagnostics don't
+let llm = AppDependencies
+    | where TimeGenerated > since and Name startswith "llm "
+    | summarize llm_calls = count(),
+        cache_hits = countif(tostring(Properties["archlens.cache_hit"]) == "True"),
+        cost_usd = sum(todouble(Properties["archlens.cost_usd"])),
+        input_tokens = sum(tolong(Properties["gen_ai.usage.input_tokens"])),
+        output_tokens = sum(tolong(Properties["gen_ai.usage.output_tokens"]))
+        by OperationId;
+runs
+| join kind=leftouter llm on OperationId
+| project started, run_id, repo, ok, duration_s, cost_usd = round(coalesce(cost_usd, 0.0), 4),
+    llm_calls = coalesce(llm_calls, 0), cache_hits = coalesce(cache_hits, 0), input_tokens, output_tokens
+| order by started desc

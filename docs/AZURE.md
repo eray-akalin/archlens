@@ -74,6 +74,7 @@ infra/
     developer-extras.xml       llm-token-limit + llm-emit-token-metric (non-Consumption only)
     qa-semantic-cache.xml      llm-semantic-cache-lookup/store on the Q&A operation (Redis only)
   ai.bicep                     phase 1, referenced by main.bicep as an existing resource
+  kql/                         saved queries (M4.6); run with scripts/kql.sh <file>
   budget.bicep                 subscription-scope budget + alerts
 ```
 

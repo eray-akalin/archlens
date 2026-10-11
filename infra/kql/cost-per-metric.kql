@@ -1,0 +1,18 @@
+// Tokens (by kind) and USD per rubric metric, from the app's counters (`archlens.llm.tokens`,
+// `archlens.llm.cost_usd`). Metric "" is run-level work (the report narrative).
+// Stage "diag" rows come from telemetry diagnostics and are left out.
+let since = ago(30d);
+let tokens = AppMetrics
+    | where TimeGenerated > since and Name == "archlens.llm.tokens"
+    | where tostring(Properties.stage) != "diag"
+    | summarize n = sum(Sum) by metric = tostring(Properties.metric), token_kind = tostring(Properties["kind"])
+    | evaluate pivot(token_kind, sum(n));
+let cost = AppMetrics
+    | where TimeGenerated > since and Name == "archlens.llm.cost_usd"
+    | where tostring(Properties.stage) != "diag"
+    | summarize cost_usd = round(sum(Sum), 4) by metric = tostring(Properties.metric);
+cost
+| join kind=leftouter tokens on metric
+| project-away metric1
+| extend metric = iff(metric == "", "(run-level)", metric)
+| order by cost_usd desc

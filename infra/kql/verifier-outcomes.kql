@@ -1,0 +1,9 @@
+// Verifier outcomes (`archlens.verify.status`): step "final" is each finding's final status
+// (verified / unverified / rejected / disputed); the other steps count passed vs failed checks
+// (mechanical, entailment, absence incl. the absence judge, skeptic).
+let since = ago(30d);
+AppMetrics
+| where TimeGenerated > since and Name == "archlens.verify.status"
+| summarize n = sum(Sum) by step = tostring(Properties.step), status = tostring(Properties.status)
+| evaluate pivot(status, sum(n))
+| order by step asc
