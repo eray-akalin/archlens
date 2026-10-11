@@ -649,7 +649,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   policy, quotas; `archlens worker --once`.
   AC: URL policy tests (SECURITY.md §7); API tests with the local storage backend; artifacts
   endpoint returns 404 for artifacts a run didn't produce.
-- [ ] **M4.4 💰 Infra.** `azure.yaml`, `infra/main.bicep` + modules; `azd up` (ask).
+- [x] **M4.4 💰 Infra.** `azure.yaml`, `infra/main.bicep` + modules; `azd up` (ask).
   AC: POST a repo URL → job runs → report in Blob → GET returns it; App Insights shows one trace
   per run with stage spans and token metrics.
 - [ ] **M4.5 💰 APIM (Consumption).** Import the Azure OpenAI API, managed-identity backend auth,
@@ -786,6 +786,22 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   the run's outcome, report via `GET`, the App Insights trace, the live storage contract suite
   (needs data-plane roles for the developer), then tick M4.2/M4.4. Spend so far: provisioning $0;
   the AC run ≈ $0.2 (LLM) pending.
+- 2026-10-12 — M4.4 done. AC run `01M4NB4J1BW3Z8SPSMYHHDEECD` (full-stack-fastapi-template HEAD
+  `7257e606`): API → queue → KEDA started the worker job → pipeline in ~10 min, $0.1854 → report
+  in Blob, `GET …/report` 200, `report.md`/`report.html` 200 with their content types, an unknown
+  artifact 404; scanners ran (semgrep disabled by design, checkov skipped: no IaC). App Insights
+  had the run's metrics (`archlens.llm.tokens` 1.75M, `cost_usd` 0.1854, verdicts, duration 581 s)
+  but **not its trace**: the App Insights component sampled 50% per trace, and — found with a
+  diagnostic job execution printing the active sampler — azure-monitor-opentelemetry 1.8 installs
+  a per-span `RateLimitedSampler` (5 spans/s) when no sampler is configured, which split traces
+  and dropped the root. Fixed: `telemetry.setup()` passes `sampling_ratio=1.0`, the component
+  samples at 100% (daily cap is the guardrail), `OTEL_SERVICE_NAME` names `archlens-api` /
+  `archlens-worker`. Verification run `01M4PK64D1T1JADZ5A7NVV2NSB` (exact-cache hits, $0): one trace
+  with `archlens.run`, 8 stage spans, 10 metric spans, 107 LLM spans and ~1,900 Azure SDK spans,
+  every `itemCount` 1. Notes: the API's cold start after a new revision took ~55 s (one POST timed
+  out at 120 s before it); Azure SDK spans dominate the volume (~2 MB a run — fine under the cap;
+  dropping `azure_sdk` instrumentation is an option for M4.6). Spend: $0.1854 + diagnostic job
+  seconds (project total ≈ $4.10).
 
 ---
 
