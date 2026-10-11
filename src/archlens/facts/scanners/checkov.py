@@ -1,9 +1,14 @@
-"""checkov → `iac_finding` facts.
+"""checkov → `iac_finding` and `iac_parse_error` facts.
 
 Command (checkov 3.3.20)::
 
     checkov -d <repo> --framework kubernetes terraform cloudformation bicep arm --skip-download
-        --skip-results-upload --soft-fail -o json --quiet --compact
+        --skip-results-upload --soft-fail -o json --compact
+
+No `--quiet`: it drops `results.parsing_errors`, the files checkov could not parse and so never
+checked (e.g. Bicep with user-defined `type` declarations). Each becomes an `iac_parse_error`
+fact; a summary that counts more parse errors than it lists is unparseable output (status error),
+so unchecked files are never silently read as clean.
 
 Parses IaC files; never applies, plans or renders them. Frameworks that shell out to other
 binaries (helm, kustomize) or need a Prisma API key (sca_*) are not enabled; Dockerfiles and
@@ -23,7 +28,7 @@ from typing import Any, cast
 from pydantic import JsonValue
 
 from archlens.facts.base import ScanContext, SubprocessAdapter, evidence_or_scan, make_fact
-from archlens.models import Fact, FileEntry, Severity
+from archlens.models import Fact, FileEntry, ScanEvidence, Severity
 
 FRAMEWORKS = ("kubernetes", "terraform", "cloudformation", "bicep", "arm")
 _IAC_DIRS = frozenset(
@@ -53,6 +58,14 @@ def is_iac(path: str) -> bool:
     )
 
 
+def parse_error(path: str, framework: str, source: str, version: str) -> Fact:
+    """`iac_parse_error` fact for a file checkov could not parse; ScanEvidence only (no line)."""
+    evidence = ScanEvidence(
+        tool="checkov", tool_version=version, query=f"parse error @ {path}", result_count=1
+    )
+    return make_fact("iac_parse_error", source, {"path": path, "framework": framework}, [evidence])
+
+
 class CheckovAdapter(SubprocessAdapter):
     tool = "checkov"
     binary = "checkov"
@@ -66,7 +79,7 @@ class CheckovAdapter(SubprocessAdapter):
     def options(self, ctx: ScanContext) -> list[str]:
         return [
             "-d", str(ctx.root), "--framework", *FRAMEWORKS, "--skip-download",
-            "--skip-results-upload", "--soft-fail", "-o", "json", "--quiet", "--compact",
+            "--skip-results-upload", "--soft-fail", "-o", "json", "--compact",
         ]  # fmt: skip
 
     def parse(self, stdout: str, ctx: ScanContext, version: str) -> list[Fact]:
@@ -76,7 +89,12 @@ class CheckovAdapter(SubprocessAdapter):
         facts: list[Fact] = []
         for block in blocks:
             framework = str(block.get("check_type", ""))
-            for check in block.get("results", {}).get("failed_checks", []):
+            results = block.get("results", {})
+            unparsed = [ctx.rel(str(p)) for p in results.get("parsing_errors", [])]
+            if int(block.get("summary", {}).get("parsing_errors") or 0) > len(unparsed):
+                raise ValueError(f"{framework}: checkov counted parse errors it did not list")
+            facts += [parse_error(path, framework, source, version) for path in unparsed]
+            for check in results.get("failed_checks", []):
                 path = ctx.rel(check.get("file_abs_path") or check["file_path"])
                 line_range = check.get("file_line_range") or [1, 1]
                 start, end = int(line_range[0]), int(line_range[-1])

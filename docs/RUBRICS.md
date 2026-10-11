@@ -265,7 +265,7 @@ Default params live in each rule's `Params` model; YAML may override them.
 | `docker.multistage` | – | > 1 stage; per Dockerfile: all → pass, some → partial, none → fail |
 | `docker.healthcheck` | – | Dockerfile HEALTHCHECK, or `deploy_config` with `has_healthcheck`/`has_liveness`/`has_readiness` |
 | `docker.hadolint_errors` | `max_errors: 0` | `hadolint_finding` with severity high |
-| `iac.max_severity` | `fail_at: high`, `unknown_severity_fail_count: 5` | fail if any finding ≥ `fail_at`, or ≥ N findings with `severity=None` (checkov OSS often omits severity); partial if any finding; pass if none |
+| `iac.max_severity` | `fail_at: high`, `unknown_severity_fail_count: 5` | fail if any finding ≥ `fail_at`, or ≥ N findings with `severity=None` (checkov OSS often omits severity); partial if any finding; pass if none — but `iac_parse_error` facts (files checkov could not parse) turn that pass into `unknown` (`iac_unparsed`); fail/partial stand; every claim names the unparsed files |
 | `deploy.resource_limits` | – | every `deploy_config` has `has_limits`; some → partial |
 | `docs.api_spec` | – | OpenAPI/Swagger file in `ctx.files`, or framework auto-docs detected (FastAPI; dependencies such as Swashbuckle, springdoc, @nestjs/swagger, drf-spectacular) |
 | `docs.architecture` | `globs: ["docs/**/adr*/**", "docs/**/architecture*", "ARCHITECTURE*", "docs/**/decisions/**", "**/adr/**", "**/ADR-*"]` | pass if any matches |
