@@ -180,6 +180,15 @@ def test_checkov_parse_errors_counted_but_not_listed(tmp_path: Path) -> None:
         CheckovAdapter().parse(json.dumps(data), ctx_for(root, tmp_path), "3.3.20")
 
 
+def test_checkov_directory_is_one_token(tmp_path: Path) -> None:
+    """checkov reads `<dir>/.checkov.yaml` only when `-d`/`--directory` and `<dir>` are separate
+    argv tokens; a repo config can make it import Python (external-checks-dir/-git)."""
+    root = FIXTURES / "checkov" / "input"
+    argv = CheckovAdapter().options(ctx_for(root, tmp_path))
+    assert argv[0] == f"--directory={root.resolve()}"
+    assert not {"-d", "--directory"} & set(argv)
+
+
 def test_actionlint(tmp_path: Path) -> None:
     root = FIXTURES / "actionlint" / "input"
     facts = ActionlintAdapter().parse(

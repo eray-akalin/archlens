@@ -2,8 +2,14 @@
 
 Command (checkov 3.3.20)::
 
-    checkov -d <repo> --framework kubernetes terraform cloudformation bicep arm --skip-download
-        --skip-results-upload --soft-fail -o json --compact
+    checkov --directory=<repo> --framework kubernetes terraform cloudformation bicep arm
+        --skip-download --skip-results-upload --soft-fail -o json --compact
+
+`--directory=<repo>`, one argv token: checkov also loads `.checkov.yaml`/`.checkov.yml` from the
+directory it scans, but only finds it when `-d`/`--directory` and the path are separate tokens.
+A repo config could suppress checks (`skip-check`) or make checkov import Python from the repo or
+a git URL (`external-checks-dir`, `external-checks-git`), i.e. execute repository code. The
+`scanners` suite pins this down.
 
 No `--quiet`: it drops `results.parsing_errors`, the files checkov could not parse and so never
 checked (e.g. Bicep with user-defined `type` declarations). Each becomes an `iac_parse_error`
@@ -13,8 +19,8 @@ so unchecked files are never silently read as clean.
 Parses IaC files; never applies, plans or renders them. Frameworks that shell out to other
 binaries (helm, kustomize) or need a Prisma API key (sca_*) are not enabled; Dockerfiles and
 workflows are covered by hadolint and actionlint. External Terraform modules are never downloaded
-(default; `--skip-download`). It runs from a scratch cwd with a throwaway HOME, so no repo
-`.checkov.yaml` applies. Limitation: inline `checkov:skip` comments are honored and can't be
+(default; `--skip-download`). It runs from a scratch cwd with a throwaway HOME, so no other
+`.checkov.yaml` applies either. Limitation: inline `checkov:skip` comments are honored and can't be
 disabled.
 
 Severity (DATA_MODEL §4): reported severity when present; OSS checkov usually reports null →
@@ -74,11 +80,11 @@ class CheckovAdapter(SubprocessAdapter):
         return [f.path for f in files if f.readable and not f.is_vendored and is_iac(f.path)]
 
     def target_args(self, ctx: ScanContext, targets: list[str]) -> list[str]:
-        return []  # the directory is passed in options (-d)
+        return []  # the directory is passed in options (--directory=)
 
     def options(self, ctx: ScanContext) -> list[str]:
         return [
-            "-d", str(ctx.root), "--framework", *FRAMEWORKS, "--skip-download",
+            f"--directory={ctx.root}", "--framework", *FRAMEWORKS, "--skip-download",
             "--skip-results-upload", "--soft-fail", "-o", "json", "--compact",
         ]  # fmt: skip
 
