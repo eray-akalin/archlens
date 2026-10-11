@@ -3,6 +3,7 @@
 !pyproject.toml
 !uv.lock
 !README.md
+!THIRD_PARTY_NOTICES.md
 !src/
 !config/
 !rubrics/

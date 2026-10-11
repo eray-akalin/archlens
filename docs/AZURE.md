@@ -127,8 +127,11 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
   `ARCHLENS_SEMGREP_REGISTRY_RULES=false`, which adds semgrep to `tools.yaml`'s `disabled` list, so
   semgrep never runs there and SEC-03 is `unknown` (`tool_not_run`) — honest rather than a fake
   pass. Rules we write ourselves can bring it back later.
-- `deploy.yml` is manual (`workflow_dispatch`) until publishing to GHCR is approved; then the
-  push-to-main trigger and the `azd deploy` step (M4.4) are added.
+- `deploy.yml` builds and pushes the public image on every push to `main` (approved 2026-10-11;
+  docs-only changes skip it) and on demand; `azd deploy` joins it in M4.4. The image ships
+  `THIRD_PARTY_NOTICES.md` (licenses and source links of the bundled scanners: hadolint is GPL-3.0,
+  the semgrep engine LGPL-2.1). GHCR creates a new package as private: its visibility is switched
+  to public once, in the package settings.
 
 ## 5. Cost guardrails
 

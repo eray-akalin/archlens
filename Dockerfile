@@ -29,8 +29,7 @@ RUN /app/.venv/bin/python scripts/fetch_scanners.py --dest /opt/scanners
 # --- runtime ------------------------------------------------------------------------------------
 FROM ${PYTHON_IMAGE} AS runtime
 LABEL org.opencontainers.image.source="https://github.com/eray-akalin/archlens" \
-      org.opencontainers.image.description="ArchLens: evidence-backed architecture assessment" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.description="ArchLens: evidence-backed architecture assessment"
 # git: the hardened clone of assessed repositories (nothing from them is ever executed). Package
 # versions float within the digest-pinned Debian release's security updates, hence DL3008.
 # hadolint ignore=DL3008
@@ -43,6 +42,7 @@ RUN apt-get update \
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /opt/scanners /opt/scanners
 WORKDIR /app
+COPY THIRD_PARTY_NOTICES.md ./
 COPY config ./config
 COPY rubrics ./rubrics
 COPY prompts ./prompts

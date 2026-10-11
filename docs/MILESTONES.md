@@ -714,6 +714,11 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   Students credit ≈ $99 for a year (≥ 10 days holds); Dependabot PR #2 had already been closed by
   Dependabot after the ignore rule (it reopened as #3, pyright only, green). Tests: 1163 (+35).
   Spend: $0.
+- 2026-10-11 — User: publish the image publicly, merge PR #3, go on to Bicep. PR #3 (pyright
+  ≥ 1.1.414) squash-merged; the merged `uv.lock` checked with `uv sync --locked`. `deploy.yml` runs
+  on push to `main`; `THIRD_PARTY_NOTICES.md` (licenses verified via the GitHub API) ships in the
+  image. Found: the project declares no license, yet M4.1 labelled the image `MIT` — the label is
+  removed; choosing a license is the user's call. Spend: $0.
 
 ---
 
