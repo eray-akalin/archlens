@@ -297,6 +297,22 @@ def test_iac_findings_stand_with_unparsed_files(
     )
 
 
+def hidden(path: str) -> Fact:
+    return parse_error(path, "", "checkov@9.9.9", "9.9.9", reason="hidden_directory")
+
+
+def test_iac_under_hidden_directories_blocks_a_pass(tmp_path: Path) -> None:
+    outcome = run("iac.max_severity", make_ctx(tmp_path, [hidden(".infra/k8s/deployment.yaml")]))
+    assert (outcome.verdict, outcome.reason) == ("unknown", "iac_unparsed")
+    assert outcome.claim.startswith(
+        "checkov: 1 IaC file is under hidden directories checkov skips and went unchecked "
+        "(.infra/k8s/deployment.yaml)"
+    )
+    mixed = make_ctx(tmp_path / "m", [hidden(".deploy/main.tf"), unparsed("infra/ai.bicep")])
+    claim = run("iac.max_severity", mixed).claim
+    assert "2 IaC files could not be parsed or sit under hidden directories" in claim
+
+
 def test_iac_skipped_ignores_parse_errors(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path, [unparsed("infra/ai.bicep")], status={"checkov": "skipped"})
     assert run("iac.max_severity", ctx).verdict == "not_applicable"

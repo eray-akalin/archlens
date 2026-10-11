@@ -765,6 +765,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   status error (→ unknown), not a silent gap. Plain roots run unchanged, so the fixture stays.
   Tests: argv/link/path mapping without checkov, a hidden-scratch-dir error, and a `scanners`
   run under a hidden dir. Spend: $0.
+- 2026-10-11 — Hidden directories *inside* the repo: checkov skips them too (kubernetes runner's `/.`
+  test, whatever `CKV_IGNORE_HIDDEN_DIRECTORIES` says; the other runners by that default), so a
+  repo whose IaC lives only in `.infra/k8s/` or `.deploy/` read as clean. Option (a): scanning
+  them stays off (it would also reach `.git/`); every non-vendored IaC file with a hidden path
+  component becomes an `iac_parse_error` with `reason: hidden_directory` (DATA_MODEL §4 — an
+  attribute, no schema change), so CTR-06 answers `unknown` (`iac_unparsed`) instead of pass, and
+  its claim says which files and why. `.terraform/` and `.terragrunt-cache/` are now vendored
+  (downloaded providers/modules), so a committed cache is not flagged. Tests: parser (hidden
+  dir, hidden file, vendored cache and `.github/` excluded), rule claims (hidden only, mixed),
+  and a `scanners` run with IaC only under `.infra/`. Tests: 1177 (+2 offline). Spend: $0.
 
 ---
 

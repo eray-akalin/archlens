@@ -166,9 +166,32 @@ def test_checkov(tmp_path: Path) -> None:
     assert {p for p, _ in located(findings)} == {"k8s/deployment.yaml", "infra/storage.bicep"}
     # typed.bicep (a user-defined type) can't be parsed, so checkov never checked it
     (unparsed,) = [f for f in facts if f.kind == "iac_parse_error"]
-    assert unparsed.attributes == {"path": "infra/typed.bicep", "framework": "bicep"}
+    assert unparsed.attributes == {
+        "path": "infra/typed.bicep",
+        "framework": "bicep",
+        "reason": "parse_error",
+    }
     (scan,) = unparsed.evidence
     assert isinstance(scan, ScanEvidence) and scan.query == "parse error @ infra/typed.bicep"
+
+
+def test_checkov_hidden_directory_iac_is_reported_unchecked(tmp_path: Path) -> None:
+    """checkov skips files under hidden directories without a word; each such IaC file becomes
+    an `iac_parse_error` with reason `hidden_directory` — vendored caches excepted."""
+    root = tmp_path / "repo"
+    for rel in (".infra/k8s/deployment.yaml", ".deploy/main.tf", ".main.tf", "infra/main.tf",
+                ".terraform/modules/m/main.tf", ".github/workflows/ci.yml"):  # fmt: skip
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text("kind: Pod\n" if rel.endswith(".yaml") else "x = 1\n")
+    facts = CheckovAdapter().parse(
+        '{"results": {}, "summary": {}}', ctx_for(root, tmp_path), "3.3.20"
+    )
+    hidden = {str(f.attributes["path"]): f for f in facts if f.kind == "iac_parse_error"}
+    assert sorted(hidden) == [".deploy/main.tf", ".infra/k8s/deployment.yaml", ".main.tf"]
+    fact = hidden[".deploy/main.tf"]
+    assert fact.attributes["reason"] == "hidden_directory" and fact.attributes["framework"] == ""
+    (scan,) = fact.evidence
+    assert isinstance(scan, ScanEvidence) and scan.query == "hidden directory @ .deploy/main.tf"
 
 
 def test_checkov_parse_errors_counted_but_not_listed(tmp_path: Path) -> None:

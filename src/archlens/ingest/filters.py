@@ -20,6 +20,8 @@ _VENDORED_DIRS = frozenset(
         "site-packages",
         "Pods",
         "Carthage",
+        ".terraform",  # downloaded providers and modules
+        ".terragrunt-cache",
     }
 )
 _GENERATED_DIRS = frozenset({"dist", "build", "out", "__generated__", "generated"})

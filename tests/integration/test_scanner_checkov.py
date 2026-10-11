@@ -11,7 +11,8 @@ from archlens.config import Settings, load_config
 from archlens.facts.base import ScanContext
 from archlens.facts.scanners.checkov import CheckovAdapter
 from archlens.ingest.snapshot import build_snapshot
-from archlens.models import CodeEvidence, IngestLimits
+from archlens.models import CodeEvidence, FactSet, IngestLimits, RepoProfile
+from archlens.rubric import RuleContext, load_rubrics, run_rule
 
 pytestmark = pytest.mark.scanners
 REPO = Path(__file__).parents[2]
@@ -45,3 +46,29 @@ def test_checkov_scans_the_repo_without_its_config(parent: str, tmp_path: Path) 
     }
     (unparsed,) = [f for f in facts if f.kind == "iac_parse_error"]
     assert unparsed.attributes["path"] == "infra/typed.bicep"
+
+
+def test_iac_only_under_a_hidden_directory_is_not_a_pass(tmp_path: Path) -> None:
+    """checkov skips `.infra/` without a word; CTR-06 must say unknown, not pass."""
+    root = tmp_path / "repo"
+    (root / ".infra" / "k8s").mkdir(parents=True)
+    shutil.copy(INPUT / "k8s" / "deployment.yaml", root / ".infra" / "k8s" / "deployment.yaml")
+    settings = Settings(_env_file=None, config_dir=REPO / "config")  # pyright: ignore[reportCallIssue]
+    snapshot = build_snapshot(root, limits=IngestLimits())
+    ctx = ScanContext.create(
+        root, snapshot, tmp_path / "work", load_config(settings).tools, settings.tools_dir
+    )
+    facts, record = CheckovAdapter().run(ctx)
+    assert record.status == "ok", record.error
+    assert [f for f in facts if f.kind == "iac_finding"] == []  # checkov really skipped it
+    (unchecked,) = [f for f in facts if f.kind == "iac_parse_error"]
+    assert unchecked.attributes["reason"] == "hidden_directory"
+    rubric = load_rubrics(REPO / "rubrics")["container"]
+    check = next(c for c in rubric.checks if c.id == "CTR-06")
+    fact_set = FactSet(commit_sha="0" * 40, facts=facts, tool_runs=[record])
+    profile = RepoProfile(
+        languages={}, frameworks=[], package_managers=[], ci_systems=[], test_frameworks=[],
+        flags={"has_iac": True}, entrypoints=[],
+    )  # fmt: skip
+    result = run_rule(check, rubric, RuleContext.create(root, fact_set, profile, snapshot.files))
+    assert (result.verdict, result.reason) == ("unknown", "iac_unparsed")

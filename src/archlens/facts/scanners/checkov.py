@@ -16,8 +16,12 @@ contains `/.` (no result block, no parse error), so a root such as a `.claude/wo
 checkout would read as clean. For a root with a hidden component the adapter scans
 `<work>/checkov-root`, a symlink to it; checkov follows it and `ScanContext.rel` resolves the
 reported paths (`file_abs_path`, `parsing_errors`) back to the repo. If the scratch dir has a
-hidden component too, the run is status error rather than a silent gap. Hidden directories inside
-the repo stay skipped (checkov's default, all frameworks).
+hidden component too, the run is status error rather than a silent gap. Inside the repo checkov
+skips hidden directories too (the kubernetes runner's `/.` test regardless of
+`CKV_IGNORE_HIDDEN_DIRECTORIES`; the other runners by that default) — and scanning them would also
+reach `.git/`. So they stay skipped, and every non-vendored IaC file under a hidden directory
+(or itself hidden) becomes an `iac_parse_error` with `reason: hidden_directory`: unchecked, never
+read as clean.
 
 No `--quiet`: it drops `results.parsing_errors`, the files checkov could not parse and so never
 checked (e.g. Bicep with user-defined `type` declarations). Each becomes an `iac_parse_error`
@@ -73,12 +77,25 @@ def is_iac(path: str) -> bool:
     )
 
 
-def parse_error(path: str, framework: str, source: str, version: str) -> Fact:
-    """`iac_parse_error` fact for a file checkov could not parse; ScanEvidence only (no line)."""
-    evidence = ScanEvidence(
-        tool="checkov", tool_version=version, query=f"parse error @ {path}", result_count=1
-    )
-    return make_fact("iac_parse_error", source, {"path": path, "framework": framework}, [evidence])
+def parse_error(
+    path: str, framework: str, source: str, version: str, reason: str = "parse_error"
+) -> Fact:
+    """`iac_parse_error` fact for an IaC file checkov never checked: it could not parse it
+    (`reason="parse_error"`) or skipped it under a hidden directory (`"hidden_directory"`).
+    ScanEvidence only (no line)."""
+    query = f"{reason.replace('_', ' ')} @ {path}"
+    evidence = ScanEvidence(tool="checkov", tool_version=version, query=query, result_count=1)
+    attributes: dict[str, JsonValue] = {"path": path, "framework": framework, "reason": reason}
+    return make_fact("iac_parse_error", source, attributes, [evidence])
+
+
+def hidden_iac(files: list[FileEntry]) -> list[str]:
+    """Non-vendored IaC files checkov skips without a word: a path component starts with "."."""
+    return sorted(
+        f.path for f in files
+        if f.readable and not f.is_vendored and is_iac(f.path)
+        and any(part.startswith(".") for part in PurePosixPath(f.path).parts)
+    )  # fmt: skip
 
 
 def has_hidden_part(path: Path) -> bool:
@@ -149,4 +166,9 @@ class CheckovAdapter(SubprocessAdapter):
                     query=check["check_id"],
                 )
                 facts.append(make_fact("iac_finding", source, attributes, evidence, severity))
+        listed = {str(f.attributes["path"]) for f in facts if f.kind == "iac_parse_error"}
+        facts += [
+            parse_error(path, "", source, version, reason="hidden_directory")
+            for path in hidden_iac(ctx.snapshot.files) if path not in listed
+        ]  # fmt: skip
         return facts

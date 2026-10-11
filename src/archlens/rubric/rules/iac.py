@@ -26,15 +26,23 @@ class MaxSeverityParams(RuleParams):
 @rule("iac.max_severity")
 def max_severity(ctx: RuleContext, params: MaxSeverityParams) -> RuleOutcome:
     """fail on any finding ≥ `fail_at` or ≥ N findings without a severity (checkov OSS often
-    omits it); partial on any other finding; pass on none — unless checkov could not parse some
-    IaC files: then unknown (`iac_unparsed`), since those files were never checked."""
+    omits it); partial on any other finding; pass on none — unless some IaC files went unchecked
+    (checkov could not parse them, or they sit under a hidden directory it skips): then unknown
+    (`iac_unparsed`)."""
     if (missing := missing_data(ctx, TOOL)) is not None:
         return missing
     findings = ctx.facts.by_kind("iac_finding")
     parse_errors = ctx.facts.by_kind("iac_parse_error")
     unparsed = sorted({attr_str(f, "path") or "?" for f in parse_errors})
     shown = ", ".join(unparsed[:5]) + (", ..." if len(unparsed) > 5 else "")
-    note = f"{plural(len(unparsed), 'IaC file')} could not be parsed and went unchecked ({shown})"
+    reasons = {attr_str(f, "reason") or "parse_error" for f in parse_errors}
+    if reasons == {"hidden_directory"}:
+        why = f"{'is' if len(unparsed) == 1 else 'are'} under hidden directories checkov skips"
+    elif "hidden_directory" in reasons:
+        why = "could not be parsed or sit under hidden directories checkov skips"
+    else:
+        why = "could not be parsed"
+    note = f"{plural(len(unparsed), 'IaC file')} {why} and went unchecked ({shown})"
     severe = [f for f in findings if severity_rank(f.severity) >= SEVERITY_RANK[params.fail_at]]
     unrated = [f for f in findings if f.severity is None]
     evidence = [
