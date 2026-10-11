@@ -6,7 +6,7 @@
 - Command (`<repo>`, `<work>`, `<tools>` are placeholders):
 
   ```
-  checkov -d <repo> --framework kubernetes terraform cloudformation bicep arm --skip-download --skip-results-upload --soft-fail -o json --compact
+  checkov --directory=<repo> --framework kubernetes terraform cloudformation bicep arm --skip-download --skip-results-upload --soft-fail -o json --compact
   ```
 
 Output is redacted and the input root is replaced by `__ROOT__`.

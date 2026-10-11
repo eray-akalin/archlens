@@ -1,6 +1,7 @@
 """Parser + severity tests per adapter, against outputs stored in tests/fixtures/scanners/."""
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -178,6 +179,57 @@ def test_checkov_parse_errors_counted_but_not_listed(tmp_path: Path) -> None:
         block["results"].pop("parsing_errors")
     with pytest.raises(ValueError, match="did not list"):
         CheckovAdapter().parse(json.dumps(data), ctx_for(root, tmp_path), "3.3.20")
+
+
+def checkov_input(parent: Path) -> Path:
+    """A copy of the checkov fixture input at `<parent>/input` (the checkout may be hidden)."""
+    root = parent / "input"
+    shutil.copytree(FIXTURES / "checkov" / "input", root)
+    return root
+
+
+def test_checkov_directory_is_one_token(tmp_path: Path) -> None:
+    """checkov reads `<dir>/.checkov.yaml` only when `-d`/`--directory` and `<dir>` are separate
+    argv tokens; a repo config can make it import Python (external-checks-dir/-git)."""
+    ctx = ctx_for(checkov_input(tmp_path / "plain"), tmp_path)
+    adapter = CheckovAdapter()
+    argv = adapter.options(ctx)
+    assert argv[0] == f"--directory={ctx.root}"
+    assert not {"-d", "--directory"} & set(argv)
+    assert adapter.target_args(ctx, []) == []
+    assert not (ctx.workdir / "checkov-root").exists()  # no link for a plain root
+
+
+def test_checkov_scans_a_hidden_root_through_a_symlink(tmp_path: Path) -> None:
+    """checkov's kubernetes runner skips every file whose absolute path contains `/.`."""
+    root = checkov_input(tmp_path / ".hidden")
+    ctx = ctx_for(root, tmp_path)
+    adapter = CheckovAdapter()
+    link = ctx.workdir / "checkov-root"
+    assert adapter.options(ctx)[0] == f"--directory={link}"
+    for _ in range(2):  # a rerun in the same workdir replaces the link
+        assert adapter.target_args(ctx, []) == []
+    assert link.is_symlink() and link.resolve() == ctx.root
+    # paths checkov reports under the link map back to the same repo-relative facts
+    via_link = adapter.parse(stored_output("checkov", link), ctx, "3.3.20")
+    assert via_link == adapter.parse(stored_output("checkov", root), ctx, "3.3.20")
+    assert {p for p, _ in located(via_link)} == {"k8s/deployment.yaml", "infra/storage.bicep"}
+    assert [f.attributes["path"] for f in via_link if f.kind == "iac_parse_error"] == [
+        "infra/typed.bicep"
+    ]
+
+
+def test_checkov_hidden_scratch_dir_is_a_tool_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No unhidden place for the link → status error (CTR-06 unknown), never a silent gap."""
+    monkeypatch.setattr("archlens.facts.base.shutil.which", lambda _: "/nonexistent/checkov")
+    root = checkov_input(tmp_path / ".hidden")
+    snapshot = build_snapshot(root, limits=IngestLimits())
+    ctx = ScanContext.create(root, snapshot, tmp_path / ".work", TOOLS, tmp_path / "tools")
+    facts, record = CheckovAdapter().run(ctx)
+    assert (facts, record.status) == ([], "error")
+    assert record.error is not None and "hidden" in record.error
 
 
 def test_actionlint(tmp_path: Path) -> None:
