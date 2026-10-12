@@ -6,10 +6,10 @@
 
 - Built on the `openai` Python SDK pointed at an OpenAI-compatible base URL. For Azure OpenAI this
   is the v1 endpoint `https://<resource>.openai.azure.com/openai/v1/` (no `api-version` needed).
-  Through APIM (M4) it is the gateway URL of the imported API.
+  Behind a gateway (e.g. APIM) it is the gateway URL.
 - Auth modes (`ARCHLENS_LLM_AUTH`):
-  - `key` — `api_key=ARCHLENS_LLM_API_KEY`; if `ARCHLENS_LLM_KEY_HEADER` is set (APIM subscription
-    key), send the key in that header via `default_headers` instead.
+  - `key` — `api_key=ARCHLENS_LLM_API_KEY`; if `ARCHLENS_LLM_KEY_HEADER` is set (e.g. an APIM
+    subscription key), send the key in that header via `default_headers` instead.
   - `entra` — `api_key=get_bearer_token_provider(DefaultAzureCredential(), "https://ai.azure.com/.default")`.
 - API: **Chat Completions** with structured outputs (`chat.completions.parse` +
   `response_format=<PydanticModel>`) and strict function tools (`openai.pydantic_function_tool`).

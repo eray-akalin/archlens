@@ -34,8 +34,8 @@ portable between local and cloud runs, fast enough for ≤ 50k LOC. Azure AI Sea
 service without improving the assessment.
 
 ### ADR-006 — No semantic cache for evaluator calls
-Evaluator/verifier calls use an exact content-hash cache only. The APIM semantic cache (Redis) is
-allowed only for report Q&A. *Why:* evaluator prompts are repo-specific; a semantically "similar"
+Evaluator/verifier calls use an exact content-hash cache only. A semantic cache is allowed only for
+report Q&A (none is planned since APIM was dropped, ADR-009). *Why:* evaluator prompts are repo-specific; a semantically "similar"
 prompt from another repo could return another repo's findings — the worst possible error for an
 evidence-based tool. Exact caching gives the real savings (re-runs, PR mode).
 
@@ -46,10 +46,15 @@ assessment isolates untrusted repos per execution and gives natural timeouts.
 ### ADR-008 — GitHub Container Registry instead of ACR
 *Why:* ACR has a fixed monthly cost; the image contains no secrets and can be public.
 
-### ADR-009 — APIM Consumption by default, Developer for the final demo window
-*Why:* Consumption costs ~$0 but lacks `llm-token-limit` and `llm-emit-token-metric`; the
-Developer tier supports them for ~2 weeks of cost. The SKU is a Bicep parameter; app-side token
-metrics exist regardless.
+### ADR-009 — No API Management (amended 2026-10-13)
+Was: APIM Consumption by default, Developer for the final demo window. Consumption cannot be
+created in any region the subscription policy allows (`ApiManagementCreationDisabledForLocation`
+in polandcentral and switzerlandnorth, 2026-10-12), and the tiers that can be (Developer
+~$48/month, BasicV2 ~$150/month) cost more than they add on top of the app. So the apps call Azure
+OpenAI directly with their managed identity. *Why:* the app already has per-key quotas, a per-run
+budget, retries and its own token metrics (ARCHITECTURE §8). Redis goes too (its only job was
+APIM's semantic cache). A working gateway (module, rate-limit and managed-identity policy, the
+subscription key read into a secret without any output) is in commit `c8523ed` if APIM returns.
 
 ### ADR-010 — Clean-room rebuild
 This repository is written from scratch. No code, prompts, configs or assets are copied from the

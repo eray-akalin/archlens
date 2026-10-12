@@ -30,8 +30,6 @@ everything else inside free grants. Everything is Bicep + azd; nothing exists on
 | Container Apps environment | Consumption | $0 (free grant) | M4 |
 | Container App `api` | 0.5 vCPU / 1 GiB, min replicas 0 | $0 | M4 |
 | Container Apps Job `worker` | event-driven (queue), 1 vCPU / 2 GiB, timeout 20 min | $0 within grant | M4 |
-| API Management | `Consumption` by default; `Developer` for the final ~2 weeks (param) | $0 → ~$24 | M4 / M5 |
-| Azure Managed Redis | B0, RediSearch module, only if `enableRedis=true` (report Q&A semantic cache demo) | ~$12/mo | optional, M5 |
 | Static Web Apps | Free | $0 | M4 |
 | Container registry | GitHub Container Registry (public image) instead of ACR | $0 | M4 |
 
@@ -57,7 +55,7 @@ with a key in `.env`.
 ```
 azure.yaml                     azd project (service: api, worker; host: containerapp)
 infra/
-  main.bicep                   params: location, apimSku, enableRedis, alertEmail, imageTag
+  main.bicep                   params: location, alertEmail, imageTag, …
   modules/
     identity.bicep             user-assigned MI + role assignments
     monitoring.bicep           Log Analytics, App Insights (daily cap, no sampling)
@@ -66,13 +64,7 @@ infra/
     aca-env.bicep              Container Apps environment (Consumption)
     api.bicep                  Container App: ingress, min 0 replicas, secrets, env
     worker.bicep               Container Apps Job: event trigger on queue, parallelism 1
-    apim.bicep                 APIM (sku param), API import, backend, policies, subscriptions
-    redis.bicep                conditional on enableRedis
     swa.bicep                  Static Web App (Free)
-  apim/policies/
-    base.xml                   managed-identity auth to AOAI, retry, rate-limit by subscription
-    developer-extras.xml       llm-token-limit + llm-emit-token-metric (non-Consumption only)
-    qa-semantic-cache.xml      llm-semantic-cache-lookup/store on the Q&A operation (Redis only)
   ai.bicep                     phase 1, referenced by main.bicep as an existing resource
   kql/                         saved queries (M4.6); run with scripts/kql.sh <file>
   budget.bicep                 subscription-scope budget + alerts
@@ -83,8 +75,7 @@ GHCR, and a new version ships with `azd env set ARCHLENS_IMAGE_TAG <sha> && azd 
 `infra/main.bicep` (resource-group scope, `rg-archlens-ai`) wires `identity`, `monitoring`,
 `storage`, `cosmos`, `aca-env`, `api` and `worker` and grants the workload identity *Cognitive
 Services OpenAI User* on the phase-1 account, which the app calls directly
-(`ARCHLENS_LLM_AUTH=entra`) until APIM (M4.5); `apim`, `redis` and `swa` come with M4.5, M5.4
-and M4.7. Parameters come from the azd environment (`infra/main.parameters.json`):
+(`ARCHLENS_LLM_AUTH=entra`; no APIM, ADR-009); `swa` comes with M4.7. Parameters come from the azd environment (`infra/main.parameters.json`):
 `ARCHLENS_IMAGE_TAG`, `ARCHLENS_AI_ACCOUNT`, `ARCHLENS_API_KEYS` (secret),
 `ARCHLENS_COSMOS_FREE_TIER`. Storage is ZRS with shared-key access off; Cosmos has local auth
 and key-based metadata writes off. checkov passes the whole `infra/` tree (`ai.bicep` lost its
@@ -106,35 +97,19 @@ Key wiring:
 - Worker job: queue-triggered scale rule (prefer managed identity on the scale rule; if the target
   API version doesn't support it, use a queue-scoped SAS connection string in a job secret and
   note it in ADR form); runs `archlens worker --once`, writes artifacts to Blob, state to Cosmos.
-- App → LLM: `ARCHLENS_LLM_BASE_URL` = APIM gateway URL; `ARCHLENS_LLM_KEY_HEADER` =
-  `Ocp-Apim-Subscription-Key`; key stored as a Container Apps secret. APIM → Azure OpenAI uses
-  APIM's managed identity (`authentication-managed-identity`, role *Cognitive Services OpenAI User*).
+- App → LLM: `ARCHLENS_LLM_BASE_URL` = the AI account's v1 endpoint, `ARCHLENS_LLM_AUTH=entra`;
+  the workload identity holds *Cognitive Services OpenAI User*. Limits are the app's own: per-key
+  quotas, `ARCHLENS_RUN_BUDGET_USD`, retries with backoff.
 - App → Storage/Cosmos: user-assigned MI with data-plane roles only (SECURITY.md §7).
 - Telemetry: `APPLICATIONINSIGHTS_CONNECTION_STRING` + `ARCHLENS_OTEL_ENABLED=true`.
 
-APIM availability (checked 2026-10-12): in the regions the subscription policy allows, the ARM
-SKU list offers Consumption only in switzerlandnorth, and creating it fails there as well as in
-polandcentral (`ApiManagementCreationDisabledForLocation`: "non-availability or low capacity");
-BasicV2 (italynorth, switzerlandnorth) costs ~$150/month; Developer (~$48/month) is listed for
-polandcentral among others (creation not tried yet). So APIM is behind `enableApim` (azd env `ARCHLENS_ENABLE_APIM`, default
-`false`): off, the apps call Azure OpenAI directly with the workload identity (it holds *OpenAI
-User*); on, `modules/apim.bicep` deploys the gateway (`apimSku`, `apimLocation`), APIM's identity
-gets *OpenAI User* instead, and the apps read the `archlens-app` subscription key straight into a
-secret (`listSecrets` inside api/worker.bicep — never a deployment output) with
-`ARCHLENS_LLM_AUTH=key` and `ARCHLENS_LLM_KEY_HEADER=Ocp-Apim-Subscription-Key`. Policy
-`apim/policies/base.xml`: rate limit per subscription (`apimRateLimitCalls`, default 120/min),
-subscription key stripped, `authentication-managed-identity`, retry on 429/5xx; request logs to
-App Insights (100%).
-
-APIM tier notes (verified against the policy reference): on **Consumption**, `llm-token-limit` and
-`llm-emit-token-metric` are not supported; `llm-semantic-cache-*`, `llm-content-safety`,
-`authentication-managed-identity`, `rate-limit`, `retry` and backends are. `apim.bicep` includes
-`developer-extras.xml` only when `apimSku != 'Consumption'`. Token metrics always come from the app
-(ARCHITECTURE §8). APIM semantic caching needs an Azure Managed Redis instance with RediSearch
-enabled at creation, configured as APIM's external cache.
-
-Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer && azd provision`
-(ask first; provisioning a classic-tier APIM takes a long time — start it early in the day).
+No API Management (ADR-009, 2026-10-13). Checked 2026-10-12: in the regions the subscription
+policy allows, the ARM SKU list offers Consumption only in switzerlandnorth, and creating it fails
+there as well as in polandcentral (`ApiManagementCreationDisabledForLocation`: "non-availability
+or low capacity"); BasicV2 (italynorth, switzerlandnorth) is ~$150/month; Developer (~$48/month) is
+listed for polandcentral, creation not tried. The gateway that was built for it (`apim.bicep`,
+`base.xml`, the subscription key read with `listSecrets` inside the app modules) is in commit
+`c8523ed`.
 
 ## 4. CI/CD (GitHub Actions)
 
@@ -169,7 +144,7 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
 
 ## 5. Cost guardrails
 
-- Default parameters are the free/cheap ones (`apimSku=Consumption`, `enableRedis=false`).
+- Default parameters are the free/cheap ones (Cosmos free tier, Container Apps scaling to zero).
 - Log Analytics daily cap (0.2 GB). No sampling: the SDK takes the App Insights sampling
   percentage from the service and samples per trace, so 50% dropped whole runs (seen 2026-10-12);
   a run is under 1 MB, so the cap is the guardrail. API and worker report as `archlens-api` and
@@ -181,7 +156,7 @@ Switching APIM to Developer for the final weeks: `azd env set APIM_SKU Developer
 ## 6. Teardown (before the credit ends)
 
 1. Record the demo video; export final `eval/results/` and sample reports to the repo.
-2. `azd down --purge` (purges soft-deleted Cognitive Services and APIM so names/quota free up).
+2. `azd down --purge` (purges soft-deleted Cognitive Services so names/quota free up).
 3. Delete the budget and any leftover resource groups; confirm $0 run-rate in Cost Management.
 4. The repo must still work afterwards: `azd up` from a fresh clone recreates everything, and the
    CLI works locally against any OpenAI-compatible endpoint.

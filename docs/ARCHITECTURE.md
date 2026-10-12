@@ -216,7 +216,7 @@ client ─► API (Container Apps, scale-to-zero)
           Worker (Container Apps Job, queue-triggered) ─► runs pipeline
             │ artifacts → Blob, status/findings → Cosmos
             ▼
-          LLM traffic ─► APIM gateway ─► Azure OpenAI (managed identity)
+          LLM traffic ─► Azure OpenAI (managed identity; no gateway, ADR-009)
           Telemetry ─► OpenTelemetry ─► Application Insights
           Web UI (Static Web Apps) ─► API
 ```
@@ -259,7 +259,7 @@ disables semgrep for licensing reasons.
 - Metrics: `archlens.llm.tokens{kind=input|cached|output|reasoning, stage, metric, model}`,
   `archlens.llm.cost_usd{stage, metric}`, `archlens.check.verdicts{metric, verdict}`,
   `archlens.verify.status{step, status}`, `archlens.run.duration_s`.
-- Token metrics are emitted by the app (the APIM Consumption gateway can't emit LLM token metrics;
+- Token metrics are emitted by the app (there is no gateway in front of Azure OpenAI, ADR-009;
   the app-side version is also more granular).
 - Local mode: console exporter off by default; `ARCHLENS_OTEL_ENABLED=true` + connection string
   sends to Application Insights.

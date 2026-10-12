@@ -3,12 +3,13 @@
 Work top to bottom. A task is done when every acceptance criterion (AC) is met **and** ruff,
 pyright and pytest are green. Tick the box and add a line to the milestone's **Log**
 (`YYYY-MM-DD — what was done; ambiguities resolved; spend if any`). Use `/next-milestone`.
+`- [-]` marks a task dropped by decision (struck through; the reason is in the log).
 
 **Credit expiry:** `2027-09-19` (Education hub, checked 2026-10-06: $99 of $100 available)
 **Spend so far:** `$0.0004` (LLM calls recorded by ArchLens; update weekly from Cost Management)
 
 Planned spend: development calls ~$10 · first real run ~$0.50 · first eval ~$4 · ablation ~$15 ·
-APIM Developer ~2 weeks ~$24 · Redis (optional) ~$12 · buffer ~$15.
+buffer ~$15. (APIM Developer and Redis were dropped with APIM, ADR-009.)
 
 Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before executing.
 
@@ -652,9 +653,9 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M4.4 💰 Infra.** `azure.yaml`, `infra/main.bicep` + modules; `azd up` (ask).
   AC: POST a repo URL → job runs → report in Blob → GET returns it; App Insights shows one trace
   per run with stage spans and token metrics.
-- [ ] **M4.5 💰 APIM (Consumption).** Import the Azure OpenAI API, managed-identity backend auth,
+- [-] ~~**M4.5 💰 APIM (Consumption).** Import the Azure OpenAI API, managed-identity backend auth,
   `base.xml` policies; app switched to the APIM URL.
-  AC: LLM traffic visible in APIM logs; rate-limit policy verified.
+  AC: LLM traffic visible in APIM logs; rate-limit policy verified.~~ Dropped 2026-10-13 (ADR-009).
 - [x] **M4.6 Observability.** KQL queries in `infra/kql/` (cost per run, tokens per metric,
   verdict mix, verifier outcomes).
   AC: queries return data for the M4.4 run.
@@ -836,10 +837,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   an output would expose the key). `Microsoft.ApiManagement` registered. Provisioned with APIM off:
   apps unchanged (direct, managed identity), `/healthz` 200. checkov: 16 passed, 8 skipped (APIM
   VNet/public access added, Consumption has no VNet). Spend: $0.
+- 2026-10-13 — M4.5 and M5.3 **dropped** (user decision; ADR-009 amended): no API Management. The
+  APIM module, policy and wiring are removed from `infra/` (kept in commit `c8523ed`); the
+  templates are back to the deployed M4.4 shape (apps → Azure OpenAI with their managed identity),
+  so no reprovision is needed. Redis goes too (only APIM's semantic cache needed it); M5.4 keeps
+  the Q&A route without a semantic cache. No APIM resource or soft-deleted service was left in
+  Azure. Spend: $0.
 
 ---
 
-## M5 — Ablation, PR mode, gateway extras (weeks 3–4)
+## M5 — Ablation, PR mode, Q&A, MCP (weeks 3–4)
 
 - [ ] **M5.1 💰 Ablation.** `baseline`, `facts`, `verifier`, `full` per EVALUATION.md §6
   (~41 runs, ~$15).
@@ -848,12 +855,13 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [ ] **M5.2 PR mode + SARIF.** `findings.sarif`, metric result cache, `archlens assess --base
   <report>` diff, reusable workflow that comments the score delta and uploads SARIF.
   AC: on a test PR, only metrics with changed inputs are re-evaluated; SARIF shows in code scanning.
-- [ ] **M5.3 💰 APIM Developer.** Switch `apimSku`, add `developer-extras.xml`
+- [-] ~~**M5.3 💰 APIM Developer.** Switch `apimSku`, add `developer-extras.xml`
   (`llm-token-limit`, `llm-emit-token-metric`).
-  AC: gateway token metrics visible in App Insights; token limit returns 429 when exceeded.
-- [ ] **M5.4 💰 (optional) Report Q&A + semantic cache.** `POST /assessments/{id}/ask` route,
-  `synth.qa.md`, `enableRedis=true`, `qa-semantic-cache.xml`.
-  AC: answers cite finding IDs; a second similar question is served from cache (APIM trace).
+  AC: gateway token metrics visible in App Insights; token limit returns 429 when exceeded.~~
+  Dropped 2026-10-13 (ADR-009).
+- [ ] **M5.4 💰 (optional) Report Q&A.** `POST /assessments/{id}/ask` route, `synth.qa.md`.
+  (The APIM semantic cache was dropped with APIM, ADR-009.)
+  AC: answers cite finding IDs; repeating a question is served from the exact cache.
 - [ ] **M5.5 MCP server.** stdio server exposing `assess_repo`, `get_report`, `search_findings`.
   AC: usable from Claude Code as a local MCP server.
 
