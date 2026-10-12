@@ -30,14 +30,13 @@ everything else inside free grants. Everything is Bicep + azd; nothing exists on
 | Container Apps environment | Consumption | $0 (free grant) | M4 |
 | Container App `api` | 0.5 vCPU / 1 GiB, min replicas 0 | $0 | M4 |
 | Container Apps Job `worker` | event-driven (queue), 1 vCPU / 2 GiB, timeout 20 min | $0 within grant | M4 |
-| Static Web Apps | Free | $0 | M4 |
 | Container registry | GitHub Container Registry (public image) instead of ACR | $0 | M4 |
 
 Region: one region for everything — **Poland Central**. The Azure for Students subscription has a
 policy (`sys.regionrestriction`) allowing only polandcentral, austriaeast, switzerlandnorth,
 italynorth and belgiumcentral; Azure OpenAI is offered only in the first, third and fourth, and all
-M4 services exist in each of those except **Static Web Apps (none of the allowed regions — M4.7
-needs another host)**. Poland Central is chosen for West-Europe-level pricing (checked
+M4 services exist in each of those except Static Web Apps (none of the allowed regions), so the
+web UI is served by the API container (M4.7). Poland Central is chosen for West-Europe-level pricing (checked
 2026-10-06). Global Standard deployments route globally anyway. Resource group `rg-archlens-ai`
 was created in swedencentral before the policy was found (groups are not restricted); its
 location is metadata only, so `ai.bicep` sets the resource location explicitly.
@@ -64,7 +63,6 @@ infra/
     aca-env.bicep              Container Apps environment (Consumption)
     api.bicep                  Container App: ingress, min 0 replicas, secrets, env
     worker.bicep               Container Apps Job: event trigger on queue, parallelism 1
-    swa.bicep                  Static Web App (Free)
   ai.bicep                     phase 1, referenced by main.bicep as an existing resource
   kql/                         saved queries (M4.6); run with scripts/kql.sh <file>
   budget.bicep                 subscription-scope budget + alerts
@@ -75,7 +73,7 @@ GHCR, and a new version ships with `azd env set ARCHLENS_IMAGE_TAG <sha> && azd 
 `infra/main.bicep` (resource-group scope, `rg-archlens-ai`) wires `identity`, `monitoring`,
 `storage`, `cosmos`, `aca-env`, `api` and `worker` and grants the workload identity *Cognitive
 Services OpenAI User* on the phase-1 account, which the app calls directly
-(`ARCHLENS_LLM_AUTH=entra`; no APIM, ADR-009); `swa` comes with M4.7. Parameters come from the azd environment (`infra/main.parameters.json`):
+(`ARCHLENS_LLM_AUTH=entra`; no APIM, ADR-009); the web UI ships inside the API image (M4.7). Parameters come from the azd environment (`infra/main.parameters.json`):
 `ARCHLENS_IMAGE_TAG`, `ARCHLENS_AI_ACCOUNT`, `ARCHLENS_API_KEYS` (secret),
 `ARCHLENS_COSMOS_FREE_TIER`. Storage is ZRS with shared-key access off; Cosmos has local auth
 and key-based metadata writes off. checkov passes the whole `infra/` tree (`ai.bicep` lost its

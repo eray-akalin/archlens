@@ -6,12 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from archlens import __version__
+from archlens.api import ui
 from archlens.api.routes import ApiState, router
 
 
 def create_app(state: ApiState | None = None) -> FastAPI:
-    """The API app. Without `state` it serves only `GET /healthz` (the image's HEALTHCHECK works
-    before any storage or keys are configured)."""
+    """The API app and its web UI. Without `state` it serves only `GET /healthz` (the image's
+    HEALTHCHECK works before any storage or keys are configured)."""
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
@@ -30,4 +31,5 @@ def create_app(state: ApiState | None = None) -> FastAPI:
     if state is not None:
         app.state.archlens = state
         app.include_router(router)
+        app.include_router(ui.router)
     return app

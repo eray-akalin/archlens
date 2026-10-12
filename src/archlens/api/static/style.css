@@ -1,0 +1,79 @@
+/* Same palette as the HTML report (report/templates/report.html.j2). */
+:root {
+  --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --card: #f6f8fa;
+  --accent: #0969da; --accent-fg: #ffffff;
+  --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --card: #151b23;
+    --accent: #4493f8; --accent-fg: #0d1117;
+    --pass: #3fb950; --partial: #d29922; --fail: #f85149;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg);
+  max-width: 1100px; margin: 0 auto; padding: 24px 16px;
+}
+h1 { margin: 0; }
+h2 { margin: 0; font-size: 18px; }
+code { font: 13px/1.45 ui-monospace, monospace; }
+.muted { color: var(--muted); }
+
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin: 16px 0;
+}
+label { display: block; flex: 1; margin-bottom: 12px; font-weight: 500; }
+input {
+  display: block; width: 100%; margin-top: 4px; padding: 7px 10px;
+  font: inherit; font-weight: 400; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row.head { align-items: center; justify-content: space-between; gap: 8px; }
+.actions { display: flex; justify-content: flex-end; }
+
+button {
+  font: inherit; font-weight: 500; padding: 7px 16px; border-radius: 6px; cursor: pointer;
+  color: var(--accent-fg); background: var(--accent); border: 1px solid var(--accent);
+}
+button:disabled { opacity: 0.6; cursor: progress; }
+button.secondary { color: var(--fg); background: var(--card); border-color: var(--line); }
+#downloads { display: flex; gap: 8px; flex-wrap: wrap; }
+
+form.inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+form.inline label { flex: none; margin: 0; font-weight: 400; }
+form.inline input { flex: 1; min-width: 14em; width: auto; margin: 0; }
+
+#error {
+  color: var(--fail); border: 1px solid var(--fail); border-radius: 6px; padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+#run-summary { overflow-wrap: anywhere; }
+
+.badge {
+  font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.badge.s-running, .badge.s-queued { color: var(--partial); border-color: var(--partial); }
+.badge.s-done { color: var(--pass); border-color: var(--pass); }
+.badge.s-failed, .badge.s-error { color: var(--fail); border-color: var(--fail); }
+
+#stages { list-style: none; padding: 0; margin: 8px 0 0; }
+#stages li { display: flex; gap: 10px; padding: 3px 0; flex-wrap: wrap; }
+#stages .mark { width: 1.2em; text-align: center; color: var(--muted); }
+#stages .s-done .mark { color: var(--pass); }
+#stages .s-running .mark { color: var(--partial); }
+#stages .s-failed .mark, .error-text { color: var(--fail); }
+#stages .s-pending, #stages .s-skipped { color: var(--muted); }
+.error-text { overflow-wrap: anywhere; }
+
+#report { margin-top: 24px; }
+#report-frame {
+  display: block; width: 100%; height: 80vh; margin-top: 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+}

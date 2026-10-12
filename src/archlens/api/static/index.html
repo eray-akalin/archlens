@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchLens</title>
+<link rel="stylesheet" href="/ui/style.css">
+<script type="module" src="/ui/app.js"></script>
+</head>
+<body>
+<header>
+  <h1>ArchLens</h1>
+  <p class="muted">Evidence-backed architecture assessment of a Git repository.</p>
+</header>
+
+<main>
+  <form id="submit-form" class="card">
+    <label>API key
+      <input id="key" type="password" autocomplete="off" spellcheck="false" required>
+    </label>
+    <label>Repository URL
+      <input id="repo" type="url" placeholder="https://github.com/owner/repo" spellcheck="false" required>
+    </label>
+    <div class="row">
+      <label>Ref <span class="muted">(optional)</span>
+        <input id="ref" placeholder="default branch" spellcheck="false">
+      </label>
+      <label>Metrics <span class="muted">(optional, comma-separated)</span>
+        <input id="metrics" placeholder="all, or e.g. security, testing" spellcheck="false">
+      </label>
+    </div>
+    <div class="actions">
+      <button id="submit" type="submit">Assess</button>
+    </div>
+  </form>
+
+  <form id="open-form" class="inline">
+    <label for="run-id" class="muted">Or open an earlier run</label>
+    <input id="run-id" placeholder="run id" spellcheck="false" autocomplete="off">
+    <button type="submit" class="secondary">Open</button>
+  </form>
+
+  <p id="error" role="alert" hidden></p>
+
+  <section id="run" class="card" hidden>
+    <div class="row head">
+      <h2>Run <code id="run-id-label"></code></h2>
+      <span id="run-status" class="badge"></span>
+    </div>
+    <p id="run-summary" class="muted"></p>
+    <ol id="stages"></ol>
+  </section>
+
+  <section id="report" hidden>
+    <div class="row head">
+      <h2>Report</h2>
+      <span id="downloads"></span>
+    </div>
+    <iframe id="report-frame" sandbox title="ArchLens report"></iframe>
+  </section>
+</main>
+</body>
+</html>

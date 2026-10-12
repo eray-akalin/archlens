@@ -70,8 +70,9 @@ async def finish(env: Env, run_id: str) -> None:
 # --- auth ---------------------------------------------------------------------------------------
 
 
-def test_healthz_is_the_only_unauthenticated_route(env: Env) -> None:
+def test_only_healthz_and_the_static_ui_are_unauthenticated(env: Env) -> None:
     assert env.client.get("/healthz").status_code == 200
+    assert env.client.get("/").status_code == 200  # no data in it (test_ui.py)
     assert post(env, key=None)[0] == 401
     assert post(env, key="wrong")[0] == 401
     assert env.client.get("/assessments/01J0000000000000000000000").status_code == 401

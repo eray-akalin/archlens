@@ -218,7 +218,7 @@ client ─► API (Container Apps, scale-to-zero)
             ▼
           LLM traffic ─► Azure OpenAI (managed identity; no gateway, ADR-009)
           Telemetry ─► OpenTelemetry ─► Application Insights
-          Web UI (Static Web Apps) ─► API
+          Web UI (static page served by the API) ─► API
 ```
 
 API surface (FastAPI):
@@ -230,6 +230,7 @@ API surface (FastAPI):
 - `POST /assessments/{run_id}/ask` `{question}` → answer grounded in the report (report Q&A, added
   in M5.4; the only place a semantic cache may be used)
 - `GET /healthz`
+- `GET /` and `GET /ui/{app.js,style.css}` → the web UI (M4.7)
 
 As built (M4.3): `POST /assessments` checks the API key, the URL policy, the ref and the metric
 names, then the quotas (per key: `ARCHLENS_MAX_CONCURRENT_RUNS_PER_KEY` runs queued or running,
@@ -243,6 +244,17 @@ deleted message — Azure Storage Queue semantics; the local backend is file-per
 with an flock). `archlens worker [--once]` takes a message, runs the pipeline (resuming when
 the state says `running`: an earlier attempt died), deletes the message when the run ends either
 way, and marks the run failed after 2 deliveries that never finished.
+
+As built (M4.7): the web UI is one static page in `archlens.api.static`, served by the API itself
+(`archlens.api.ui`; Static Web Apps isn't offered in the allowed regions, and one origin means no
+CORS). It holds no data and needs no key to load; the user types the API key, which stays in the
+tab's `sessionStorage` and goes out only as `X-API-Key` to the routes above. The page submits
+`{repo_url, ref?, metrics?}`, polls `GET /assessments/{run_id}` every 4 s (retrying network errors
+and 5xx, stopping on other 4xx), lists stages with their durations and errors, and when the run
+is `done` loads `report.html` into a sandboxed `srcdoc` iframe (no scripts, opaque origin) with
+download buttons for the three artifacts. The run id sits in the URL fragment, so a reload or a
+bookmark follows the same run. Page CSP: scripts and styles from `'self'` only (plus inline
+styles, which the report iframe inherits), `connect-src 'self'`, `frame-ancestors 'none'`.
 
 ## 7. Configuration
 

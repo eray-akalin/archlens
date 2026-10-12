@@ -659,7 +659,8 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M4.6 Observability.** KQL queries in `infra/kql/` (cost per run, tokens per metric,
   verdict mix, verifier outcomes).
   AC: queries return data for the M4.4 run.
-- [ ] **M4.7 Web UI.** Static Web App: submit URL, poll status, render the HTML report.
+- [ ] **M4.7 Web UI.** A page served by the API container (Static Web Apps isn't offered in the
+  allowed regions): submit URL, poll status, render the HTML report.
   AC: end-to-end from the browser.
 
 **Log**

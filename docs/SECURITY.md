@@ -104,10 +104,13 @@ Layered; no single layer is trusted.
   (`github.com` by default, configurable), no userinfo, default port only, no IP literals,
   path must look like `/<owner>/<repo>(.git)?`.
 - Auth: API key header for the demo deployment (key in a Container Apps secret); Entra ID is an
-  optional later step. Unauthenticated endpoints: `/healthz` only. As built: header
-  `X-API-Key`, keys from `ARCHLENS_API_KEYS` compared in constant time, and only a fingerprint
-  (16 hex of sha256) is stored with a job; runs are scoped to the key that created them (others
-  get `404`); HTML reports are served with a CSP that allows no scripts or remote loads.
+  optional later step. Unauthenticated endpoints: `/healthz` and the static web UI (`/`,
+  `/ui/*`), which carries no data — it calls the other routes with the key the user types. As
+  built: header `X-API-Key`, keys from `ARCHLENS_API_KEYS` compared in constant time, and only a
+  fingerprint (16 hex of sha256) is stored with a job; runs are scoped to the key that created
+  them (others get `404`); HTML reports are served with a CSP that allows no scripts or remote
+  loads; the UI shows them in a sandboxed iframe without scripts, under a page CSP that allows
+  only its own script.
 - Quotas: per-key concurrent runs = 1, runs/day configurable (default 10); the per-run budget
   guard still applies.
 - Workers run with a user-assigned managed identity that has only: Blob data contributor on the
