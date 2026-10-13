@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from archlens import telemetry
 from archlens.errors import ArchLensError, IngestError
+from archlens.evaluate.ablation import ablate
 from archlens.evaluate.consistency import evaluate_llm_checks
 from archlens.evaluate.deterministic import llm_checks, run_deterministic_checks
 from archlens.evaluate.llm_session import Evaluator, EvaluatorPrompts
@@ -111,7 +112,11 @@ class Pipeline:
         self.ctx = ctx
         self.options = options
         self.cp = Checkpoints(ctx.storage.checkpoints, ctx.run_id)
-        self.rubrics = _select(ctx.rubrics, options.metrics)
+        self.rubrics = ablate(
+            _select(ctx.rubrics, options.metrics),
+            deterministic_rules=options.deterministic_rules,
+            self_consistency=options.self_consistency,
+        )
         self.ledger = SeenLines()
         self.timings: dict[str, int] = {}
         self.previous_records: list[LLMCallRecord] = []
@@ -167,10 +172,16 @@ class Pipeline:
         )
         index_path = self.ctx.work_dir / "index.sqlite"
         await self._index(index_path, snapshot, reader)
+        # the facts the evaluator may see; the rules (and redaction) always use all of them
+        llm_facts = (
+            facts
+            if self.options.facts_in_context
+            else FactSet(commit_sha=facts.commit_sha, facts=[], tool_runs=facts.tool_runs)
+        )
         tools = RepoTools(
             root,
             snapshot.files,
-            facts,
+            llm_facts,
             boundary=self.ctx.boundary,
             ledger=self.ledger,
             redactor=redactor,
@@ -178,7 +189,7 @@ class Pipeline:
             embedder=self.ctx.embedder,
         )
         results = await self._evaluate(
-            tools, RuleContext.create(root, facts, profile, snapshot.files, redactor)
+            tools, RuleContext.create(root, facts, profile, snapshot.files, redactor), llm_facts
         )
         findings = await self._cached(
             "verify", FindingsCheckpoint, lambda: self._verify(tools, snapshot, results)
@@ -239,13 +250,15 @@ class Pipeline:
         )
         await self._finish("index", started)
 
-    async def _evaluate(self, tools: RepoTools, rule_ctx: RuleContext) -> list[CheckResult]:
+    async def _evaluate(
+        self, tools: RepoTools, rule_ctx: RuleContext, llm_facts: FactSet
+    ) -> list[CheckResult]:
         flags = rule_ctx.profile.flags
         metrics = [r for r in self.rubrics.values() if r.applies_when.holds(flags)]
         limits = self.ctx.config.models.sessions.evaluator
         prompts = EvaluatorPrompts.load(self.ctx.prompts_dir)
         evaluator = Evaluator(
-            self.ctx.llm, tools, rule_ctx.profile, rule_ctx.facts, limits, prompts
+            self.ctx.llm, tools, rule_ctx.profile, llm_facts, limits, prompts
         )  # fmt: skip
         started = await self._begin("evaluate")
         by_metric: dict[str, list[CheckResult]] = {}

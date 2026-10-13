@@ -169,13 +169,17 @@ def test_plan_problems(suite: list[SuiteEntry], variants: list[VariantSpec], mes
     assert any(message in p for p in plan.problems), plan.problems
 
 
-def test_ablation_switches_wait_for_m51() -> None:
-    plan = plan_of(config(SuiteEntry(repo="primary"), features=Features(self_consistency=False)))
-    assert plan.problems == ["feature not supported yet (M5.1): self_consistency: false"]
-    ok = plan_of(
-        config(SuiteEntry(repo="primary"), features=Features(verifier="mechanical", skeptic=False))
-    )
-    assert ok.problems == []  # the verifier switches already exist
+def test_ablation_switches_are_supported_and_priced() -> None:
+    def per_run(features: Features) -> Decimal:
+        plan = plan_of(config(SuiteEntry(repo="primary"), features=features))
+        assert plan.problems == []
+        return project(plan, repo_config(), RUBRICS).per_run
+
+    full = per_run(Features())
+    assert per_run(Features(verifier="mechanical", skeptic=False)) < full
+    assert per_run(Features(self_consistency=False)) < full
+    # deterministic checks become LLM checks: more to judge and verify
+    assert per_run(Features(deterministic_rules=False)) > full
 
 
 def test_projection_with_zero_mutations() -> None:

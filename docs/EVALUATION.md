@@ -217,6 +217,14 @@ Suites:
 | `full` | × 3 | × 1 | × 1 | × 1 | ~11 |
 | `baseline`, `facts`, `verifier` | × 2 | × 1 | × 1 | × 1 | ~10 each |
 
+As built (`archlens.evaluate.ablation`, `RunOptions`): with `facts_in_context: false` the scanners
+still run (redaction and the deterministic rules need them) but the evaluator gets no facts — none
+in its prompt, none from `get_facts`; `deterministic_rules: false` turns every deterministic check
+into an LLM check (positive evidence required, guidance from its title, rationale and rule
+docstring); `self_consistency: false` sets one run per check (no tie-break). The dry-run prices
+the transformed rubrics (more LLM checks without rules, no entailment / skeptic when off), so each
+config's projection matches what it runs.
+
 Expected total ≈ 41 assessments. At ~$0.30–0.40 each that is ~$13–16; the runner enforces
 `budget_usd` from the config and `--dry-run` prints the projection first.
 

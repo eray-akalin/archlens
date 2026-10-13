@@ -1,0 +1,22 @@
+# The `facts` eval config (EVALUATION.md §6) — B: the fact layer and deterministic rules on; mechanical verification only, no self-consistency, no skeptic.
+name: facts
+budget_usd: 5.0
+seed: 0
+repos_file: eval/repos.yaml
+variants_file: eval/variants.yaml
+features:
+  facts_in_context: true
+  deterministic_rules: true
+  verifier: mechanical
+  self_consistency: false
+  skeptic: false
+suite:
+  - {repo: primary, variant: base, runs: 2}
+  - {repo: primary, variant: V1}
+  - {repo: primary, variant: V2}
+  - {repo: primary, variant: V3}
+  - {repo: primary, variant: V4}
+  - {repo: primary, variant: VI1}
+  - {repo: primary, variant: VI2}
+  - {repo: cross, variant: base}
+  - {repo: cross, variant: VX1}

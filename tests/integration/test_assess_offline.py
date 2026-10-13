@@ -339,3 +339,24 @@ async def test_run_ids_and_resume_guards(tiny_service: MaterializedRepo, tmp_pat
     (tiny_service.root / "app" / "main.py").write_text("changed = True\n")
     with pytest.raises(IngestError, match="repository changed since run once started"):
         await run(tiny_service, tmp_path, FakeLLM(), run_id="once", resume=True)
+
+
+async def test_facts_can_be_kept_out_of_the_evaluators_context(
+    tiny_service: MaterializedRepo, tmp_path: Path
+) -> None:
+    """Ablation `facts_in_context: false`: rules still use the facts, the evaluator sees none."""
+
+    def fact_rows(llm: FakeLLM) -> int:
+        texts = [str(m) for c in llm.calls if c.role == "evaluator" for m in c.messages]
+        return sum(text.count('"kind": "') for text in texts)
+
+    with_facts = FakeLLM(evaluator_script() | later_script())
+    await run_assessment(
+        context(tmp_path / "a", with_facts, "a"), RunOptions(str(tiny_service.root), scanners=False)
+    )
+    without = FakeLLM(evaluator_script() | later_script())
+    options = RunOptions(str(tiny_service.root), scanners=False, facts_in_context=False)
+    report = await run_assessment(context(tmp_path / "b", without, "b"), options)
+    assert fact_rows(with_facts) > 0 and fact_rows(without) == 0
+    # deterministic checks still ran on the facts
+    assert any(f.result.origin == "deterministic" for f in report.findings)

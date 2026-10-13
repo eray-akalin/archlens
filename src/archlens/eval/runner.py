@@ -29,6 +29,7 @@ from archlens.eval.metrics import Audit, Label, Summary, render_table, summarize
 from archlens.eval.mutation import Mutation
 from archlens.eval.repos import EvalRepo, checkout_path, marker_path
 from archlens.eval.variants import VariantSpec, apply_variant, static_problems
+from archlens.evaluate.ablation import ablate
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.ingest.snapshot import build_snapshot
@@ -75,7 +76,7 @@ def build_plan(
     by_repo = {r.id: r for r in repos}
     by_variant = {v.id: v for v in variants}
     check_metric = {c.id: r.metric for r in rubrics.values() for c in r.checks}
-    problems = [f"feature not supported yet (M5.1): {f}" for f in config.features.unsupported()]
+    problems: list[str] = []
     runs: list[PlannedRun] = []
     seen: set[tuple[str, str]] = set()
     for entry in config.suite:
@@ -113,7 +114,15 @@ class Projection:
 
 
 def project(plan: EvalPlan, app_config: AppConfig, rubrics: Mapping[str, Rubric]) -> Projection:
-    per_run = project_cost(app_config, list(rubrics.values())).total
+    features = plan.config.features
+    ablated = ablate(
+        rubrics, deterministic_rules=features.deterministic_rules,
+        self_consistency=features.self_consistency,
+    )  # fmt: skip
+    per_run = project_cost(
+        app_config, list(ablated.values()), entailment=features.verifier == "full",
+        skeptic=features.skeptic,
+    ).total  # fmt: skip
     return Projection(per_run, len(plan.runs), Decimal(str(plan.config.budget_usd)))
 
 
@@ -205,6 +214,9 @@ class EvalRunner:
                 verifier=VerifierOptions(
                     entailment=features.verifier == "full", skeptic=features.skeptic
                 ),
+                facts_in_context=features.facts_in_context,
+                deterministic_rules=features.deterministic_rules,
+                self_consistency=features.self_consistency,
             )
             run_id = f"{self.eval_run_id}-{planned.name}".replace(".", "-")
             started = time.monotonic()

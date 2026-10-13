@@ -24,6 +24,10 @@ class RunOptions:
     # repeated eval runs must stay independent samples
     metric_cache: bool = False
     base: AssessmentReport | None = None  # set → also write `pr_comment.md` against it
+    # ablation switches (EVALUATION.md §6); the verifier's are in `verifier`
+    facts_in_context: bool = True  # False: the evaluator sees no facts (prompt and get_facts)
+    deterministic_rules: bool = True  # False: deterministic checks are judged by the evaluator
+    self_consistency: bool = True  # False: one evaluator run per check
 
 
 @dataclass(frozen=True)

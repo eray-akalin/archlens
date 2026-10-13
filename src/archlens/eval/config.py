@@ -23,13 +23,6 @@ class Features(Contract):
     self_consistency: bool = True
     skeptic: bool = True
 
-    def unsupported(self) -> list[str]:
-        """Switches the pipeline can't honour yet (the ablation is M5.1)."""
-        missing = [] if self.facts_in_context else ["facts_in_context: false"]
-        missing += [] if self.deterministic_rules else ["deterministic_rules: false"]
-        missing += [] if self.self_consistency else ["self_consistency: false"]
-        return missing
-
 
 class SuiteEntry(Contract):
     repo: str

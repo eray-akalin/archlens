@@ -45,7 +45,11 @@ def tokens_cost(price: Price, tokens: TokenEstimate, times: Decimal = Decimal(1)
     return usd * times
 
 
-def project_cost(config: AppConfig, rubrics: Sequence[Rubric]) -> Projection:
+def project_cost(
+    config: AppConfig, rubrics: Sequence[Rubric], *, entailment: bool = True, skeptic: bool = True
+) -> Projection:
+    """Upper-bound LLM cost of assessing with `rubrics` (already ablated, if at all); the
+    verifier's entailment / absence-judge and skeptic steps count only when on."""
     models, pricing = config.models, config.pricing
     price = {
         role: pricing.deployments[(models.roles.get(role) or models.roles.evaluator).deployment]
@@ -62,12 +66,14 @@ def project_cost(config: AppConfig, rubrics: Sequence[Rubric]) -> Projection:
         usd = tokens_cost(price["evaluator"], estimates.tokens_per_metric, sessions)
         if critical:  # worst case: the two runs disagree and a tie-break session follows
             usd += tokens_cost(price["tiebreak"], estimates.tokens_per_metric)
-        usd += tokens_cost(
-            price["skeptic"], estimates.tokens_per_metric, SKEPTIC_SHARE * len(critical)
-        )
-        usd += tokens_cost(
-            price["verifier"], estimates.verifier_tokens_per_finding, Decimal(len(llm))
-        )
+        if skeptic:
+            usd += tokens_cost(
+                price["skeptic"], estimates.tokens_per_metric, SKEPTIC_SHARE * len(critical)
+            )
+        if entailment:
+            usd += tokens_cost(
+                price["verifier"], estimates.verifier_tokens_per_finding, Decimal(len(llm))
+            )
         lines.append(ProjectionLine(f"{rubric.metric} ({len(llm)} LLM checks)", usd))
     if lines:
         lines.append(ProjectionLine("report narrative", tokens_cost(price["synth"], SYNTH_TOKENS)))

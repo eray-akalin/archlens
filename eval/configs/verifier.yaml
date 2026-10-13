@@ -1,0 +1,22 @@
+# The `verifier` eval config (EVALUATION.md §6) — C: no facts for the LLM and no deterministic rules, but the full verifier, self-consistency and the skeptic.
+name: verifier
+budget_usd: 5.0
+seed: 0
+repos_file: eval/repos.yaml
+variants_file: eval/variants.yaml
+features:
+  facts_in_context: false
+  deterministic_rules: false
+  verifier: full
+  self_consistency: true
+  skeptic: true
+suite:
+  - {repo: primary, variant: base, runs: 2}
+  - {repo: primary, variant: V1}
+  - {repo: primary, variant: V2}
+  - {repo: primary, variant: V3}
+  - {repo: primary, variant: V4}
+  - {repo: primary, variant: VI1}
+  - {repo: primary, variant: VI2}
+  - {repo: cross, variant: base}
+  - {repo: cross, variant: VX1}
