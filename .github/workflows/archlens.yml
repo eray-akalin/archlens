@@ -41,7 +41,7 @@ permissions: {}
 jobs:
   assess:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60 # the per-run LLM budget caps the cost
     permissions:
       contents: read
       id-token: write # OIDC token → Entra token for Azure OpenAI
@@ -94,7 +94,8 @@ jobs:
           BUDGET: ${{ inputs.budget-usd }}
           EVENT: ${{ github.event_name }}
         run: |
-          args=(assess "https://github.com/$GITHUB_REPOSITORY" --ref "$GITHUB_SHA" --out /data/out)
+          args=(assess "https://github.com/$GITHUB_REPOSITORY" --ref "$GITHUB_SHA" --out /data/out
+                --verbose)
           if [ -n "$METRICS" ]; then args+=(--metrics "$METRICS"); fi
           if [ "$EVENT" = pull_request ] && [ -f "$RUNNER_TEMP/archlens/base/assessment.json" ]; then
             args+=(--base /data/base/assessment.json)

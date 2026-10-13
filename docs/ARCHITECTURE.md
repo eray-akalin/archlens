@@ -69,7 +69,10 @@ overlap). Stored in one SQLite file per snapshot: FTS5 table for BM25, `sqlite-v
 embeddings, chunk table with `path, start_line, end_line, symbol, lang`, and a `symbols` table
 with every definition (nested ones included) for `find_symbol` and symbol absence probes. Search = BM25 ∪ vector,
 fused with reciprocal rank fusion. Embedding calls go through the LLM client (cost-tracked,
-cached by chunk hash).
+cached by chunk hash). Data files — JSON, YAML, TOML — over 64 KB are not indexed (they stay in
+the snapshot, the scanners and `read_file`): results, fixtures and dumps are data, and embedding
+them buries the code. Found when ArchLens assessed itself in CI (2026-10-13): `eval/results`
+(7 MB of JSON) sent 2.1 M tokens to the embedding deployment and the job timed out in `index`.
 
 ### 2.4 Evaluate
 For each applicable metric (in parallel, bounded by a semaphore):

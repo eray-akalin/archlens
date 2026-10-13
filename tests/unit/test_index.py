@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from archlens.evidence import SnippetReader
-from archlens.index import build_index, find_symbols, search, store
+from archlens.index import MAX_DATA_BYTES, build_index, find_symbols, search, store
 from archlens.index.chunker import MAX_CHUNK_LINES, OVERLAP, WINDOW, chunk_file, symbol_defs
 from archlens.index.embed import CachedEmbedder, FakeEmbedder, pack, tokens, unpack
 from archlens.ingest.snapshot import build_snapshot
@@ -286,3 +286,20 @@ def test_large_files_keep_spans_inside_the_file() -> None:
         defs = symbol_defs("big.py", "python", source)
         assert all(1 <= c.start_line <= c.end_line <= total for c in chunks)
         assert len(defs) == 120 and defs[-1].end_line <= total
+
+
+async def test_large_data_files_are_not_indexed(
+    tiny_service: MaterializedRepo, tmp_path: Path
+) -> None:
+    """Results, fixtures and dumps stay readable but don't get embedded or searched."""
+    big = '{"rows": [' + ",".join(f'{{"id": {i}, "name": "row {i}"}}' for i in range(4000)) + "]}\n"
+    assert len(big) > MAX_DATA_BYTES
+    (tiny_service.root / "results.json").write_text(big)
+    (tiny_service.root / "small.json").write_text('{"name": "tiny"}\n')
+    snapshot = build_snapshot(tiny_service.root, limits=IngestLimits())
+    path = tmp_path / "index.sqlite"
+    await build_index(path, snapshot, SnippetReader(tiny_service.root), FakeEmbedder())
+    with sqlite3.connect(path) as db:
+        paths = {row[0] for row in db.execute("SELECT DISTINCT path FROM chunks")}
+    assert "small.json" in paths and "results.json" not in paths
+    assert "app/api/users.py" in paths

@@ -134,9 +134,16 @@ def assess(
         Path | None,
         typer.Option(hidden=True, help="Cassette dir for ARCHLENS_LLM_RECORD_MODE=record/replay."),
     ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Log stage progress (INFO) to stderr.")
+    ] = False,
 ) -> None:
     """Run the full pipeline: ingest, facts, profile, index, evaluate, verify, score, report."""
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    if verbose:  # ours only: httpx and azure-identity log every request at INFO
+        logging.getLogger("archlens").setLevel(logging.INFO)
     try:
         settings = load_settings()
         config = load_config(settings)

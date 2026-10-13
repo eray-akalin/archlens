@@ -16,9 +16,22 @@ from archlens.index.chunker import Chunk, SymbolDef, chunk_file, symbol_defs
 from archlens.index.embed import Embedder
 from archlens.models import RepoSnapshot
 
-__all__ = ["IndexStats", "SearchHit", "SymbolDef", "build_index", "find_symbols", "search"]
+__all__ = [
+    "MAX_DATA_BYTES",
+    "IndexStats",
+    "SearchHit",
+    "SymbolDef",
+    "build_index",
+    "find_symbols",
+    "search",
+]
 
 RRF_K = 60
+# Large data files (results, fixtures, dumps) are data, not code: embedding them costs time and
+# tokens and buries the code in search results. They stay in the snapshot, the scanners and
+# `read_file`; only the index skips them.
+DATA_LANGUAGES = frozenset({"json", "yaml", "toml"})
+MAX_DATA_BYTES = 64_000
 SearchMode = Literal["hybrid", "bm25", "vector"]
 
 
@@ -45,6 +58,8 @@ def _parse(snapshot: RepoSnapshot, reader: SnippetReader) -> tuple[list[Chunk], 
     defs: list[SymbolDef] = []
     for f in snapshot.files:
         if not f.readable or f.is_vendored or f.is_generated or f.language is None:
+            continue
+        if f.language in DATA_LANGUAGES and f.size > MAX_DATA_BYTES:
             continue
         lines = reader.lines(f.path)
         if lines:
