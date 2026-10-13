@@ -97,6 +97,10 @@ Layered; no single layer is trusted.
 6. **Deterministic scoring** — no model output is ever parsed as a number that becomes a score.
 7. **Measured** — the injection suite in `EVALUATION.md` §5 must show no score change beyond
    ±0.2 per metric beyond the base runs' own spread; regressions block release.
+8. **Downstream agents** — the MCP server's answers go to another model (e.g. Claude Code). They
+   return no code snippets (paths and line ranges only; the client reads files itself) and every
+   answer carries a note that claims and report text come from the assessed repository and are
+   data, never instructions.
 
 ## 7. Hosted API
 

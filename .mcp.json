@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "archlens": {
+      "command": "uv",
+      "args": ["run", "--quiet", "archlens", "mcp"]
+    }
+  }
+}

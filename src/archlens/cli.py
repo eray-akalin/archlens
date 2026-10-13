@@ -9,7 +9,9 @@ import json
 import logging
 import tempfile
 from collections import Counter
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
@@ -17,7 +19,7 @@ import typer
 from ulid import ULID
 
 from archlens import __version__, telemetry
-from archlens.config import load_config, load_settings
+from archlens.config import AppConfig, Settings, load_config, load_settings
 from archlens.errors import ArchLensError, ConfigError
 from archlens.eval.config import load_eval_config
 from archlens.eval.labels import (
@@ -50,14 +52,14 @@ from archlens.llm.client import LLMClient
 from archlens.llm.embedder import ClientEmbedder
 from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, update_lock
 from archlens.llm.untrusted import new_boundary
-from archlens.models import SCHEMA_VERSION, AssessmentReport
+from archlens.models import SCHEMA_VERSION, AssessmentReport, Rubric
 from archlens.models.schemas import export_schemas
 from archlens.orchestrator.context import RunContext, RunOptions
 from archlens.orchestrator.pipeline import ARTIFACTS, Pipeline, run_assessment
 from archlens.orchestrator.projection import project_cost
 from archlens.profile import build_profile
 from archlens.rubric import load_rubrics
-from archlens.storage import open_storage
+from archlens.storage import Storage, open_storage
 
 app = typer.Typer(
     name="archlens",
@@ -550,6 +552,69 @@ def serve(
     uvicorn.run(create_app(state), host=host, port=port, log_level="warning")
 
 
+Runner = Callable[[str, RunOptions, bool], Awaitable[AssessmentReport]]
+
+
+def make_runner(
+    settings: Settings, config: AppConfig, rubrics: dict[str, Rubric], storage: Storage
+) -> Runner:
+    """`(run_id, options, resume) -> report` for long-lived processes (worker, MCP server): each
+    run gets its own repo_data boundary and LLM client, closed when the run ends."""
+
+    async def run(run_id: str, options: RunOptions, resume: bool) -> AssessmentReport:
+        boundary = new_boundary()
+        llm = LLMClient.from_config(config, cache_store=storage.cache, boundary=boundary)
+        embed = config.models.roles.embed.deployment
+        ctx = RunContext(
+            run_id=run_id, config=config, storage=storage, llm=llm,
+            embedder=CachedEmbedder(ClientEmbedder(llm, embed), storage.cache),
+            boundary=boundary, work_dir=settings.data_dir / "runs" / run_id,
+            tools_dir=settings.tools_dir, rubrics=rubrics,
+        )  # fmt: skip
+        try:
+            return await run_assessment(ctx, options, resume=resume)
+        finally:
+            await llm.aclose()
+
+    return run
+
+
+@app.command()
+def mcp() -> None:
+    """MCP server over stdio (assess_repo, get_report, search_findings) for Claude Code et al."""
+    from archlens.mcp import ArchLensTools, build_server
+
+    # stdout carries the protocol: logs go to stderr, nothing is echoed
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    try:
+        settings = load_settings()
+        config = load_config(settings)
+        rubrics = load_rubrics()
+        storage = open_storage(settings)
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    telemetry.setup(settings)
+    runner = make_runner(settings, config, rubrics, storage)
+
+    async def run(run_id: str, options: RunOptions) -> AssessmentReport:
+        return await runner(run_id, options, False)
+
+    def estimate(selected: list[Rubric]) -> tuple[Decimal, list[tuple[str, Decimal]]]:
+        projection = project_cost(config, selected)
+        return projection.total, [(line.item, line.usd) for line in projection.lines]
+
+    tools = ArchLensTools(
+        storage=storage, rubrics=rubrics, runner=run, estimate=estimate,
+        budget_usd=settings.run_budget_usd,
+    )  # fmt: skip
+    try:
+        build_server(tools).run("stdio")
+    finally:
+        asyncio.run(storage.aclose())
+        telemetry.shutdown()
+
+
 @app.command()
 def worker(
     once: Annotated[bool, typer.Option("--once", help="Process one queued job and exit.")] = False,
@@ -569,20 +634,10 @@ def worker(
         raise typer.Exit(code=1) from exc
     telemetry.setup(settings)
 
+    runner = make_runner(settings, config, rubrics, storage)
+
     async def run(job: Job, options: RunOptions, resume: bool) -> AssessmentReport:
-        boundary = new_boundary()
-        llm = LLMClient.from_config(config, cache_store=storage.cache, boundary=boundary)
-        embed = config.models.roles.embed.deployment
-        ctx = RunContext(
-            run_id=job.run_id, config=config, storage=storage, llm=llm,
-            embedder=CachedEmbedder(ClientEmbedder(llm, embed), storage.cache),
-            boundary=boundary, work_dir=settings.data_dir / "runs" / job.run_id,
-            tools_dir=settings.tools_dir, rubrics=rubrics,
-        )  # fmt: skip
-        try:
-            return await run_assessment(ctx, options, resume=resume)
-        finally:
-            await llm.aclose()
+        return await runner(job.run_id, options, resume)
 
     async def consume() -> int:
         done = 0

@@ -233,6 +233,14 @@ narrow scopes and are the ones a typical code change leaves cached.
 **Local CLI** — everything in-process, storage under `ARCHLENS_DATA_DIR`
 (`runs/<run_id>/{checkpoints,artifacts}`, `cache.sqlite`). Only LLM calls leave the machine.
 
+**MCP** (M5.5) — `archlens mcp` serves three tools over stdio (`archlens.mcp`; `.mcp.json` at the
+repo root registers it for Claude Code): `assess_repo` starts a run in the background and returns
+its id at once (a run takes minutes; `dry_run` returns the projected cost; one run at a time, the
+per-run budget applies), `get_report` returns progress while it runs and then a summary (scores,
+grades, verified issues) or the Markdown report, and `search_findings` filters a finished run's
+findings by text, metric, verdict and severity. It uses the CLI's storage, so CLI runs are visible
+too; if the server stops mid-run, `archlens assess --resume <run_id>` continues the run.
+
 **PR mode** (M5.2) — the CLI in GitHub Actions (`.github/workflows/archlens.yml`, AZURE.md §4):
 `archlens assess https://github.com/<repo> --ref <sha> [--base base/assessment.json]` in the
 published image, with `cache.sqlite` and the base report carried between runs by the Actions

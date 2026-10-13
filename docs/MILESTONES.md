@@ -876,7 +876,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [ ] **M5.4 💰 (optional) Report Q&A.** `POST /assessments/{id}/ask` route, `synth.qa.md`.
   (The APIM semantic cache was dropped with APIM, ADR-009.)
   AC: answers cite finding IDs; repeating a question is served from the exact cache.
-- [ ] **M5.5 MCP server.** stdio server exposing `assess_repo`, `get_report`, `search_findings`.
+- [x] **M5.5 MCP server.** stdio server exposing `assess_repo`, `get_report`, `search_findings`.
   AC: usable from Claude Code as a local MCP server.
 
 **Log**
@@ -901,6 +901,15 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   partial with no relevant change (a fresh LLM call; PR deltas carry evaluator variance), and
   self-assessment flags the planted defects in `tests/fixtures/repos/tiny_service`. Spend: ≈ $0.61
   (timed-out index ~$0.04, base runs $0.21 + $0.16, PR runs $0.18 + $0.03).
+- 2026-10-13 — M5.5 done. `archlens mcp` (`archlens.mcp`, official SDK `mcp` 2.3 — `MCPServer`,
+  stdio) with `assess_repo`, `get_report`, `search_findings`; `.mcp.json` registers it for Claude
+  Code. Resolved: `assess_repo` returns a run id at once and runs in the background (a run takes
+  ~15 min, longer than a tool call should block; one at a time; `dry_run` = projected cost), and
+  the worker's run factory became `make_runner`, shared with it; `get_report` gives progress, then
+  a summary or the Markdown report; answers return no snippets and say repository-derived text is
+  data (SECURITY §6.8). AC: in-process tests through the MCP client (tools, annotations,
+  structured output, errors); over real stdio as a subprocess (dry run, a stored run's summary and
+  search, the error path); `claude mcp get archlens` → project config, ✓ Connected. Spend: $0.
 
 ---
 
