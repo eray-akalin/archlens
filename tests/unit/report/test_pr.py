@@ -79,3 +79,16 @@ def test_claims_cannot_mention_link_or_embed() -> None:
     assert "@octocat" not in text and "@​octocat" in text
     assert not re.search(r"(?<!\\)\]\(", text) and "<b>" not in text  # no live link syntax
     assert comment_text("a [b](c) !d") == "a \\[b\\](c) \\!d"
+
+
+def test_changes_no_cited_file_explains_are_unconfirmed() -> None:
+    """SEC-05 cites the changed file → resolved; TEST-01 only cites an unchanged file →
+    unconfirmed; SEC-07 cites no file at all → can't tell, stays a plain change."""
+    text = render_pr_comment(
+        sample_report(), head_report(), RUBRICS, changed_paths={"app/api/users.py"}
+    )
+    assert "### Resolved (1)\n\n- **SEC-05**" in text
+    assert "### Changed (1)\n\n- **SEC-07**" in text
+    assert "### New issues" not in text
+    assert "### Unconfirmed (1)" in text and "most likely evaluator variance" in text
+    assert text.index("### Unconfirmed") < text.index("- **TEST-01**")

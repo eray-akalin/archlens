@@ -1,13 +1,15 @@
 """`pr_comment.md` (ARCHITECTURE.md §2.7): what a change did to the assessment, against a base
 report — overall and per-metric score deltas, and the verified findings that appeared, went away
 or changed verdict. Findings are matched by check ID (one finding per check per run). Every number
-comes from the two reports; the deltas are plain subtraction.
+comes from the two reports; the deltas are plain subtraction. Given the paths that changed between
+the two commits, a verdict change none of whose cited files changed is listed apart as
+unconfirmed: the change can't explain it, so it is most likely evaluator variance.
 
 The comment is posted publicly, so repository-derived text is inline-escaped and cannot mention
 users, link, or embed images.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 
 from archlens.models import AssessmentReport, CheckSpec, CodeEvidence, Finding, MetricScore, Rubric
@@ -40,9 +42,12 @@ def render_pr_comment(
     head: AssessmentReport,
     rubrics: Mapping[str, Rubric],
     reused: Sequence[str] = (),
+    *,
+    changed_paths: Collection[str] | None = None,
 ) -> str:
     """Markdown for a PR comment comparing `head` with `base`. `reused` names the metrics whose
-    LLM results came from the metric result cache in the head run."""
+    LLM results came from the metric result cache in the head run; `changed_paths` (None:
+    unknown) are the files that differ between the two commits."""
     specs = {c.id: c for r in rubrics.values() for c in r.checks}
     titles = {r.metric: r.title for r in rubrics.values()}
     lines = [MARKER, f"## ArchLens: {_overall(base.overall_score, head.overall_score)}", ""]
@@ -65,12 +70,22 @@ def render_pr_comment(
             f"| {md_text(titles.get(metric, metric))} | {_shown(before)} | {_shown(after)} | "
             f"{_delta(_score(before), _score(after))} |"
         )
-    new, resolved, changed = _changes(base, head, specs)
+    new, resolved, changed, unconfirmed = _changes(base, head, specs, changed_paths)
     for heading, changes in (("New issues", new), ("Resolved", resolved), ("Changed", changed)):
         if changes:
             lines += ["", f"### {heading} ({len(changes)})", ""]
             lines += [_line(c) for c in changes]
-    if not (new or resolved or changed):
+    if unconfirmed:
+        lines += [
+            "",
+            f"### Unconfirmed ({len(unconfirmed)})",
+            "",
+            "_The verdict changed, but none of the files these findings cite changed "
+            "between the two commits: most likely evaluator variance, not this change._",
+            "",
+        ]
+        lines += [_line(c) for c in unconfirmed]  # fmt: skip
+    if not (new or resolved or changed or unconfirmed):
         lines += ["", "No verified finding changed."]
     if base.config.rubric_versions != head.config.rubric_versions:
         lines += ["", "_The base report used other rubric versions; some changes may come from "
@@ -108,13 +123,18 @@ def _overall(before: float | None, after: float | None) -> str:
 
 
 def _changes(
-    base: AssessmentReport, head: AssessmentReport, specs: Mapping[str, CheckSpec]
-) -> tuple[list[_Change], list[_Change], list[_Change]]:
+    base: AssessmentReport,
+    head: AssessmentReport,
+    specs: Mapping[str, CheckSpec],
+    changed_paths: Collection[str] | None,
+) -> tuple[list[_Change], list[_Change], list[_Change], list[_Change]]:
     before = {f.result.check_id: f for f in base.findings}
     after = {f.result.check_id: f for f in head.findings}
+    touched = set(changed_paths) if changed_paths is not None else None
     new: list[_Change] = []
     resolved: list[_Change] = []
     changed: list[_Change] = []
+    unconfirmed: list[_Change] = []
     for check_id in sorted(before.keys() | after.keys()):
         old, cur = before.get(check_id), after.get(check_id)
         old_verdict = old.result.verdict if old else None
@@ -123,10 +143,15 @@ def _changes(
         if not (was or now) or old_verdict == cur_verdict:
             continue
         change = _change(check_id, specs.get(check_id), old_verdict, cur_verdict, cur or old)
-        (changed if was and now else new if now else resolved).append(change)
-    for group in (new, resolved, changed):
+        cited = {e.path for f in (old, cur) if f for e in f.result.evidence
+                 if isinstance(e, CodeEvidence)}  # fmt: skip
+        if touched is not None and cited and not cited & touched:
+            unconfirmed.append(change)
+        else:
+            (changed if was and now else new if now else resolved).append(change)
+    for group in (new, resolved, changed, unconfirmed):
         group.sort(key=lambda c: (SEVERITY_ORDER.get(c.severity, 9), c.check_id))
-    return new, resolved, changed
+    return new, resolved, changed, unconfirmed
 
 
 def _change(

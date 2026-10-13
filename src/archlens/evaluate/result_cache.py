@@ -19,6 +19,8 @@ from archlens.models import CheckResult, CheckSpec, Contract, FactSet, FileEntry
 
 NAMESPACE = "metric_results"
 FORMAT = 1  # bump when the key or the cached payload changes shape
+FILES_NAMESPACE = "file_hashes"  # commit → {path: sha256}, so a later run can diff against it
+FILES_TTL_S = 30 * 24 * 3600
 
 
 class CachedMetric(Contract):
@@ -27,6 +29,21 @@ class CachedMetric(Contract):
 
     results: list[CheckResult]
     ledger: dict[str, JsonValue]
+
+
+class FileHashes(Contract):
+    """A snapshot's listing reduced to content hashes (PR mode: which files a change touched)."""
+
+    files: dict[str, str]  # path → sha256 ("" when the file was too large to read)
+
+    @classmethod
+    def of(cls, files: Sequence[FileEntry]) -> "FileHashes":
+        return cls(files={f.path: f.sha256 or f"size:{f.size}" for f in files})
+
+    def changed(self, other: "FileHashes") -> set[str]:
+        """Paths added, removed or modified between self and `other`."""
+        paths = self.files.keys() | other.files.keys()
+        return {p for p in paths if self.files.get(p) != other.files.get(p)}
 
 
 def metric_inputs_key(

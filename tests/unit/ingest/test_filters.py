@@ -37,6 +37,18 @@ def test_detect_language(path: str, language: str | None) -> None:
         (".venv/lib/site.py", True),
         ("src/vendored_helpers.py", False),
         ("vendor.py", False),
+        # test data: fixture repos, golden files, snapshots
+        ("tests/fixtures/repos/tiny_service/app/api/users.py", True),
+        ("test/fixtures/payload.json", True),
+        ("packages/web/__tests__/fixtures/user.ts", True),
+        ("spec/fixtures/files/a.csv", True),
+        ("pkg/parser/testdata/input.go", True),
+        ("src/__fixtures__/data.js", True),
+        ("tests/unit/__snapshots__/test_render.ambr", True),
+        ("app/fixtures/seed.json", False),  # not below a test dir: app data, still assessed
+        ("tests/test_fixtures.py", False),
+        ("src/fixtures.py", False),
+        ("scripts/capture_scanner_fixtures.py", False),
     ],
 )
 def test_is_vendored(path: str, expected: bool) -> None:

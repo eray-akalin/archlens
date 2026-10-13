@@ -294,6 +294,7 @@ async def test_read_file_redacts_secrets(repo: Repo) -> None:
         ({"path": "app/huge.py"}, "too large to read"),
         ({"path": "app"}, "is a directory; use list_dir"),
         ({"path": "app/missing.py"}, "no such file"),
+        ({"path": "node_modules/lib/index.js"}, "vendored code or test data"),
         ({"path": "app/../../outside.py"}, "escapes the snapshot"),
         ({"path": "app/main.py", "start_line": 11}, "past the end of app/main.py (10 lines)"),
         ({"path": "app/main.py", "start_line": 5, "end_line": 2}, "before start_line 5"),

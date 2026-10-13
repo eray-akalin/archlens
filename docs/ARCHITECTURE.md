@@ -37,6 +37,14 @@ model from `DATA_MODEL.md`. The orchestrator persists every output as a checkpoi
   Local path: copy-on-read view; never mutate the user's directory.
 - Walk files, skip binaries / vendored / generated (`node_modules/`, `vendor/`, `dist/`, `*.min.js`,
   lockfiles are kept as manifests but not indexed as code), compute `sha256`, LOC, language.
+- Test data counts as vendored (`is_vendored`): `testdata/`, `__fixtures__/`, `__snapshots__/`
+  anywhere, and `fixtures/` below a test dir (`tests/`, `test/`, `spec/`, `__tests__/`, …).
+  Vendored files are listed but not indexed, not readable by the evaluator (so never citable),
+  not seen by deterministic rules, and their scanner facts are dropped — except `secret` and
+  `injection_attempt` facts, which matter wherever they sit. The list is built in, never read
+  from the assessed repository, which could otherwise hide its own code. Found when ArchLens
+  assessed itself (2026-10-13): over 20 verified findings, and most low scores, came from the
+  planted defects of `tests/fixtures/repos/tiny_service`.
 - Enforce `IngestLimits`: exceeding `max_total_bytes`, `max_files` or the timeout fails ingest with
   a clear error rather than assessing a partial repo silently. Files above `max_file_bytes` are
   listed in the snapshot (with `size`) but never read, scanned or indexed.
@@ -139,6 +147,11 @@ whose verified verdict became an issue (fail/partial), stopped being one, or cha
 two; findings match by check ID, every number comes from the two reports, and model-written
 claims are escaped so they can't mention users, link or embed images. It also says which metrics
 were re-evaluated and which reused (metric result cache) and flags differing rubric versions.
+Every PR-mode run records its files' hashes in the cache (namespace `file_hashes`, by commit, 30
+days); with the base commit's on record, a verdict change none of whose cited files changed
+between the commits goes to an **Unconfirmed** section (most likely evaluator variance — seen as
+PERF-01 fail → partial on PR #6) instead of New issues / Resolved / Changed. Scores are untouched:
+they still come from the head run's verified findings.
 - Narrative (executive summary + per-metric paragraph) is written by the synthesizer model from
   verified findings only; it returns `cited_findings` and the renderer rejects references to
   unknown finding IDs.

@@ -136,6 +136,11 @@ class RepoTools:
             raise ToolArgumentError(f"{rel} is too large to read ({entry.size} bytes)")
         if entry.is_binary:
             raise ToolArgumentError(f"{rel} is a binary file")
+        if entry.is_vendored:
+            raise ToolArgumentError(
+                f"{rel} is vendored code or test data (a fixture), not this project's own code; "
+                "it can't be read or cited"
+            )
         return entry
 
     def redacted_lines(self, rel: str) -> list[str] | None:

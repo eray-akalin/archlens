@@ -910,6 +910,16 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   data (SECURITY §6.8). AC: in-process tests through the MCP client (tools, annotations,
   structured output, errors); over real stdio as a subprocess (dry run, a stored run's summary and
   search, the error path); `claude mcp get archlens` → project config, ✓ Connected. Spend: $0.
+- 2026-10-13 — Follow-ups from M5.2's self-assessment. (1) Test data is not the project: fixture
+  dirs (`testdata/`, `__fixtures__/`, `__snapshots__/`; `fixtures/` below a test dir) count as
+  vendored — not indexed, not readable by the evaluator (so not citable), hidden from rules, their
+  scanner facts dropped except `secret` and `injection_attempt`. Built in, not configurable from
+  the assessed repo (it could hide its own code). `FileEntry.is_vendored` keeps its shape, so no
+  schema bump; DATA_MODEL notes the wider meaning. Over 20 of ArchLens's own verified findings
+  came from `tests/fixtures/repos/tiny_service`. (2) PR comment: each PR-mode run records its
+  files' hashes per commit in the cache; a verdict change none of whose cited files changed
+  between base and head is listed as Unconfirmed (likely evaluator variance, like PR #6's PERF-01)
+  rather than as new/resolved; scores unchanged. Spend: $0.
 
 ---
 

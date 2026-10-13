@@ -63,7 +63,7 @@ class FileEntry(BaseModel):
     loc: int
     is_binary: bool
     is_generated: bool                   # build output, minified, lockfile, "generated" header
-    is_vendored: bool
+    is_vendored: bool  # not the project's own code: vendored deps or test data (fixtures)
     symlink_target: str | None = None    # 1.1.0: symlinks are listed (size 0), never followed
     too_large: bool = False              # 1.1.0: size > max_file_bytes; listed, never read
     # property readable: not a symlink, not too_large, not binary

@@ -35,8 +35,10 @@ class RuleContext:
         files: list[FileEntry],
         redactor: Redactor | None = None,
     ) -> "RuleContext":
-        """Context over the snapshot at `root`; pass the facts stage's redactor (gitleaks spans)."""
-        return cls(facts, profile, files, SnippetReader(root, redactor))
+        """Context over the snapshot at `root`; pass the facts stage's redactor (gitleaks spans).
+        Rules see the project's own files only: vendored code and test data are left out."""
+        own = [f for f in files if not f.is_vendored]
+        return cls(facts, profile, own, SnippetReader(root, redactor))
 
     def read_text(self, path: str, max_bytes: int = DEFAULT_READ_BYTES) -> str | None:
         """Jailed, redacted, size-capped read for config files (coverage config, compose, k8s).

@@ -3,6 +3,7 @@ metrics whose inputs changed, and writes `pr_comment.md` against the base report
 
 from pathlib import Path
 
+from archlens.evaluate.result_cache import FILES_NAMESPACE, FileHashes
 from archlens.llm.fake import FakeLLM
 from archlens.models import AssessmentReport
 from archlens.orchestrator.context import RunOptions
@@ -40,6 +41,15 @@ async def test_only_metrics_with_changed_inputs_are_re_evaluated(
     head, second, llm = await assess(tiny_service, tmp_path, "head", base)
 
     assert second.reused == ["cicd"]
+
+    # each PR-mode run records its files; the PR comment diffs the head against the base's
+    async def recorded(commit: str) -> FileHashes:
+        data = await second.ctx.storage.cache.get(FILES_NAMESPACE, commit)
+        assert data is not None
+        return FileHashes.model_validate_json(data)
+
+    before, after = await recorded(base.commit_sha), await recorded(head.commit_sha)
+    assert before.changed(after) == {"app/services/notify.py"}
     checks = evaluated_checks(llm)
     assert "AUTH-01" in checks and not checks & {"CI-06", "CI-07"}
     # the reused results still go through verification and keep their findings

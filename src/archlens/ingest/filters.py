@@ -24,6 +24,13 @@ _VENDORED_DIRS = frozenset(
         ".terragrunt-cache",
     }
 )
+# Test data is not the project's own code either: a fixture repo with planted defects would
+# otherwise be assessed as if it were the project (seen when ArchLens assessed itself). Always
+# test data: these dirs anywhere; "fixtures" only below a test dir (Django keeps seed data in
+# app-level fixtures/ too, which is data anyway, but code named fixtures/ elsewhere stays in).
+_FIXTURE_DIRS = frozenset({"testdata", "__fixtures__", "__snapshots__"})
+_TEST_FIXTURE_DIRS = frozenset({"fixtures", "fixture", "test-fixtures", "test_fixtures"})
+_TEST_DIRS = frozenset({"test", "tests", "spec", "specs", "__tests__", "testing"})
 _GENERATED_DIRS = frozenset({"dist", "build", "out", "__generated__", "generated"})
 _GENERATED_SUFFIXES = (
     ".min.js",
@@ -118,7 +125,15 @@ def detect_language(path: str) -> str | None:
 
 
 def is_vendored(path: str) -> bool:
-    return any(part in _VENDORED_DIRS for part in PurePosixPath(path).parts[:-1])
+    """Not the project's own code: vendored dependencies, or test data (fixtures, snapshots).
+    Such files are listed but never indexed, read by the evaluator, or used as evidence."""
+    dirs = PurePosixPath(path).parts[:-1]
+    if any(part in _VENDORED_DIRS or part in _FIXTURE_DIRS for part in dirs):
+        return True
+    return any(
+        part in _TEST_FIXTURE_DIRS and any(parent in _TEST_DIRS for parent in dirs[:i])
+        for i, part in enumerate(dirs)
+    )
 
 
 def is_generated(path: str, head: bytes) -> bool:

@@ -34,6 +34,14 @@ def test_read_text_is_redacted(tmp_path: Path) -> None:
     assert text.count("«redacted:") == 2
 
 
+def test_rules_see_only_the_projects_own_files(tmp_path: Path) -> None:
+    files = {"Dockerfile": "FROM x\n", "tests/fixtures/repo/Dockerfile": "FROM y\n",
+             "node_modules/a/index.js": "x\n"}  # fmt: skip
+    ctx = make_ctx(tmp_path, files=files)
+    assert [f.path for f in ctx.files] == ["Dockerfile"]
+    assert ctx.read_text("tests/fixtures/repo/Dockerfile") is None
+
+
 def test_read_text_only_reads_listed_readable_files(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path, files={"a.txt": "a\n", "big.txt": "x" * 300})
     (tmp_path / "late.txt").write_text("written after the snapshot\n")

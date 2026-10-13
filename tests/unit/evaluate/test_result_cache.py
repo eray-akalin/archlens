@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 
 from archlens.config import ModelsConfig
-from archlens.evaluate.result_cache import metric_inputs_key
+from archlens.evaluate.result_cache import FileHashes, metric_inputs_key
 from archlens.models import CheckSpec, Fact, FactSet, FileEntry, Rubric
 from tests.unit.report.helpers import MODELS, spec
 
@@ -68,3 +68,12 @@ def test_inputs_that_change_the_key() -> None:
         key(models=MODELS.model_copy(update={"roles": roles})),
     ]
     assert key() not in variants and len(set(variants)) == len(variants)
+
+
+def test_file_hashes_diff() -> None:
+    before = FileHashes.of([entry("a.py"), entry("b.py"), entry("big.bin", "")])
+    after = FileHashes.of(
+        [entry("a.py"), entry("b.py", "c" * 64), entry("c.py"), entry("big.bin", "")]
+    )
+    assert before.changed(after) == {"b.py", "c.py"}
+    assert after.changed(after) == set()

@@ -28,7 +28,14 @@ from archlens.errors import ArchLensError, IngestError
 from archlens.evaluate.consistency import evaluate_llm_checks
 from archlens.evaluate.deterministic import llm_checks, run_deterministic_checks
 from archlens.evaluate.llm_session import Evaluator, EvaluatorPrompts
-from archlens.evaluate.result_cache import NAMESPACE, CachedMetric, metric_inputs_key
+from archlens.evaluate.result_cache import (
+    FILES_NAMESPACE,
+    FILES_TTL_S,
+    NAMESPACE,
+    CachedMetric,
+    FileHashes,
+    metric_inputs_key,
+)
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.facts.scanners.gitleaks import spans_from_facts
@@ -143,6 +150,11 @@ class Pipeline:
     async def _stages(self, tmp: Path) -> AssessmentReport:
         ingested, snapshot = await self._ingest(tmp)
         root = ingested.root
+        if self.options.metric_cache:  # PR mode: a later run with --base diffs against this
+            hashes = FileHashes.of(snapshot.files).model_dump_json().encode()
+            await self.ctx.storage.cache.put(
+                FILES_NAMESPACE, snapshot.commit_sha, hashes, ttl_s=FILES_TTL_S
+            )
         facts = await self._cached(
             "facts", FactSet, lambda: asyncio.to_thread(self._collect_facts, ingested, tmp)
         )
@@ -180,7 +192,7 @@ class Pipeline:
             AssessmentReport,
             lambda: self._report(snapshot, facts, profile, findings.findings, tools.boundary),
         )
-        await self._artifacts(report)
+        await self._artifacts(report, snapshot)
         return report
 
     async def _ingest(self, tmp: Path) -> tuple[Ingested, RepoSnapshot]:
@@ -367,15 +379,30 @@ class Pipeline:
             logger.info("narrative: %s", note)
         return with_narrative(report, synth.narrative, self._records())
 
-    async def _artifacts(self, report: AssessmentReport) -> None:
+    async def _artifacts(self, report: AssessmentReport, snapshot: RepoSnapshot) -> None:
         store, run_id = self.ctx.storage.artifacts, self.ctx.run_id
         await store.put(run_id, "assessment.json", report.model_dump_json(indent=2).encode())
         await store.put(run_id, "report.md", render_markdown(report, self.rubrics).encode())
         await store.put(run_id, "report.html", render_html(report, self.rubrics).encode())
         await store.put(run_id, "findings.sarif", render_sarif(report, self.rubrics).encode())
         if self.options.base is not None:
-            comment = render_pr_comment(self.options.base, report, self.rubrics, self.reused)
+            changed = await self._changed_since(self.options.base.commit_sha, snapshot)
+            comment = render_pr_comment(
+                self.options.base, report, self.rubrics, self.reused, changed_paths=changed
+            )
             await store.put(run_id, "pr_comment.md", comment.encode())
+
+    async def _changed_since(self, commit_sha: str, snapshot: RepoSnapshot) -> set[str] | None:
+        """Paths that differ between the commit `commit_sha` (as recorded by an earlier PR-mode
+        run in the cache) and `snapshot`; None when that commit was never recorded."""
+        data = await self.ctx.storage.cache.get(FILES_NAMESPACE, commit_sha)
+        if data is None:
+            return None
+        try:
+            base = FileHashes.model_validate_json(data)
+        except ValueError:
+            return None
+        return base.changed(FileHashes.of(snapshot.files))
 
     # --- checkpoints and run state ---
 
