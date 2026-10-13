@@ -47,10 +47,12 @@ def render_pr_comment(
     titles = {r.metric: r.title for r in rubrics.values()}
     lines = [MARKER, f"## ArchLens: {_overall(base.overall_score, head.overall_score)}", ""]
     evaluated = [m.metric for m in head.metric_scores]
-    rerun = [m for m in evaluated if m not in reused]
+    judged = {f.result.metric for f in [*head.findings, *head.other_findings]
+              if f.result.origin == "llm"}  # fmt: skip
+    rerun = sorted(judged - set(reused))
     lines.append(
-        f"Base `{base.commit_sha[:12]}` → head `{head.commit_sha[:12]}` · "
-        f"re-evaluated {len(rerun)} of {len(evaluated)} metrics"
+        f"Base `{base.commit_sha[:12]}` → head `{head.commit_sha[:12]}` · LLM re-evaluated "
+        f"{len(rerun)} of {len(judged | set(reused))} metrics with LLM checks"
         + (f" (unchanged inputs, reused: {', '.join(sorted(reused))})" if reused else "")
         + f" · LLM cost ${head.cost.usd:.4f}"
     )

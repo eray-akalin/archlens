@@ -866,7 +866,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (~41 runs, ~$15).
   AC: `table.md` per config; README Results table filled with the scope sentence from
   EVALUATION.md; injection criteria pass on `full`.
-- [ ] **M5.2 PR mode + SARIF.** `findings.sarif`, metric result cache, `archlens assess --base
+- [x] **M5.2 PR mode + SARIF.** `findings.sarif`, metric result cache, `archlens assess --base
   <report>` diff, reusable workflow that comments the score delta and uploads SARIF.
   AC: on a test PR, only metrics with changed inputs are re-evaluated; SARIF shows in code scanning.
 - [-] ~~**M5.3 💰 APIM Developer.** Switch `apimSku`, add `developer-extras.xml`
@@ -880,6 +880,27 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   AC: usable from Claude Code as a local MCP server.
 
 **Log**
+
+- 2026-10-13 — M5.2 done. Metric result cache (`evaluate/result_cache.py`): stores only a metric's
+  LLM results + seen lines; deterministic checks always re-run; key = rubric version, applicable
+  LLM checks, evaluator prompt versions, evaluator/tie-break/embed settings, scope-glob files
+  (path, size, sha256), facts of the checks' `fact_kinds` — the profile is not in the key (its LOC
+  counts would invalidate everything); on in `archlens assess`, off in `RunOptions` (eval repeats
+  stay independent). `findings.sarif`, `pr_comment.md` (`--base`), `assess --ref/--verbose`.
+  Reusable workflow `archlens.yml` + this repo's `archlens-pr.yml` (label `archlens` or a manual
+  run on main): image from main, hardened clone of `GITHUB_SHA` (no checkout), OIDC to Azure
+  OpenAI through `infra/modules/github-oidc.bicep` (no secret). AC on PR #6 (one-line change in
+  `report/pr.py`): the cache came back from main, `cicd` was reused ("inputs unchanged"), the 8
+  other LLM metrics (scope `**/*`) re-ran — 7 of them free from the LLM exact cache — cost
+  $0.0251; the comment showed 5.7 → 5.8; SARIF analyses on `main` (22 results) and
+  `refs/pull/6/merge`. Fixed on the way: GitHub OIDC subjects now carry immutable IDs
+  (`repo:owner@id/name@id`, AADSTS700213) → the identity takes the repo's `sub_claim_prefix`;
+  ArchLens on itself timed out in `index` embedding 7 MB of `eval/results` JSON → data files over
+  64 KB aren't indexed; the first cache save failed (0600 files of uid 10001, `!runs` exclusion
+  ignored) → a separate cache dir and the runner's uid. Seen, not fixed: PERF-01 went fail →
+  partial with no relevant change (a fresh LLM call; PR deltas carry evaluator variance), and
+  self-assessment flags the planted defects in `tests/fixtures/repos/tiny_service`. Spend: ≈ $0.61
+  (timed-out index ~$0.04, base runs $0.21 + $0.16, PR runs $0.18 + $0.03).
 
 ---
 

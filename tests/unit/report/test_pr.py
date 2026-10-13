@@ -35,7 +35,11 @@ def test_deltas_and_changes() -> None:
     assert before is not None and after is not None
     assert f"| Security | {before:.1f} | {after:.1f} | {after - before:+.1f} |" in text
     assert f"Base `{SHA[:12]}` → head `{HEAD_SHA[:12]}`" in text
-    assert "re-evaluated 1 of 2 metrics (unchanged inputs, reused: testing)" in text
+    # TEST-01 is llm-origin in the helpers; SEC-* too: both metrics have LLM checks
+    assert (
+        "LLM re-evaluated 1 of 2 metrics with LLM checks (unchanged inputs, reused: testing)"
+        in text
+    )
     assert (
         "### New issues (1)\n\n- **TEST-01** A test suite is present (high): pass → **fail**"
         in text
@@ -55,7 +59,7 @@ def test_overall_and_unscored_metrics() -> None:
     text = render_pr_comment(base, head, RUBRICS)
     assert "→ not computed" in text.splitlines()[1]
     assert "| Security | " in text and "insufficient evidence" in text
-    assert "re-evaluated 2 of 2 metrics · " in text
+    assert "LLM re-evaluated 0 of 0 metrics with LLM checks · " in text  # nothing judged
 
 
 def test_no_changes() -> None:
