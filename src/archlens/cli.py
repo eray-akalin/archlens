@@ -50,10 +50,10 @@ from archlens.llm.client import LLMClient
 from archlens.llm.embedder import ClientEmbedder
 from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, update_lock
 from archlens.llm.untrusted import new_boundary
-from archlens.models import AssessmentReport
+from archlens.models import SCHEMA_VERSION, AssessmentReport
 from archlens.models.schemas import export_schemas
 from archlens.orchestrator.context import RunContext, RunOptions
-from archlens.orchestrator.pipeline import ARTIFACTS, run_assessment
+from archlens.orchestrator.pipeline import ARTIFACTS, Pipeline, run_assessment
 from archlens.orchestrator.projection import project_cost
 from archlens.profile import build_profile
 from archlens.rubric import load_rubrics
@@ -93,14 +93,31 @@ def main(
     """Evidence-backed architecture assessment for Git repositories."""
 
 
+def read_base_report(path: Path) -> AssessmentReport:
+    """The base report for `--base`; ConfigError if it is missing or not an `AssessmentReport`
+    of this schema version."""
+    try:
+        return AssessmentReport.model_validate_json(path.read_bytes())
+    except OSError as exc:
+        raise ConfigError("--base", str(path), f"cannot read it: {exc.strerror}") from exc
+    except ValueError as exc:
+        reason = f"not an assessment.json of schema {SCHEMA_VERSION}: {str(exc).splitlines()[0]}"
+        raise ConfigError("--base", str(path), reason) from exc
+
+
 @app.command()
 def assess(
     target: Annotated[str, typer.Argument(help="Local path or https Git URL to assess.")],
     out: Annotated[Path, typer.Option(help="Directory for run outputs.")] = Path("runs"),
     resume: Annotated[str | None, typer.Option(help="Resume a previous run by run_id.")] = None,
     no_cache: Annotated[
-        bool, typer.Option("--no-cache", help="Bypass the LLM exact cache.")
+        bool,
+        typer.Option("--no-cache", help="Bypass the LLM exact cache and the metric result cache."),
     ] = False,
+    base: Annotated[
+        Path | None,
+        typer.Option(help="Base assessment.json: also write pr_comment.md with the score delta."),
+    ] = None,
     metrics: Annotated[
         str | None, typer.Option(help="Comma-separated metrics (default: every rubric).")
     ] = None,
@@ -126,6 +143,7 @@ def assess(
         unknown = sorted(set(names) - set(rubrics))
         if unknown:
             raise ConfigError("--metrics", ",".join(unknown), f"available: {sorted(rubrics)}")
+        base_report = read_base_report(base) if base is not None else None
     except ArchLensError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -158,12 +176,17 @@ def assess(
         tools_dir=settings.tools_dir,
         rubrics=rubrics,
     )
-    options = RunOptions(target=target, metrics=selected, scanners=not no_scanners)
+    options = RunOptions(
+        target=target, metrics=selected, scanners=not no_scanners, metric_cache=not no_cache,
+        base=base_report,
+    )  # fmt: skip
+
+    pipeline = Pipeline(ctx, options)
 
     async def run() -> tuple[AssessmentReport, dict[str, bytes]]:
         # one event loop for the whole run: Azure clients are bound to the loop that opened them
         try:
-            report = await run_assessment(ctx, options, resume=resume is not None)
+            report = await pipeline.run(resume=resume is not None)
             produced = {n: d for n in ARTIFACTS if (d := await storage.artifacts.get(run_id, n))}
             return report, produced
         finally:
@@ -186,6 +209,8 @@ def assess(
         score = f"{metric.score:.1f}" if metric.score is not None else "-"
         typer.echo(f"  {metric.metric:14} {score:>5}  {metric.status}")
     overall = f"{report.overall_score:.1f}" if report.overall_score is not None else "not computed"
+    if pipeline.reused:
+        typer.echo(f"inputs unchanged, LLM results reused: {', '.join(sorted(pipeline.reused))}")
     typer.echo(f"overall: {overall}; cost ${report.cost.usd:.4f}; report: {run_out}/report.md")
 
 

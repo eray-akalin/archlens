@@ -9,6 +9,7 @@ const DOWNLOADS = [
   ["report.html", "HTML"],
   ["report.md", "Markdown"],
   ["assessment.json", "JSON"],
+  ["findings.sarif", "SARIF"],
 ];
 const MARKS = { pending: "○", running: "◔", done: "✓", failed: "✗", skipped: "–" };
 

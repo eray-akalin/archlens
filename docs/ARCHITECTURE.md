@@ -125,6 +125,17 @@ Pure function, specified in `RUBRICS.md` §4.
 - `findings.sarif` — SARIF 2.1.0, one result per verified `fail`/`partial` finding with a code
   location.
 - `pr_comment.md` — score delta + new/resolved findings vs. a base report (M5).
+
+As built (M5.2): `findings.sarif` (`report/sarif.py`) has one result per verified `fail`/`partial`
+finding with code evidence — the first range as the location, the rest as related locations —
+at a level from the check's severity (critical/high `error`, medium `warning`, low/info `note`;
+one step lower for `partial`) and a fingerprint `archlens/v1` over check, path and snippet hash,
+so an issue keeps its identity when lines move. `pr_comment.md` (`report/pr.py`) is written only
+with `archlens assess --base <assessment.json>`: overall and per-metric deltas, then the checks
+whose verified verdict became an issue (fail/partial), stopped being one, or changed between the
+two; findings match by check ID, every number comes from the two reports, and model-written
+claims are escaped so they can't mention users, link or embed images. It also says which metrics
+were re-evaluated and which reused (metric result cache) and flags differing rubric versions.
 - Narrative (executive summary + per-metric paragraph) is written by the synthesizer model from
   verified findings only; it returns `cited_findings` and the renderer rejects references to
   unknown finding IDs.
@@ -202,6 +213,17 @@ tests/                   unit/, integration/, fixtures/{repos,scanners}/, casset
 
 No semantic cache for evaluator calls (ADR-006): a near-match from another repo would return
 another repo's findings.
+
+As built (M5.2): the metric result cache (`evaluate/result_cache.py`, namespace `metric_results`)
+keys on the rubric version, the applicable LLM checks (which the profile flags decide), the
+evaluator prompt versions, the evaluator/tie-break/embedding role settings and evaluator session
+limits, the path, size and hash of every file matching the rubric's `scope_globs`, and the IDs of
+the facts of its checks' `fact_kinds`. It stores only the LLM-judged results with their
+sessions' seen lines; deterministic checks always re-run (pure and cheap), and reused results
+still go through the verifier. On in `archlens assess` (off with `--no-cache`), off by default in
+`RunOptions` — eval repeats must stay independent samples, and the hosted worker doesn't use it
+yet. Eight rubrics scope `**/*`, so any file change re-evaluates them; `cicd` and `container` have
+narrow scopes and are the ones a typical code change leaves cached.
 
 ## 6. Run modes
 

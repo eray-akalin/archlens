@@ -1,4 +1,4 @@
-"""`archlens assess` options that need no LLM: --dry-run and metric selection."""
+"""`archlens assess` options that need no LLM: --dry-run, metric selection, a bad --base."""
 
 import os
 import shutil
@@ -37,3 +37,18 @@ def test_unknown_metric_is_an_error(workspace: Path) -> None:
     result = CliRunner().invoke(app, ["assess", str(workspace), "--metrics", "security,nope"])
     assert result.exit_code == 1
     assert "nope" in result.output and "available" in result.output
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [(None, "cannot read it"), ('{"run_id": "x"}', "not an assessment.json of schema")],
+)
+def test_bad_base_report_fails_before_the_run(
+    workspace: Path, content: str | None, expected: str
+) -> None:
+    base = workspace / "base.json"
+    if content is not None:
+        base.write_text(content)
+    result = CliRunner().invoke(app, ["assess", str(workspace), "--base", str(base)])
+    assert result.exit_code == 1 and "--base" in result.output and expected in result.output
+    assert "run " not in result.output  # nothing started

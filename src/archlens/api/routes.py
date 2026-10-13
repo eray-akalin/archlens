@@ -28,6 +28,7 @@ CONTENT_TYPES = {
     ".json": "application/json",
     ".md": "text/markdown; charset=utf-8",
     ".html": "text/html; charset=utf-8",
+    ".sarif": "application/sarif+json",
 }
 # Reports carry repository text: no scripts, no remote loads, no MIME sniffing.
 HTML_HEADERS = {

@@ -8,7 +8,7 @@ from pathlib import Path
 from archlens.config import AppConfig
 from archlens.index.embed import Embedder
 from archlens.llm.client import LLMClientProtocol
-from archlens.models import Rubric
+from archlens.models import AssessmentReport, Rubric
 from archlens.storage import Storage
 from archlens.verify.pipeline import VerifierOptions
 
@@ -20,6 +20,10 @@ class RunOptions:
     metrics: tuple[str, ...] | None = None  # None → every loaded rubric
     scanners: bool = True
     verifier: VerifierOptions = field(default_factory=VerifierOptions)
+    # reuse a metric's LLM results when its inputs are unchanged (PR mode); off by default, since
+    # repeated eval runs must stay independent samples
+    metric_cache: bool = False
+    base: AssessmentReport | None = None  # set → also write `pr_comment.md` against it
 
 
 @dataclass(frozen=True)

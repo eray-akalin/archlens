@@ -22,6 +22,7 @@ from archlens.llm.untrusted import new_boundary
 from archlens.models import (
     AssessmentReport,
     Citation,
+    CodeEvidence,
     EntailmentBatchOutput,
     EntailmentItem,
     LLMCheckOutput,
@@ -215,8 +216,18 @@ async def test_assess_detects_the_planted_defects(
     stored = await ctx.storage.artifacts.get("e2e", "assessment.json")
     assert stored is not None and AssessmentReport.model_validate_json(stored) == report
     assert sorted(await ctx.storage.artifacts.names("e2e")) == [
-        "assessment.json", "report.html", "report.md"
+        "assessment.json", "findings.sarif", "report.html", "report.md"
     ]  # fmt: skip
+    # SARIF: one result per verified fail/partial finding with a code location
+    sarif_data = await ctx.storage.artifacts.get("e2e", "findings.sarif")
+    assert sarif_data is not None
+    sarif = json.loads(sarif_data)
+    expected = sorted(
+        f.result.check_id for f in report.findings
+        if f.result.verdict in ("fail", "partial")
+        and any(isinstance(e, CodeEvidence) for e in f.result.evidence)
+    )  # fmt: skip
+    assert expected and sorted(r["ruleId"] for r in sarif["runs"][0]["results"]) == expected
     assert [m.metric for m in report.metric_scores] == list(METRICS)
 
     findings = {f.result.check_id: f for f in [*report.findings, *report.other_findings]}

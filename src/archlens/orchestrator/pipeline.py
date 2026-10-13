@@ -28,6 +28,7 @@ from archlens.errors import ArchLensError, IngestError
 from archlens.evaluate.consistency import evaluate_llm_checks
 from archlens.evaluate.deterministic import llm_checks, run_deterministic_checks
 from archlens.evaluate.llm_session import Evaluator, EvaluatorPrompts
+from archlens.evaluate.result_cache import NAMESPACE, CachedMetric, metric_inputs_key
 from archlens.evidence import SnippetReader
 from archlens.facts.runner import collect_facts
 from archlens.facts.scanners.gitleaks import spans_from_facts
@@ -62,6 +63,8 @@ from archlens.report import (
     config_fingerprint,
     render_html,
     render_markdown,
+    render_pr_comment,
+    render_sarif,
     synthesize,
     with_narrative,
 )
@@ -77,7 +80,7 @@ from archlens.verify.skeptic import SkepticPrompts
 logger = logging.getLogger(__name__)
 
 STAGES = ("ingest", "facts", "profile", "index", "evaluate", "verify", "score", "report")
-ARTIFACTS = ("assessment.json", "report.md", "report.html")
+ARTIFACTS = ("assessment.json", "report.md", "report.html", "findings.sarif", "pr_comment.md")
 
 
 def queued_state(run_id: str, repo_url: str | None, ref: str | None) -> RunState:
@@ -105,6 +108,7 @@ class Pipeline:
         self.ledger = SeenLines()
         self.timings: dict[str, int] = {}
         self.previous_records: list[LLMCallRecord] = []
+        self.reused: list[str] = []  # metrics whose LLM results came from the metric cache
         self.state: RunState | None = None
         self._spans: dict[str, tuple[Span, Token[Context]]] = {}  # open stage spans + tokens
 
@@ -227,9 +231,9 @@ class Pipeline:
         flags = rule_ctx.profile.flags
         metrics = [r for r in self.rubrics.values() if r.applies_when.holds(flags)]
         limits = self.ctx.config.models.sessions.evaluator
+        prompts = EvaluatorPrompts.load(self.ctx.prompts_dir)
         evaluator = Evaluator(
-            self.ctx.llm, tools, rule_ctx.profile, rule_ctx.facts, limits,
-            EvaluatorPrompts.load(self.ctx.prompts_dir),
+            self.ctx.llm, tools, rule_ctx.profile, rule_ctx.facts, limits, prompts
         )  # fmt: skip
         started = await self._begin("evaluate")
         by_metric: dict[str, list[CheckResult]] = {}
@@ -239,15 +243,36 @@ class Pipeline:
             recorded = await self.cp.load(key, MetricCheckpoint)
             if recorded is None:
                 deterministic = run_deterministic_checks(rubric, rule_ctx)
-                span = f"metric {rubric.metric}"
-                with telemetry.tracer().start_as_current_span(
-                    span, attributes={"archlens.metric": rubric.metric}
-                ):
-                    judged = await evaluate_llm_checks(evaluator, rubric, llm_checks(rubric, flags))
+                checks = llm_checks(rubric, flags)
+                cache_key = (
+                    metric_inputs_key(
+                        rubric, checks, prompt_version=prompts.version,
+                        models=self.ctx.config.models, files=rule_ctx.files, facts=rule_ctx.facts,
+                    )
+                    if self.options.metric_cache and checks
+                    else None
+                )  # fmt: skip
+                cached = await self._cached_metric(cache_key)
+                if cached is not None:
+                    logger.info("%s: inputs unchanged, reusing its LLM results", rubric.metric)
+                    self.reused.append(rubric.metric)
+                    self.ledger.update(cached.ledger)
+                    judged = cached.results
+                else:
+                    span = f"metric {rubric.metric}"
+                    with telemetry.tracer().start_as_current_span(
+                        span, attributes={"archlens.metric": rubric.metric}
+                    ):
+                        judged = await evaluate_llm_checks(evaluator, rubric, checks)
                 recorded = MetricCheckpoint(
                     results=[*deterministic, *judged],
                     ledger=self.ledger.subset(f"{rubric.metric}:"),
                 )
+                if cache_key is not None and cached is None:
+                    payload = CachedMetric(results=judged, ledger=recorded.ledger)
+                    await self.ctx.storage.cache.put(
+                        NAMESPACE, cache_key, payload.model_dump_json().encode()
+                    )
                 await self.cp.save(key, recorded)
                 await self._save_records()
             else:
@@ -266,6 +291,19 @@ class Pipeline:
             raise failures.exceptions[0] from failures
         await self._finish("evaluate", started)
         return [result for r in metrics for result in by_metric[r.metric]]
+
+    async def _cached_metric(self, key: str | None) -> CachedMetric | None:
+        """The metric cache entry for `key`; None when off, missing, or unreadable."""
+        if key is None:
+            return None
+        data = await self.ctx.storage.cache.get(NAMESPACE, key)
+        if data is None:
+            return None
+        try:
+            return CachedMetric.model_validate_json(data)
+        except ValueError:
+            logger.warning("ignoring an unreadable metric cache entry %s", key[:12])
+            return None
 
     async def _verify(
         self, tools: RepoTools, snapshot: RepoSnapshot, results: list[CheckResult]
@@ -334,6 +372,10 @@ class Pipeline:
         await store.put(run_id, "assessment.json", report.model_dump_json(indent=2).encode())
         await store.put(run_id, "report.md", render_markdown(report, self.rubrics).encode())
         await store.put(run_id, "report.html", render_html(report, self.rubrics).encode())
+        await store.put(run_id, "findings.sarif", render_sarif(report, self.rubrics).encode())
+        if self.options.base is not None:
+            comment = render_pr_comment(self.options.base, report, self.rubrics, self.reused)
+            await store.put(run_id, "pr_comment.md", comment.encode())
 
     # --- checkpoints and run state ---
 

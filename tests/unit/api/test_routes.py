@@ -171,6 +171,9 @@ async def test_report_and_artifacts(env: Env) -> None:
     assert "default-src 'none'" in html.headers["content-security-policy"]
     assert html.headers["x-content-type-options"] == "nosniff"
     assert get(env, f"{base}/artifacts/report.md").status_code == 404  # still not produced
+    await env.storage.artifacts.put(run_id, "findings.sarif", b'{"version": "2.1.0"}')
+    sarif = get(env, f"{base}/artifacts/findings.sarif")
+    assert sarif.status_code == 200 and sarif.headers["content-type"] == "application/sarif+json"
     assert get(env, f"{base}/artifacts/report.html", key=OTHER_KEY).status_code == 404
     assert get(env, f"{base}/artifacts/..%2Fstate.json").status_code == 404
 

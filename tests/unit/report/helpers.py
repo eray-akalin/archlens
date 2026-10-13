@@ -158,9 +158,16 @@ PROFILE = RepoProfile(
 )  # fmt: skip
 
 
-def sample_report(narrative: Narrative | None = None) -> AssessmentReport:
+def sample_report(
+    narrative: Narrative | None = None,
+    *,
+    found: list[Finding] | None = None,
+    commit_sha: str = SHA,
+    rubrics: dict[str, Rubric] | None = None,
+) -> AssessmentReport:
+    rubrics = rubrics or RUBRICS
     config = config_fingerprint(
-        rubrics=RUBRICS,
+        rubrics=rubrics,
         prompt_versions={"evaluator.system": "evaluator.system@1.0.0+aaaaaaaa"},
         models=MODELS,
         tool_runs=TOOL_RUNS,
@@ -168,12 +175,12 @@ def sample_report(narrative: Narrative | None = None) -> AssessmentReport:
     return build_report(
         run_id="01JRUN0000000000000000000",
         repo_url="https://github.com/example/tiny-service",
-        commit_sha=SHA,
+        commit_sha=commit_sha,
         created_at=datetime(2026, 10, 7, 12, 0, tzinfo=UTC),
         config=config,
         profile=PROFILE,
-        rubrics=RUBRICS,
-        findings=findings(),
+        rubrics=rubrics,
+        findings=findings() if found is None else found,
         tool_runs=TOOL_RUNS,
         llm_records=records(),
         timings_ms={"evaluate": 4200, "verify": 900},
