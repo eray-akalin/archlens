@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from archlens.models import (
     AbsenceProbe,
     AppliesWhen,
+    AskRequest,
     AssessmentReport,
     AssessmentRequest,
     CheckResult,
@@ -28,6 +29,7 @@ from archlens.models import (
     MetricNarrative,
     MetricScore,
     Narrative,
+    QAAnswer,
     RepoProfile,
     RepoSnapshot,
     Rubric,
@@ -348,4 +350,9 @@ SAMPLES: dict[str, BaseModel] = {
     ),
     "skeptic_output": SkepticOutput(refuted=False, reason="No counterexample found.", citations=[]),
     "narrative": narrative(),
+    "ask_request": AskRequest(question="Why is security capped?"),
+    "qa_answer": QAAnswer(
+        answer="SEC-05@0123456789ab caps security: the query is built from request input.",
+        cited_findings=["SEC-05@0123456789ab"],
+    ),
 }

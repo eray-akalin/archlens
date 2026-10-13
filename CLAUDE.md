@@ -50,6 +50,7 @@ uv run archlens assess <path-or-url> --out runs/   # full pipeline
 uv run archlens facts <path>              # fact layer only, no LLM
 uv run archlens serve                     # API (needs ARCHLENS_API_KEYS); worker: archlens worker --once
 uv run archlens mcp                       # MCP server over stdio (registered for Claude Code in .mcp.json)
+uv run archlens ask <run_id> "<question>"  # report Q&A from a finished run (costs < $0.01)
 uv run archlens eval fetch                # clones the pinned eval repos into the data dir
 uv run archlens eval --config eval/configs/full.yaml --dry-run   # prints projected cost
 uv run archlens eval label-sheet primary [--read]   # manual labels sheet ↔ eval/labels/primary.yaml

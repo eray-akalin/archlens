@@ -1,6 +1,7 @@
 """Assessment routes with the local storage backend (M4.3 AC): auth, URL policy, quotas, owner
 scoping, report and artifacts (404 for anything a run didn't produce)."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -10,9 +11,12 @@ from fastapi.testclient import TestClient
 
 from archlens.api import ApiState, create_app
 from archlens.api.auth import ApiKeys, key_id
-from archlens.models import RunState
+from archlens.models import AskAnswer, AssessmentReport, RunState
+from archlens.report.qa import QAError
 from archlens.storage import Storage, open_local_storage
+from tests.unit.report.helpers import sample_report
 
+Asker = Callable[[AssessmentReport, str], Awaitable[AskAnswer]]
 KEY, OTHER_KEY = "key-alpha-0123456789", "key-beta-9876543210"
 
 
@@ -31,13 +35,28 @@ class Env:
     clock: Clock
 
 
-def make_env(tmp_path: Path, *, runs_per_day: int = 3, max_concurrent: int = 1) -> Env:
+async def fake_asker(report: AssessmentReport, question: str) -> AskAnswer:
+    if question == "fail":
+        raise QAError("the answer broke the rules twice")
+    return AskAnswer(
+        run_id=report.run_id, answer=f"About {question}", cited_findings=[], cached=False,
+        cost_usd=0.001,
+    )  # fmt: skip
+
+
+def make_env(
+    tmp_path: Path,
+    *,
+    runs_per_day: int = 3,
+    max_concurrent: int = 1,
+    asker: Asker | None = fake_asker,
+) -> Env:
     storage = open_local_storage(tmp_path / "data")
     clock = Clock()
     state = ApiState(
         storage=storage, keys=ApiKeys((KEY, OTHER_KEY)), allowed_hosts=("github.com",),
         max_concurrent=max_concurrent, runs_per_day=runs_per_day,
-        metrics=frozenset({"security", "testing"}), clock=clock,
+        metrics=frozenset({"security", "testing"}), clock=clock, asker=asker,
     )  # fmt: skip
     return Env(TestClient(create_app(state)), storage, clock)
 
@@ -190,3 +209,32 @@ def test_server_shutdown_closes_storage(tmp_path: Path) -> None:
     with TestClient(create_app(state)) as client:  # runs the lifespan
         assert client.get("/healthz").status_code == 200
     assert closed == [True]
+
+
+async def test_ask(env: Env, tmp_path: Path) -> None:
+    run_id = str(post(env)[1]["run_id"])
+    path = f"/assessments/{run_id}/ask"
+
+    def ask(question: object, key: str = KEY):
+        return env.client.post(path, json={"question": question}, headers={"X-API-Key": key})
+
+    assert ask("Why?").status_code == 404  # no report yet
+    await env.storage.artifacts.put(
+        run_id, "assessment.json", sample_report().model_copy(update={"run_id": run_id})
+        .model_dump_json().encode(),
+    )  # fmt: skip
+    answered = ask("Why?")
+    assert answered.status_code == 200
+    assert answered.json() == {
+        "run_id": run_id, "answer": "About Why?", "cited_findings": [], "cached": False,
+        "cost_usd": 0.001,
+    }  # fmt: skip
+    assert ask("fail").status_code == 502 and "no grounded answer" in ask("fail").text
+    assert ask("Why?", key=OTHER_KEY).status_code == 404  # another key's run
+    assert ask("").status_code == 422 and ask("x" * 1001).status_code == 422
+    no_model = make_env(tmp_path / "plain", asker=None)
+    other_run = str(post(no_model)[1]["run_id"])
+    reply = no_model.client.post(
+        f"/assessments/{other_run}/ask", json={"question": "Why?"}, headers={"X-API-Key": KEY}
+    )
+    assert reply.status_code == 503

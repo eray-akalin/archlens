@@ -3,7 +3,7 @@
 from pydantic import BaseModel, ConfigDict
 
 # Bump on any change to a serialized model (semver), then run `archlens schema export`.
-SCHEMA_VERSION = "1.2.0"
+SCHEMA_VERSION = "1.3.0"
 
 
 class Contract(BaseModel):

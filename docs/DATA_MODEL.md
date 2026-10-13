@@ -1,7 +1,7 @@
 # Data model
 
 These Pydantic v2 models are the contracts between pipeline stages. They live in
-`src/archlens/models/`. `SCHEMA_VERSION = "1.2.0"` is stored in `AssessmentReport` and bumped on
+`src/archlens/models/`. `SCHEMA_VERSION = "1.3.0"` is stored in `AssessmentReport` and bumped on
 any change to a serialized model (semver). `archlens schema export` writes JSON Schemas to
 `schemas/`; CI fails if they drift from the models.
 
@@ -301,6 +301,10 @@ class Narrative(BaseModel):          # LLM-facing: no dicts (strict structured o
     per_metric: list[MetricNarrative]
     cited_findings: list[str]        # must all exist in findings
 
+class QAAnswer(BaseModel):           # LLM-facing (report Q&A, 1.3.0)
+    answer: str
+    cited_findings: list[str]        # must all exist in the report's findings
+
 class ConfigFingerprint(BaseModel):
     archlens_version: str
     rubric_versions: dict[str, str]
@@ -346,7 +350,7 @@ class RunState(BaseModel):
     cost_usd: float
 ```
 
-## 10. Hosted-API jobs (1.2.0)
+## 10. Hosted-API jobs (1.2.0) and report Q&A (1.3.0)
 
 ```python
 class AssessmentRequest(BaseModel):    # body of POST /assessments
@@ -364,6 +368,16 @@ class Job(BaseModel):                  # one queued assessment (JobStore)
     ref: str | None
     metrics: list[str] | None          # sorted, de-duplicated
     created_at: datetime               # aware; quotas count jobs of the last 24 h
+
+class AskRequest(BaseModel):         # body of POST /assessments/{run_id}/ask (1.3.0)
+    question: str                    # 1-1000 chars
+
+class AskAnswer(BaseModel):          # its 200 response (1.3.0)
+    run_id: str
+    answer: str
+    cited_findings: list[str]        # all exist in the report; ids named in the text included
+    cached: bool                     # every model call came from the exact cache
+    cost_usd: float
 ```
 
 A job's progress is its `RunState` (§9), created `queued` by the API; the pipeline treats a

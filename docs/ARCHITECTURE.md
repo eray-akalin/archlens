@@ -278,8 +278,9 @@ API surface (FastAPI):
 - `GET /assessments/{run_id}/report` → `AssessmentReport`
 - `GET /assessments/{run_id}/artifacts/{name}` → any artifact the run produced (md, html; sarif
   once M5.2 exists); `404` for artifacts not produced
-- `POST /assessments/{run_id}/ask` `{question}` → answer grounded in the report (report Q&A, added
-  in M5.4; the only place a semantic cache may be used)
+- `POST /assessments/{run_id}/ask` `{question}` → answer grounded in the report, citing its
+  findings (report Q&A, M5.4: `archlens.report.qa`; repeats come from the exact cache — no
+  semantic cache was built; `503` without a model, `502` when no grounded answer came back)
 - `GET /healthz`
 - `GET /` and `GET /ui/{app.js,style.css}` → the web UI (M4.7)
 

@@ -116,7 +116,10 @@ Layered; no single layer is trusted.
   loads; the UI shows them in a sandboxed iframe without scripts, under a page CSP that allows
   only its own script.
 - Quotas: per-key concurrent runs = 1, runs/day configurable (default 10); the per-run budget
-  guard still applies.
+  guard still applies. Report Q&A (`/ask`) needs the key and owner of the run, caps a question
+  at 1000 characters and has no quota of its own (a question costs well under a cent; repeats
+  come from the exact cache); the question is the caller's own text, the report's claims stay
+  wrapped as untrusted data.
 - Workers run with a user-assigned managed identity that has only: Blob data contributor on the
   artifacts container, Queue data contributor on the jobs queue, Cosmos data contributor on the
   ArchLens database. No subscription-level roles.

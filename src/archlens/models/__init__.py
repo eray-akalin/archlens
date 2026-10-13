@@ -15,7 +15,7 @@ from archlens.models.enums import (
 )
 from archlens.models.evidence import MAX_EVIDENCE_SPAN, CodeEvidence, Evidence, ScanEvidence
 from archlens.models.facts import Fact, FactSet, ToolRunRecord, ToolStatus
-from archlens.models.jobs import AssessmentAccepted, AssessmentRequest, Job
+from archlens.models.jobs import AskAnswer, AskRequest, AssessmentAccepted, AssessmentRequest, Job
 from archlens.models.llm_output import (
     Citation,
     EntailmentBatchOutput,
@@ -32,6 +32,7 @@ from archlens.models.report import (
     MetricNarrative,
     MetricScore,
     Narrative,
+    QAAnswer,
 )
 from archlens.models.results import (
     CheckResult,
@@ -53,6 +54,8 @@ __all__ = [
     "SEVERITY_RANK",
     "AbsenceProbe",
     "AppliesWhen",
+    "AskAnswer",
+    "AskRequest",
     "AssessmentAccepted",
     "AssessmentReport",
     "AssessmentRequest",
@@ -83,6 +86,7 @@ __all__ = [
     "MetricStatus",
     "MutableContract",
     "Narrative",
+    "QAAnswer",
     "RepoProfile",
     "RepoSnapshot",
     "Rubric",

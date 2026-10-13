@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-schema-version": "1.3.0",
+  "additionalProperties": false,
+  "description": "LLM-facing (report Q&A output, LLM.md §7): an answer grounded in one report.",
+  "properties": {
+    "answer": {
+      "title": "Answer",
+      "type": "string"
+    },
+    "cited_findings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Cited Findings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "answer",
+    "cited_findings"
+  ],
+  "title": "QAAnswer",
+  "type": "object"
+}

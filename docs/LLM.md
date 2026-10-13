@@ -220,6 +220,16 @@ Paragraphs for unknown metrics are dropped. Model or budget failures → `narrat
 Report Q&A (`POST /assessments/{id}/ask`) uses `synth.qa.md`, answers only from the report JSON,
 and must cite finding IDs. This is the only place a semantic cache may sit in front of the model.
 
+As built (M5.4, `archlens.report.qa`; also `archlens ask <run_id> "<question>"`): role `synth`;
+messages system (`synth.qa`) → the report exactly as the narrative sees it (`synth.input`, so the
+provider caches that prefix across questions) → the findings that didn't affect a score (claims
+and verifier notes wrapped) and the question (`synth.qa_input`). Output `QAAnswer`; guards as for
+the narrative — finding ids must exist in the report (scored or not), numbers must come from the
+report or the question; an answer citing nothing is asked once to cite; a violation gets one
+retry, then `QAError` (API `502`). Ids written in the text join `cited_findings`. Repeating a
+question uses the exact cache (the boundary is normalized in the key): verified on a real report,
+$0.0042 then $0.
+
 ## 8. Caching, rate limiting, retries
 
 - **Exact cache** (`archlens.llm.cache`): key = sha256 of `(deployment, prompt_version, messages,

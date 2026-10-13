@@ -77,3 +77,8 @@ form.inline input { flex: 1; min-width: 14em; width: auto; margin: 0; }
   display: block; width: 100%; min-height: 200px; margin-top: 8px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
 }
+
+#answer-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0 8px; }
+#answer-cites { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
+button.cite { font: 13px/1.45 ui-monospace, monospace; padding: 2px 8px; }
+#answer-meta { margin: 8px 0 0; font-size: 13px; }

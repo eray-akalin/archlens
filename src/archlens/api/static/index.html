@@ -51,6 +51,19 @@
     <ol id="stages"></ol>
   </section>
 
+  <section id="ask" class="card" hidden>
+    <form id="ask-form" class="inline">
+      <label for="question" class="muted">Ask about this report</label>
+      <input id="question" maxlength="1000" placeholder="e.g. Why is security capped?" spellcheck="true" autocomplete="off">
+      <button id="ask-button" type="submit">Ask</button>
+    </form>
+    <div id="answer" hidden>
+      <p id="answer-text"></p>
+      <p id="answer-cites"></p>
+      <p id="answer-meta" class="muted"></p>
+    </div>
+  </section>
+
   <section id="report" hidden>
     <div class="row head">
       <h2>Report</h2>

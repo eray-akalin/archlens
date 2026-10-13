@@ -52,7 +52,7 @@ from archlens.llm.client import LLMClient
 from archlens.llm.embedder import ClientEmbedder
 from archlens.llm.prompts import DEFAULT_PROMPTS_DIR, update_lock
 from archlens.llm.untrusted import new_boundary
-from archlens.models import SCHEMA_VERSION, AssessmentReport, Rubric
+from archlens.models import SCHEMA_VERSION, AskAnswer, AskRequest, AssessmentReport, Rubric
 from archlens.models.schemas import export_schemas
 from archlens.orchestrator.context import RunContext, RunOptions
 from archlens.orchestrator.pipeline import ARTIFACTS, Pipeline, run_assessment
@@ -533,7 +533,7 @@ def serve(
 
     try:
         settings = load_settings()
-        load_config(settings)  # fail fast on a broken config, before accepting jobs
+        config = load_config(settings)  # fail fast on a broken config, before accepting jobs
         rubrics = load_rubrics()
         storage = open_storage(settings)
     except ArchLensError as exc:
@@ -547,9 +547,31 @@ def serve(
         storage=storage, keys=keys, allowed_hosts=tuple(settings.allowed_repo_hosts),
         max_concurrent=settings.max_concurrent_runs_per_key,
         runs_per_day=settings.runs_per_day_per_key, metrics=frozenset(rubrics),
-        clock=lambda: datetime.now(UTC),
+        clock=lambda: datetime.now(UTC), asker=make_asker(config, rubrics, storage),
     )  # fmt: skip
     uvicorn.run(create_app(state), host=host, port=port, log_level="warning")
+
+
+def make_asker(
+    config: AppConfig, rubrics: dict[str, Rubric], storage: Storage
+) -> Callable[[AssessmentReport, str], Awaitable[AskAnswer]]:
+    """Report Q&A for long-lived processes: each question gets its own repo_data boundary and
+    LLM client (with the exact cache), closed when it is answered."""
+    from archlens.report.qa import QAPrompts, answer_question
+
+    prompts = QAPrompts.load()
+
+    async def ask(report: AssessmentReport, question: str) -> AskAnswer:
+        boundary = new_boundary()
+        llm = LLMClient.from_config(config, cache_store=storage.cache, boundary=boundary)
+        try:
+            return await answer_question(
+                llm, prompts, report, question, boundary=boundary, rubrics=rubrics
+            )
+        finally:
+            await llm.aclose()
+
+    return ask
 
 
 Runner = Callable[[str, RunOptions, bool], Awaitable[AssessmentReport]]
@@ -577,6 +599,45 @@ def make_runner(
             await llm.aclose()
 
     return run
+
+
+@app.command()
+def ask(
+    run_id: Annotated[str, typer.Argument(help="Run whose report to ask about.")],
+    question: Annotated[str, typer.Argument(help="The question (at most 1000 characters).")],
+) -> None:
+    """Ask a question about a finished run's report; the answer cites its findings."""
+    from archlens.report.qa import QAError
+
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    try:
+        settings = load_settings()
+        config = load_config(settings)
+        rubrics = load_rubrics()
+        request = AskRequest(question=question)
+    except (ArchLensError, ValueError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    storage = open_storage(settings)
+
+    async def run() -> AskAnswer:
+        try:
+            data = await storage.artifacts.get(run_id, "assessment.json")
+            if data is None:
+                raise QAError(f"run {run_id} has no report")
+            report = AssessmentReport.model_validate_json(data)
+            return await make_asker(config, rubrics, storage)(report, request.question)
+        finally:
+            await storage.aclose()
+
+    try:
+        answer = asyncio.run(run())
+    except ArchLensError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(answer.answer)
+    typer.echo(f"cited: {', '.join(answer.cited_findings) or 'none'}")
+    typer.echo(f"cost ${answer.cost_usd:.4f}{' (exact cache)' if answer.cached else ''}")
 
 
 @app.command()

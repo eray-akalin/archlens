@@ -8,9 +8,9 @@ from pydantic import BaseModel
 
 from archlens.models.base import SCHEMA_VERSION
 from archlens.models.facts import FactSet
-from archlens.models.jobs import AssessmentRequest, Job
+from archlens.models.jobs import AskRequest, AssessmentRequest, Job
 from archlens.models.llm_output import EntailmentBatchOutput, MetricEvaluationOutput, SkepticOutput
-from archlens.models.report import AssessmentReport, LLMCallRecord, Narrative
+from archlens.models.report import AssessmentReport, LLMCallRecord, Narrative, QAAnswer
 from archlens.models.results import CheckResult, Finding
 from archlens.models.rubric import Rubric
 from archlens.models.run_state import RunState
@@ -28,6 +28,7 @@ TOP_LEVEL_MODELS: Mapping[str, type[BaseModel]] = {
     "finding": Finding,
     "run_state": RunState,
     "assessment_request": AssessmentRequest,
+    "ask_request": AskRequest,
     "job": Job,
     "llm_call_record": LLMCallRecord,
     "rubric": Rubric,
@@ -35,6 +36,7 @@ TOP_LEVEL_MODELS: Mapping[str, type[BaseModel]] = {
     "entailment_batch_output": EntailmentBatchOutput,
     "skeptic_output": SkepticOutput,
     "narrative": Narrative,
+    "qa_answer": QAAnswer,
 }
 
 

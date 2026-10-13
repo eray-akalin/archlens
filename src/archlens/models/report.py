@@ -67,6 +67,13 @@ class Narrative(Contract):
     cited_findings: list[str]  # must all exist in findings
 
 
+class QAAnswer(Contract):
+    """LLM-facing (report Q&A output, LLM.md §7): an answer grounded in one report."""
+
+    answer: str
+    cited_findings: list[str]  # must all exist in the report's findings
+
+
 class ConfigFingerprint(Contract):
     archlens_version: str
     rubric_versions: dict[str, str]

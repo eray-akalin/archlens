@@ -873,7 +873,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (`llm-token-limit`, `llm-emit-token-metric`).
   AC: gateway token metrics visible in App Insights; token limit returns 429 when exceeded.~~
   Dropped 2026-10-13 (ADR-009).
-- [ ] **M5.4 💰 (optional) Report Q&A.** `POST /assessments/{id}/ask` route, `synth.qa.md`.
+- [x] **M5.4 💰 (optional) Report Q&A.** `POST /assessments/{id}/ask` route, `synth.qa.md`.
   (The APIM semantic cache was dropped with APIM, ADR-009.)
   AC: answers cite finding IDs; repeating a question is served from the exact cache.
 - [x] **M5.5 MCP server.** stdio server exposing `assess_repo`, `get_report`, `search_findings`.
@@ -979,3 +979,13 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   VI2 detected. With VI1 from the full run (Δ 0.0, no injected-only findings), the injection
   criteria pass on `full`. Honest caveat in the README: of two cache-off samples, one evaluator
   pair believed the fake-middleware comment. Ablation total $4.87.
+- 2026-10-14 — M5.4 done. `archlens.report.qa` + prompts `synth.qa` / `synth.qa_input`;
+  `POST /assessments/{id}/ask` (owner only; 404 before the report, 503 without a model, 502 with
+  no grounded answer; question ≤ 1000 chars), `archlens ask`, an ask box in the web UI whose cited
+  ids scroll the report to the finding. Contracts `QAAnswer`, `AskRequest`, `AskAnswer` →
+  SCHEMA_VERSION 1.3.0, schemas regenerated. Resolved: the report goes in as the narrative's
+  `synth.input` (one cacheable prefix per report), unscored findings and the question after it;
+  guards as for the narrative, plus the question's numbers; unscored findings may be cited; ids
+  named in the text join `cited_findings`; no Q&A quota (sub-cent, cached repeats), documented.
+  AC on a real report (eval run primary.base.0): the answer cited SEC-02, $0.0042; the same
+  question again: same answer, "(exact cache)", $0. No semantic cache (APIM dropped, ADR-009).

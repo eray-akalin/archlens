@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "x-schema-version": "1.2.0",
+  "x-schema-version": "1.3.0",
   "$defs": {
     "CodeEvidence": {
       "additionalProperties": false,

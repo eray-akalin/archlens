@@ -1,4 +1,4 @@
-"""Assessment routes (ARCHITECTURE.md §6, without `/ask`).
+"""Assessment routes (ARCHITECTURE.md §6) and report Q&A (`/ask`, LLM.md §7).
 
 Every route but `/healthz` needs a valid `X-API-Key`. A run is visible only to the key that
 created it; anything else — another key's run, a malformed id, an artifact the run didn't produce —
@@ -6,7 +6,7 @@ is a plain 404, so the API never confirms that someone else's run exists.
 """
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Annotated, cast
@@ -17,8 +17,17 @@ from ulid import ULID
 from archlens.api.auth import HEADER, ApiKeys
 from archlens.errors import IngestError, StorageKeyError
 from archlens.ingest.clone import validate_ref
-from archlens.models import AssessmentAccepted, AssessmentRequest, Job, RunState
+from archlens.models import (
+    AskAnswer,
+    AskRequest,
+    AssessmentAccepted,
+    AssessmentReport,
+    AssessmentRequest,
+    Job,
+    RunState,
+)
 from archlens.orchestrator.pipeline import ARTIFACTS, queued_state
+from archlens.report.qa import QAError
 from archlens.security.url_policy import UrlPolicyError, check_repo_url
 from archlens.storage import Storage
 from archlens.storage.base import check_run_id
@@ -47,6 +56,8 @@ class ApiState:
     runs_per_day: int  # per key, over the last 24 hours
     metrics: frozenset[str]  # known rubric names
     clock: Callable[[], datetime]
+    # answers a question from a report (report Q&A); None → `/ask` answers 503
+    asker: Callable[[AssessmentReport, str], Awaitable[AskAnswer]] | None = None
 
 
 router = APIRouter()
@@ -150,3 +161,19 @@ async def get_artifact(run_id: str, name: str, owner: Owner, api: State) -> Resp
     suffix = name[name.rfind(".") :]
     headers = HTML_HEADERS if suffix == ".html" else {"X-Content-Type-Options": "nosniff"}
     return Response(content=data, media_type=CONTENT_TYPES[suffix], headers=headers)
+
+
+@router.post("/assessments/{run_id}/ask")
+async def ask(run_id: str, body: AskRequest, owner: Owner, api: State) -> AskAnswer:
+    """Answer a question from the run's report only, citing its findings. 404 until the report
+    exists; 503 without a model; 502 when no grounded answer came back."""
+    await owned_job(api, owner, run_id)
+    if api.asker is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "report Q&A is not configured")
+    data = await api.storage.artifacts.get(run_id, REPORT)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "the run has not produced a report")
+    try:
+        return await api.asker(AssessmentReport.model_validate_json(data), body.question)
+    except QAError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"no grounded answer: {exc}") from None

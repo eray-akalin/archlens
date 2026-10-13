@@ -27,6 +27,14 @@
     "version": "1.0.0",
     "sha256": "f411c824aaf7f2c35d38810e8ae521db8c5888a25b404ebf30711974dd9c15be"
   },
+  "synth.qa": {
+    "version": "1.0.0",
+    "sha256": "1db6f62a514032dde6abbc2b325e992e44acd1db6a9b04444ae2749ce6d390aa"
+  },
+  "synth.qa_input": {
+    "version": "1.0.0",
+    "sha256": "fa6795d64c464eb17b0a42018ed4b20f91b5b0cf4f8146d5e71a392c52a03531"
+  },
   "verifier.absence": {
     "version": "1.1.0",
     "sha256": "cd67d451c988f0abbe6c9bf0c10bcb75adb890847b78cf2770ba410f607568e3"

@@ -21,6 +21,22 @@ class AssessmentAccepted(Contract):
     run_id: str
 
 
+class AskRequest(Contract):
+    """Body of `POST /assessments/{run_id}/ask`: a question about that run's report."""
+
+    question: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
+class AskAnswer(Contract):
+    """Answer to a report question; every cited finding exists in the report."""
+
+    run_id: str
+    answer: str
+    cited_findings: list[str]
+    cached: bool  # every model call came from the exact cache
+    cost_usd: float
+
+
 class Job(Contract):
     """One queued assessment. `key_id` is a fingerprint of the API key, never the key itself."""
 

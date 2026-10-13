@@ -108,6 +108,8 @@ function follow(runId) {
   $("stages").replaceChildren();
   $("report").hidden = true;
   $("report-frame").srcdoc = "";
+  $("ask").hidden = true;
+  $("answer").hidden = true;
   poll(runId);
 }
 
@@ -181,6 +183,53 @@ async function showReport(runId) {
   $("downloads").replaceChildren(...DOWNLOADS.map(([name, label]) => download(runId, name, label)));
   $("report").hidden = false; // visible first, so the frame lays out at its real width
   $("report-frame").srcdoc = html;
+  $("ask").hidden = false;
+}
+
+$("ask-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const runId = current;
+  const question = $("question").value.trim();
+  if (!runId || !question) return;
+  showError("");
+  $("ask-button").disabled = true;
+  $("answer").hidden = false;
+  $("answer-text").textContent = "Thinking…";
+  $("answer-cites").replaceChildren();
+  $("answer-meta").textContent = "";
+  try {
+    const response = await api(runPath(runId, "/ask"), {
+      method: "POST",
+      body: JSON.stringify({ question }),
+    });
+    const answer = await response.json();
+    if (runId !== current) return;
+    $("answer-text").textContent = answer.answer;
+    $("answer-cites").replaceChildren(...answer.cited_findings.map(citeButton));
+    $("answer-meta").textContent =
+      `$${answer.cost_usd.toFixed(4)}${answer.cached ? " · from the exact cache" : ""}`;
+  } catch (error) {
+    $("answer").hidden = true;
+    showError(`Could not answer: ${error.message}`);
+  } finally {
+    $("ask-button").disabled = false;
+  }
+});
+
+// A cited finding id ("SEC-05@0123456789ab") as a button that scrolls to it in the report.
+function citeButton(findingId) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary cite";
+  button.textContent = findingId;
+  button.addEventListener("click", () => {
+    const anchor = `f-${findingId.split("@")[0].toLowerCase()}`;
+    const target = $("report-frame").contentDocument?.getElementById(anchor);
+    if (!target) return;
+    const top = $("report-frame").getBoundingClientRect().top + target.getBoundingClientRect().top;
+    window.scrollTo({ top: window.scrollY + top - 12, behavior: "smooth" });
+  });
+  return button;
 }
 
 // Size the frame to the report, so the page scrolls instead of the frame.
