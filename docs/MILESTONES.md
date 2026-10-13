@@ -989,3 +989,6 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   named in the text join `cited_findings`; no Q&A quota (sub-cent, cached repeats), documented.
   AC on a real report (eval run primary.base.0): the answer cited SEC-02, $0.0042; the same
   question again: same answer, "(exact cache)", $0. No semantic cache (APIM dropped, ADR-009).
+  Deployed image `812997c` (azd provision, $0 infra): the hosted page serves the ask box, and
+  `/ask` on the M4.4 run answered citing SEC-02 ($0.0041), then again from the cache ($0). The
+  first request after the rollout timed out at 180 s (cold start on the new image), then 200.
