@@ -5,6 +5,7 @@ created it; anything else — another key's run, a malformed id, an artifact the
 is a plain 404, so the API never confirms that someone else's run exists.
 """
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -98,11 +99,8 @@ async def create_assessment(
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS, f"daily quota of {api.runs_per_day} runs reached"
         )
-    active = [
-        job.run_id for job in recent
-        if (state := await api.storage.run_state.load(job.run_id)) is not None
-        and state.status in ACTIVE
-    ]  # fmt: skip
+    states = await asyncio.gather(*(api.storage.run_state.load(j.run_id) for j in recent))
+    active = [s.run_id for s in states if s is not None and s.status in ACTIVE]
     if len(active) >= api.max_concurrent:
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,

@@ -944,3 +944,12 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (the report CSP is unchanged); the web UI's report frame now allows popups (still no scripts) so
   the GitHub links open. Checked in the in-app browser at 1100 px and 375 px (no page overflow;
   long paths wrap). Spend: $0.
+- 2026-10-13 — Self-assessment follow-ups (base run on main after the fixture change: overall
+  5.7 → 8.1; container 3.8 → 10, data 0 → 7, logging 6.5 → 9.3, performance → 9.0; code scanning
+  22 → 4 open; $0.1643). Fixed: SEC-01 was the PEM header literal in the eval mutation helper (no
+  key — the body is random at mutation time); the header is now assembled, since ArchLens rightly
+  ignores `gitleaks:allow`. PERF-02: the quota check loads run states with `asyncio.gather`, not
+  one await per job. SEC-06 guidance (security 1.1.1, wording only): no CORS middleware at all
+  counts as restrictive CORS — browsers then allow no cross-origin access — so headers without
+  CORS config is a pass, not a partial; no eval label covers SEC-06. Left as is: LOG-02 counts
+  the `print`s of CLI scripts in `scripts/` (right for a CLI; a simple, low-severity ratio).

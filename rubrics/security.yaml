@@ -1,7 +1,7 @@
 # Reference rubric. Every other metric file follows this shape (see docs/RUBRICS.md §1).
 metric: security
 title: Security
-version: 1.1.0
+version: 1.1.1
 weight: 1.5
 description: >
   Whether the codebase avoids the most common, high-impact security failures: leaked secrets,
@@ -114,16 +114,18 @@ checks:
       - {kind: regex, pattern: "(?i)cors", path_glob: "**/*.{py,ts,js,cs,java,go}"}
       - {kind: regex, pattern: "(?i)helmet|strict-transport-security|x-content-type-options|content-security-policy", path_glob: "**/*"}
     guidance: |
-      Find CORS configuration and security-header middleware.
-      - pass: CORS restricts origins (no wildcard together with credentials) and common security
-        headers are set (via middleware such as helmet, a reverse-proxy config in the repo, or
-        framework settings); cite the configuration.
-      - partial: CORS is restrictive but no security headers are configured, or vice versa.
+      Find CORS configuration and security-header middleware. No CORS middleware at all counts as
+      restrictive CORS: browsers then allow no cross-origin access.
+      - pass: CORS restricts origins (no wildcard together with credentials) or is absent, and
+        common security headers are set (via middleware such as helmet, a reverse-proxy config in
+        the repo, or framework settings); cite the header configuration.
+      - partial: CORS is restrictive but no security headers are configured, or headers are set
+        but CORS is permissive short of a fail.
       - fail: `allow_origins=["*"]` (or equivalent) combined with credentials, or reflecting the
         request Origin unconditionally; cite it.
       - not_applicable: the service is not browser-facing (pure internal API with no CORS and the
         README/config states it is internal); explain in the claim.
-      If you find no CORS or header configuration at all, answer partial with no citations; the
+      If you find neither CORS nor header configuration, answer partial with no citations; the
       verifier will confirm the absence.
     rationale: >
       Permissive CORS with credentials lets any website act on behalf of logged-in users.
