@@ -926,7 +926,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 ## M6 — Wrap-up (week 4)
 
 - [x] **M6.1 HTML report polish** (scores, findings with code snippets, unverified section).
-- [ ] **M6.2 README final** — results table, architecture diagram, cost per run, how to reproduce.
+- [x] **M6.2 README final** — results table, architecture diagram, cost per run, how to reproduce.
 - [ ] **M6.3 Demo video** — submit URL → report → PR comment → App Insights trace.
 - [ ] **M6.4 💰 Teardown** per AZURE.md §6; confirm $0 run-rate.
 
@@ -944,6 +944,14 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   (the report CSP is unchanged); the web UI's report frame now allows popups (still no scripts) so
   the GitHub links open. Checked in the in-app browser at 1100 px and 375 px (no page overflow;
   long paths wrap). Spend: $0.
+- 2026-10-14 — M6.2 done. README: what it is and its outputs; two Mermaid diagrams (pipeline,
+  hosted deployment), both rendered with mermaid 10.9 in the in-app browser (the pipeline one
+  kept to one row of short labels — subgraph directions are ignored once edges cross them); the
+  ablation results with the EVALUATION.md scope sentence and caveats; measured cost and wall time
+  per run (fastapi template 9.5k LOC $0.16–0.18 / ~8 min, eShopOnWeb 12k LOC $0.25 / ~18 min,
+  ArchLens 25k LOC $0.16–0.21 / ~15 min, PR re-run $0.03 / ~2 min); quickstart with the real
+  commands; container (data dir mounted, runner's uid), hosted API + web UI, GitHub Actions PR
+  mode, MCP; reproducing the eval; safety; development checks. No license claimed (none chosen).
 - 2026-10-13 — Self-assessment follow-ups (base run on main after the fixture change: overall
   5.7 → 8.1; container 3.8 → 10, data 0 → 7, logging 6.5 → 9.3, performance → 9.0; code scanning
   22 → 4 open; $0.1643). Fixed: SEC-01 was the PEM header literal in the eval mutation helper (no

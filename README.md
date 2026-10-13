@@ -21,15 +21,9 @@ web UI, as a GitHub Actions PR check, or from Claude Code over MCP.
 
 ```mermaid
 flowchart LR
-  repo["Git repo<br/>(hardened clone,<br/>never executed)"] --> ingest["ingest<br/>snapshot + hashes"]
-  ingest --> facts["facts<br/>scanners + tree-sitter"]
-  facts --> profile["profile"]
-  profile --> index["index<br/>BM25 + vectors"]
-  index --> evaluate["evaluate<br/>10 metrics in parallel"]
-  facts -. "deterministic rules" .-> evaluate
-  evaluate --> verify["verify<br/>mechanical · entailment ·<br/>absence · skeptic"]
-  verify --> score["score<br/>pure function"]
-  score --> report["report<br/>JSON · MD · HTML ·<br/>SARIF · PR comment"]
+  repo["repo"] --> ingest["ingest"] --> facts["facts"] --> profile["profile"] --> index["index"]
+  index --> evaluate["evaluate<br/>×10 metrics"] --> verify["verify"] --> score["score"] --> report["report"]
+  facts -. "deterministic<br/>rules" .-> evaluate
 ```
 
 1. **Facts first.** Static scanners (gitleaks, osv-scanner, semgrep, hadolint, checkov, actionlint,
