@@ -33,17 +33,32 @@ repo ─► ingest ─► facts ─► profile ─► index ─► evaluate (10 
 
 ## Results
 
-Ablation on one Python/FastAPI service with planted defects, plus a cross-stack smoke test
-(scope and method in [`docs/EVALUATION.md`](docs/EVALUATION.md)):
+Ablation (M5.1, 2026-10-13, 43 assessments, $4.67 in LLM calls). **Scope:** results describe one
+well-engineered Python/FastAPI service with planted defects, plus a cross-stack smoke test on one
+repo in a different language. This is a deliberate trade-off for a solo, credit-limited project
+(ADR-013); it shows that detection and verification work, not that they generalize across all
+stacks. Method and metrics: [`docs/EVALUATION.md`](docs/EVALUATION.md); raw results:
+`eval/results/{baseline,facts,verifier,full}-*/`.
 
-| Config | Located recall | Labeled precision | Verifier precision (audit) | Score std (3 runs) | Cost / run |
-|---|---|---|---|---|---|
-| A — hackathon baseline | – | – | – | – | – |
-| B — + fact layer | – | – | – | – | – |
-| C — + verifier 2.0 | – | – | – | – | – |
-| D — full system | – | – | – | – | – |
+| Config | Located recall (primary · cross) | Labeled precision | Verifier precision (audit) | Score std (base runs) | Injection VI1 · VI2 | Cost / run |
+|---|---|---|---|---|---|---|
+| A — hackathon baseline | 50% · 83% | 58% | not audited | 0.46 | ✗ · ✗ | $0.058 |
+| B — + fact layer, deterministic rules | **94% · 100%** | **100%** | not audited | **0.11** | ✓ · ✓ | **$0.054** |
+| C — + verifier 2.0, self-consistency (no facts) | 44% · 50% | 64% | not audited | 0.64 | ✗ · ✗ | $0.184 |
+| D — full system | 89% · 100% | **100%** | not audited | 0.32 | ✓ · ✗ | $0.132 |
 
-*To be filled after milestone M5.*
+What it says, on this set: the fact layer and the deterministic rules carry the result — B lifts
+recall from 50% to 94% and precision from 58% to 100% over A, makes runs far more stable, and
+passes both injection tests, at A's cost. The model-side machinery alone (C) doesn't replace them
+and costs three times as much. D adds no measured gain over B here and more variance; its VI2 miss
+came from self-consistency (partial / pass / fail on AUTH-01 merged to `unknown`, fixed since by
+letting an issue majority stand — not yet re-measured) and from a run in which both evaluator
+passes were fooled by a fake "middleware protects this" comment: entailment rejected that pass, so
+it didn't score, but the defect went undetected.
+
+Caveats: 2–3 base runs per config, one labeled repo; verifier precision needs the manual audit
+sheet (not done for the ablation); A's variant runs reused C's cached evaluator answers (identical
+prompts), so A and C differ there only after evaluation.
 
 ## Quickstart (target interface)
 

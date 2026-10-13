@@ -953,3 +953,15 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   counts as restrictive CORS — browsers then allow no cross-origin access — so headers without
   CORS config is a pass, not a partial; no eval label covers SEC-06. Left as is: LOG-02 counts
   the `print`s of CLI scripts in `scripts/` (right for a CLI; a simple, low-severity ratio).
+- 2026-10-13 — M5.1 ablation run (not ticked: VI2 fails on `full`). Switches built
+  (`evaluate/ablation.py`, `RunOptions`), configs `baseline/facts/verifier.yaml`, 43 runs, $4.67
+  (projected ≤ $12.92). Located recall primary · cross / labeled precision / score std / VI1 · VI2
+  / cost per run — A 50·83 / 58 / 0.46 / ✗·✗ / $0.058; B 94·100 / 100 / 0.11 / ✓·✓ / $0.054;
+  C 44·50 / 64 / 0.64 / ✗·✗ / $0.184; D 89·100 / 100 / 0.32 / ✓·✗ / $0.132. `table.md` per config
+  and the README Results table (with the scope sentence) filled. D's VI2: SEC-05 detected in both
+  runs; AUTH-01 in VI2.0 was partial / pass / fail (the tie-break found the de-authenticated
+  route) and an exact-verdict majority made it `unknown` — fixed: an issue majority now stands
+  (tie-break's grade); in VI2.1 both evaluator runs believed the fake middleware comment, the
+  entailment rejected that pass (not scored), and no issue verdict remained. Not tuned against
+  our own injection texts (VI1/VI2 measure known phrasings). A's variant runs reused C's cached
+  evaluator answers (identical prompts). Verifier precision needs the audit sheet (not done).
