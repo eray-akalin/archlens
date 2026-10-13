@@ -6,8 +6,8 @@ param location string
 param name string
 param tags object
 
-@description('GitHub repository as owner/name.')
-param githubRepo string
+@description('Prefix of the sub claim in this repository\'s GitHub OIDC tokens, as `gh api repos/<owner>/<name>/actions/oidc/customization/sub` reports it (sub_claim_prefix), e.g. repo:owner@123/name@456 — GitHub puts the immutable owner and repository IDs there.')
+param subjectPrefix string
 
 param aiAccountName string
 
@@ -18,8 +18,8 @@ resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' 
 }
 
 var subjects = [
-  { name: 'github-main', subject: 'repo:${githubRepo}:ref:refs/heads/main' }
-  { name: 'github-pull-request', subject: 'repo:${githubRepo}:pull_request' }
+  { name: 'github-main', subject: '${subjectPrefix}:ref:refs/heads/main' }
+  { name: 'github-pull-request', subject: '${subjectPrefix}:pull_request' }
 ]
 
 @batchSize(1) // one identity's federated credentials can't be written concurrently

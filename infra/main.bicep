@@ -27,8 +27,8 @@ param runBudgetUsd string = '1.00'
 @description('Entra object ID of the developer who runs the live storage contract suite; empty = no roles. Scoped to the test container, queue and *-test Cosmos containers.')
 param developerPrincipalId string = ''
 
-@description('GitHub repository (owner/name) whose main branch and pull requests may call Azure OpenAI through OIDC (the PR-mode workflow); empty = no such identity.')
-param githubRepo string = ''
+@description('sub_claim_prefix of the GitHub repository whose main branch and pull requests may call Azure OpenAI through OIDC (the PR-mode workflow; modules/github-oidc.bicep); empty = no such identity.')
+param githubSubjectPrefix string = ''
 
 var tags = { project: 'archlens', 'azd-env-name': 'archlens' }
 var suffix = uniqueString(resourceGroup().id)
@@ -144,18 +144,18 @@ output STORAGE_ACCOUNT string = storage.outputs.name
 output COSMOS_ENDPOINT string = cosmos.outputs.endpoint
 output WORKER_JOB string = worker.outputs.name
 
-module githubOidc 'modules/github-oidc.bicep' = if (!empty(githubRepo)) {
+module githubOidc 'modules/github-oidc.bicep' = if (!empty(githubSubjectPrefix)) {
   name: 'github-oidc'
   params: {
     location: location
     name: '${prefix}-github'
     tags: tags
-    githubRepo: githubRepo
+    subjectPrefix: githubSubjectPrefix
     aiAccountName: ai.name
   }
 }
 
 // For the PR-mode workflow's repository variables; none of these is a secret.
-output GITHUB_OIDC_CLIENT_ID string = empty(githubRepo) ? '' : githubOidc!.outputs.clientId
+output GITHUB_OIDC_CLIENT_ID string = empty(githubSubjectPrefix) ? '' : githubOidc!.outputs.clientId
 output AZURE_TENANT_ID string = tenant().tenantId
 output LLM_BASE_URL string = 'https://${ai.name}.openai.azure.com/openai/v1/'

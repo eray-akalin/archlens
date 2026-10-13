@@ -150,8 +150,11 @@ listed for polandcentral, creation not tried. The gateway that was built for it 
   requests a GitHub token for `api://AzureADTokenExchange`, mounts it into the container as
   `AZURE_FEDERATED_TOKEN_FILE`, and azure-identity exchanges it for an Entra token of the
   identity in `infra/modules/github-oidc.bicep` (`archlens-github`: federated credentials for
-  `repo:<repo>:ref:refs/heads/main` and `repo:<repo>:pull_request`, *Cognitive Services OpenAI
-  User* on the AI account only). It exists when the azd env has `ARCHLENS_GITHUB_REPO=owner/name`;
+  `<prefix>:ref:refs/heads/main` and `<prefix>:pull_request`, *Cognitive Services OpenAI User* on
+  the AI account only). It exists when the azd env has `ARCHLENS_GITHUB_OIDC_SUBJECT` set to the
+  repository's `sub_claim_prefix` (`gh api repos/<owner>/<name>/actions/oidc/customization/sub`):
+  GitHub's subjects now carry immutable IDs, `repo:owner@<id>/name@<id>` — the plain
+  `repo:owner/name` form was rejected (AADSTS700213, 2026-10-13).
   its outputs `GITHUB_OIDC_CLIENT_ID`, `AZURE_TENANT_ID` and `LLM_BASE_URL` become the repository
   variables `ARCHLENS_AZURE_CLIENT_ID`, `ARCHLENS_AZURE_TENANT_ID`, `ARCHLENS_LLM_BASE_URL`.
   `archlens-pr.yml` calls it for this repository on PRs labelled `archlens` and by hand on main.

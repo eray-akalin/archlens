@@ -8,6 +8,6 @@
     "apiKeys": { "value": "${ARCHLENS_API_KEYS}" },
     "cosmosFreeTier": { "value": "${ARCHLENS_COSMOS_FREE_TIER=true}" },
     "developerPrincipalId": { "value": "${ARCHLENS_DEVELOPER_PRINCIPAL_ID=}" },
-    "githubRepo": { "value": "${ARCHLENS_GITHUB_REPO=}" }
+    "githubSubjectPrefix": { "value": "${ARCHLENS_GITHUB_OIDC_SUBJECT=}" }
   }
 }
