@@ -7,16 +7,18 @@ block or inject markup.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from markupsafe import Markup, escape
 
 from archlens.models import AssessmentReport, Rubric
-from archlens.report.view import build_view
+from archlens.report.view import build_view, finding_anchor
 
 TEMPLATES = Path(__file__).parent / "templates"
 _BACKTICKS = re.compile(r"`+")
+_FINDING_ID = re.compile(r"\b([A-Z][A-Z0-9]*-\d+)@[0-9a-f]{12}\b")
 
 
 def md_text(value: object) -> str:
@@ -31,6 +33,17 @@ def fence(snippet: str) -> str:
     return "`" * max(3, longest + 1)
 
 
+def link_findings(text: str, ids: Collection[str]) -> Markup:
+    """HTML: `text` escaped, then each finding ID of this report linked to its finding. IDs are
+    matched in the escaped text, so nothing from `text` can become markup."""
+
+    def link(match: re.Match[str]) -> str:
+        found = match.group(0)
+        return f'<a href="#{finding_anchor(match.group(1))}">{found}</a>' if found in ids else found
+
+    return Markup(_FINDING_ID.sub(link, str(escape(text))))
+
+
 def _env(*, html: bool) -> Environment:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES),
@@ -40,7 +53,7 @@ def _env(*, html: bool) -> Environment:
         lstrip_blocks=True,
         keep_trailing_newline=True,
     )
-    env.filters.update(md=md_text, fence=fence)  # pyright: ignore[reportUnknownMemberType]
+    env.filters.update(md=md_text, fence=fence, link_findings=link_findings)  # pyright: ignore[reportUnknownMemberType]
     return env
 
 

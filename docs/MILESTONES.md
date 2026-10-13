@@ -925,9 +925,22 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M6 — Wrap-up (week 4)
 
-- [ ] **M6.1 HTML report polish** (scores, findings with code snippets, unverified section).
+- [x] **M6.1 HTML report polish** (scores, findings with code snippets, unverified section).
 - [ ] **M6.2 README final** — results table, architecture diagram, cost per run, how to reproduce.
 - [ ] **M6.3 Demo video** — submit URL → report → PR comment → App Insights trace.
 - [ ] **M6.4 💰 Teardown** per AZURE.md §6; confirm $0 run-rate.
 
 **Log**
+
+- 2026-10-13 — M6.1 done (`report.html.j2`; Markdown unchanged, its snapshots too). Overall score
+  card with a grade badge; score table with bars, grade badges, readable status and
+  pass · partial · fail counts, scrolling inside its own box on narrow screens (N/A, unknown and
+  notes hidden below 640 px), metric names linking to their sections; per metric, issues
+  (fail/partial, most severe first) as cards with verdict and severity badges, passing checks
+  folded into `<details>`; code evidence with a file header, line numbers (CSS gutter, not copied)
+  and, for GitHub repos at a real commit, a "view on GitHub" link to those lines; finding IDs in
+  the summary link to their findings (escaped first, only this report's IDs); "Not scored"
+  explains itself; tools and timings folded; print styles. Still no scripts and no remote loads
+  (the report CSP is unchanged); the web UI's report frame now allows popups (still no scripts) so
+  the GitHub links open. Checked in the in-app browser at 1100 px and 375 px (no page overflow;
+  long paths wrap). Spend: $0.

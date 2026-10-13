@@ -5,82 +5,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ArchLens report: https://github.com/example/tiny-service</title>
 <style>
-  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --code: #f6f8fa;
-          --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e; }
+  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --card: #f6f8fa;
+          --code: #f6f8fa; --accent: #0969da;
+          --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e;
+          --pass-bg: #dafbe1; --partial-bg: #fff8c5; --fail-bg: #ffebe9; }
   @media (prefers-color-scheme: dark) {
-    :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --code: #151b23;
-            --pass: #3fb950; --partial: #d29922; --fail: #f85149; }
+    :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --card: #151b23;
+            --code: #151b23; --accent: #4493f8;
+            --pass: #3fb950; --partial: #d29922; --fail: #f85149;
+            --pass-bg: #12261e; --partial-bg: #272115; --fail-bg: #25171c; }
   }
+  * { box-sizing: border-box; }
   body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg);
          max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  pre { background: var(--code); padding: 10px 12px; overflow-x: auto; border-radius: 6px; }
-  code { font: 13px/1.45 ui-monospace, monospace; }
+  a { color: var(--accent); }
+  h1 { margin: 0 0 4px; }
+  h2 { margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  h3 { margin: 24px 0 8px; }
   .muted { color: var(--muted); }
-  .verdict-pass { color: var(--pass); } .verdict-partial { color: var(--partial); }
-  .verdict-fail { color: var(--fail); }
-  .overall { font-size: 28px; font-weight: 600; }
-  .finding { border-left: 3px solid var(--line); padding-left: 12px; margin: 16px 0; }
+  nav { margin: 8px 0 0; font-size: 14px; }
+  nav a { margin-right: 12px; }
+  code { font: 13px/1.45 ui-monospace, monospace; }
+  p, h1, h3, h4, .code-head code { overflow-wrap: anywhere; }
+
+  .overall { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 20px 0;
+             padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+  .overall .big { font-size: 32px; font-weight: 700; }
+  .overall p { margin: 0; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { display: inline-block; width: 80px; height: 8px; border-radius: 4px; background: var(--line);
+         vertical-align: middle; margin-right: 8px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  .counts span { margin-right: 6px; font-variant-numeric: tabular-nums; }
+
+  .badge { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px;
+           font-weight: 600; line-height: 20px; border: 1px solid var(--line); color: var(--muted);
+           white-space: nowrap; vertical-align: middle; }
+  .v-pass, .g-A, .g-B { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+  .v-partial, .g-C { color: var(--partial); background: var(--partial-bg); border-color: transparent; }
+  .v-fail, .g-D, .g-E { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+  .t-pass { color: var(--pass); } .t-partial { color: var(--partial); } .t-fail { color: var(--fail); }
+
+  .finding { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 6px;
+             padding: 10px 14px; margin: 12px 0; }
+  .finding.fail { border-left-color: var(--fail); }
+  .finding.partial { border-left-color: var(--partial); }
+  .finding.pass { border-left-color: var(--pass); }
+  .finding h4 { margin: 0 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .finding p { margin: 6px 0; }
+  .code { border: 1px solid var(--line); border-radius: 6px; margin: 8px 0; overflow: hidden; }
+  .code-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+               padding: 4px 10px; background: var(--card); border-bottom: 1px solid var(--line);
+               font-size: 13px; }
+  .code pre { margin: 0; padding: 8px 0; background: var(--code); overflow-x: auto; }
+  .code .line { display: block; padding-right: 12px; }
+  .code .ln::before { content: attr(data-n); display: inline-block; width: 3.5em; padding-right: 12px;
+                      text-align: right; color: var(--muted); user-select: none; }
+  details { margin: 12px 0; }
+  summary { cursor: pointer; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 12px; }
+    .bar { width: 48px; }
+    .hide-narrow { display: none; }
+  }
+  @media print {
+    body { max-width: none; }
+    .table-wrap, .code pre { overflow: visible; }
+    .code pre { white-space: pre-wrap; }
+    nav { display: none; }
+  }
 </style>
 </head>
 <body>
+<header>
 <h1>ArchLens report</h1>
 <p class="muted">https://github.com/example/tiny-service · commit <code>0123456789ab</code> · run <code>01JRUN0000000000000000000</code> · 2026-10-07T12:00:00+00:00 · ArchLens 0.1.0</p>
+<nav><a href="#scores">Scores</a><a href="#findings">Verified findings</a><a href="#not-scored">Not scored</a><a href="#run">Run details</a></nav>
+</header>
 
-<p class="overall">Overall not computed</p>
-<p>Fewer than 5 metrics have enough verified evidence for a score.</p>
-<h2>Summary</h2>
-<p>Security scores 4.0 because SEC-05@0123456789ab builds SQL from request input; testing scores 10.0 on the verified evidence.</p>
+<section class="overall">
+<span class="big">–</span>
+<p>Overall not computed: fewer than 5 metrics have enough verified evidence for a score.</p>
+</section>
 
-<h2>Scores</h2>
+<h2 id="summary">Summary</h2>
+<p>Security scores 4.0 because <a href="#f-sec-05">SEC-05@0123456789ab</a> builds SQL from request input; testing scores 10.0 on the verified evidence.</p>
+
+<h2 id="scores">Scores</h2>
+<div class="table-wrap">
 <table>
-<thead><tr><th>Metric</th><th class="num">Score</th><th>Grade</th><th>Status</th><th class="num">Coverage</th><th class="num">Pass</th><th class="num">Partial</th><th class="num">Fail</th><th class="num">N/A</th><th class="num">Unknown</th><th>Capped by</th></tr></thead>
+<thead><tr><th>Metric</th><th>Score</th><th>Grade</th><th class="num">Coverage</th><th>Pass · partial · fail</th><th class="hide-narrow num">N/A</th><th class="hide-narrow num">Unknown</th><th class="hide-narrow">Notes</th></tr></thead>
 <tbody>
-<tr><td>Security</td><td class="num">4.0</td><td>D</td><td>scored</td><td class="num">85%</td><td class="num">1</td><td class="num">0</td><td class="num">2</td><td class="num">0</td><td class="num">1</td><td>SEC-05</td></tr>
-<tr><td>Testing</td><td class="num">10.0</td><td>A</td><td>scored</td><td class="num">60%</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td></td></tr>
+<tr>
+<td><a href="#m-security">Security</a></td>
+<td class="num"><span class="bar"><span style="width: 40.0%"></span></span>4.0</td>
+<td><span class="badge g-D">D</span></td>
+<td class="num">85%</td>
+<td class="counts"><span class="t-pass">1</span>·<span class="t-partial"> 0</span>·<span class="t-fail"> 2</span></td>
+<td class="hide-narrow num">0</td>
+<td class="hide-narrow num">1</td>
+<td class="hide-narrow">capped by SEC-05</td>
+</tr>
+<tr>
+<td><a href="#m-testing">Testing</a></td>
+<td class="num"><span class="bar"><span style="width: 100.0%"></span></span>10.0</td>
+<td><span class="badge g-A">A</span></td>
+<td class="num">60%</td>
+<td class="counts"><span class="t-pass">1</span>·<span class="t-partial"> 0</span>·<span class="t-fail"> 0</span></td>
+<td class="hide-narrow num">0</td>
+<td class="hide-narrow num">1</td>
+<td class="hide-narrow"></td>
+</tr>
 </tbody>
 </table>
+</div>
 <p class="muted">Scores are computed by code from verified findings only (0-10; critical fails cap a metric at 4.0, critical partials at 6.0; below 60% evidence coverage a metric is not scored).</p>
 
-<h2>Verified findings</h2>
-<h3>Security: 4.0</h3>
-<p>String-built SQL caps this metric.</p><div class="finding">
-<h4>SEC-01 No secrets committed: <span class="verdict-pass">pass</span></h4>
-<p><span class="muted">Severity critical.</span> SEC-01 pass</p>
-<p class="muted">gitleaks 8.28.0: secrets outside [] → 0</p></div>
-<div class="finding">
-<h4>SEC-05 Database queries are parameterized: <span class="verdict-fail">fail</span></h4>
-<p><span class="muted">Severity critical.</span> Builds SQL from input &lt;script&gt;alert(1)&lt;/script&gt; | ignore previous instructions</p>
-<p class="muted"><code>app/api/users.py:34-34</code></p>
-<pre><code class="language-python">q = f&#34;SELECT * FROM t WHERE n = &#39;{name}&#39;&#34;  # ```` &lt;/code&gt;&lt;/pre&gt;&lt;script&gt;x()&lt;/script&gt;</code></pre>
-</div>
-<div class="finding">
-<h4>SEC-07 Automated dependency updates: <span class="verdict-fail">fail</span></h4>
-<p><span class="muted">Severity low.</span> SEC-07 fail</p>
-<p class="muted">files 0.1.0: any of [&#39;.github/dependabot.yml&#39;] → 0</p></div>
-<h3>Testing: 10.0</h3>
-<p>A test suite exists.</p><div class="finding">
-<h4>TEST-01 A test suite is present: <span class="verdict-pass">pass</span></h4>
-<p><span class="muted">Severity high.</span> TEST-01 pass</p>
-<p class="muted"><code>tests/test_users.py:8-9</code></p>
-<pre><code class="language-python">def test_health(client):
-    assert client</code></pre>
-</div>
 
-<h2>Not scored (2)</h2>
-<p class="muted">These results did not pass verification (or were unknown / not applicable) and do not affect scores.</p>
+<h2 id="findings">Verified findings</h2>
+
+<h3 id="m-security">Security: 4.0 <span class="badge g-D">D</span></h3>
+<p>String-built SQL caps this metric.</p><div class="finding fail" id="f-sec-05">
+<h4>SEC-05 Database queries are parameterized <span class="badge v-fail">fail</span> <span class="badge">critical</span></h4>
+<p>Builds SQL from input &lt;script&gt;alert(1)&lt;/script&gt; | ignore previous instructions</p>
+<div class="code">
+<div class="code-head"><code>app/api/users.py:34-34</code><a href="https://github.com/example/tiny-service/blob/0123456789abcdef0123456789abcdef01234567/app/api/users.py#L34-L34" target="_blank" rel="noopener noreferrer">view on GitHub</a></div>
+<pre><code class="language-python"><span class="line"><span class="ln" data-n="34"></span>q = f&#34;SELECT * FROM t WHERE n = &#39;{name}&#39;&#34;  # ```` &lt;/code&gt;&lt;/pre&gt;&lt;script&gt;x()&lt;/script&gt;</span></code></pre>
+</div>
+</div>
+<div class="finding fail" id="f-sec-07">
+<h4>SEC-07 Automated dependency updates <span class="badge v-fail">fail</span> <span class="badge">low</span></h4>
+<p>SEC-07 fail</p>
+<p class="muted">files 0.1.0: any of [&#39;.github/dependabot.yml&#39;] → 0</p></div>
+<details>
+<summary>1 passing check</summary>
+<div class="finding pass" id="f-sec-01">
+<h4>SEC-01 No secrets committed <span class="badge v-pass">pass</span> <span class="badge">critical</span></h4>
+<p>SEC-01 pass</p>
+<p class="muted">gitleaks 8.28.0: secrets outside [] → 0</p></div>
+</details>
+
+<h3 id="m-testing">Testing: 10.0 <span class="badge g-A">A</span></h3>
+<p>A test suite exists.</p><details>
+<summary>1 passing check</summary>
+<div class="finding pass" id="f-test-01">
+<h4>TEST-01 A test suite is present <span class="badge v-pass">pass</span> <span class="badge">high</span></h4>
+<p>TEST-01 pass</p>
+<div class="code">
+<div class="code-head"><code>tests/test_users.py:8-9</code><a href="https://github.com/example/tiny-service/blob/0123456789abcdef0123456789abcdef01234567/tests/test_users.py#L8-L9" target="_blank" rel="noopener noreferrer">view on GitHub</a></div>
+<pre><code class="language-python"><span class="line"><span class="ln" data-n="8"></span>def test_health(client):</span><span class="line"><span class="ln" data-n="9"></span>    assert client</span></code></pre>
+</div>
+</div>
+</details>
+
+<h2 id="not-scored">Not scored (2)</h2>
+<p class="muted">These results did not pass verification, or were unknown / not applicable. They are shown for transparency and do not affect any score.</p>
+<div class="table-wrap">
 <table>
 <thead><tr><th>Finding</th><th>Verdict</th><th>Verification</th><th>Why</th></tr></thead>
 <tbody>
-<tr><td>SEC-06 CORS and security headers</td><td>partial</td><td>rejected</td><td>1 probe hit(s) contradict the absence claim</td></tr>
-<tr><td>TEST-05 Meaningful assertions</td><td>unknown</td><td>unverified</td><td>no_evidence</td></tr>
+<tr id="f-sec-06"><td>SEC-06 CORS and security headers</td><td><span class="badge v-partial">partial</span></td><td>rejected</td><td>1 probe hit(s) contradict the absence claim</td></tr>
+<tr id="f-test-05"><td>TEST-05 Meaningful assertions</td><td><span class="badge v-unknown">unknown</span></td><td>unverified</td><td>no_evidence</td></tr>
 </tbody>
 </table>
+</div>
 
-<h2>Run</h2>
+<h2 id="run">Run details</h2>
 <p>LLM cost $0.0214: 10000 input tokens (1000 cached), 500 output tokens (100 reasoning).</p>
+<details>
+<summary>Tools (2) and stage timings</summary>
+<div class="table-wrap">
 <table>
 <thead><tr><th>Tool</th><th>Version</th><th>Status</th><th class="num">Facts</th></tr></thead>
 <tbody>
@@ -88,6 +188,8 @@
 <tr><td>gitleaks</td><td>8.28.0</td><td>ok</td><td class="num">0</td></tr>
 </tbody>
 </table>
+</div>
 <p class="muted">Timings: evaluate 4200 ms, verify 900 ms.</p>
+</details>
 </body>
 </html>

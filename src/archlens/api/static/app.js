@@ -1,7 +1,7 @@
 // ArchLens web UI (M4.7): submit a repository, follow the run, show the report. It talks only to
 // the API that serves it; the API key stays in this browser tab (sessionStorage). Everything the
 // API returns is inserted as text; the report renders in an iframe sandboxed without scripts
-// (`allow-same-origin` only, so this page can size it to the report).
+// (`allow-same-origin` so this page can size it; popups so its "view on GitHub" links open).
 
 const POLL_MS = 4000;
 const KEY_SLOT = "archlens.apiKey";

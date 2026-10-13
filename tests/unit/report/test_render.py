@@ -5,8 +5,9 @@ from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.single_file import SingleFileSnapshotExtension, WriteMode
 
 from archlens.report import render_html, render_markdown
-from archlens.report.render import fence, md_text
-from tests.unit.report.helpers import HOSTILE_SNIPPET, NARRATIVE, RUBRICS, sample_report
+from archlens.report.render import fence, link_findings, md_text
+from archlens.report.view import blob_base
+from tests.unit.report.helpers import HOSTILE_SNIPPET, NARRATIVE, RUBRICS, SHA, sample_report
 
 
 class MarkdownSnapshot(SingleFileSnapshotExtension):
@@ -72,3 +73,52 @@ def test_md_text(text: str, escaped: str) -> None:
 @pytest.mark.parametrize(("snippet", "ticks"), [("x", 3), ("``", 3), ("```", 4), ("a ````` b", 6)])
 def test_fence(snippet: str, ticks: int) -> None:
     assert fence(snippet) == "`" * ticks
+
+
+# --- HTML polish (M6.1) ---------------------------------------------------------------------
+
+
+def test_summary_links_only_this_reports_finding_ids() -> None:
+    text = f"See SEC-05@{SHA[:12]} and NOPE-01@{SHA[:12]} <b>bold</b>"
+    html = str(link_findings(text, {f"SEC-05@{SHA[:12]}"}))
+    assert f'<a href="#f-sec-05">SEC-05@{SHA[:12]}</a>' in html
+    assert f"NOPE-01@{SHA[:12]}" in html and 'href="#f-nope-01"' not in html
+    assert "<b>" not in html and "&lt;b&gt;" in html
+
+
+@pytest.mark.parametrize(
+    ("repo_url", "commit", "expected"),
+    [
+        ("https://github.com/o/r", SHA, f"https://github.com/o/r/blob/{SHA}/"),
+        ("https://github.com/o/r.git", SHA, f"https://github.com/o/r/blob/{SHA}/"),
+        ("https://github.com/o/r/", SHA, f"https://github.com/o/r/blob/{SHA}/"),
+        ("https://gitlab.com/o/r", SHA, ""),
+        ("https://github.com/o/r/extra", SHA, ""),
+        (None, SHA, ""),  # local path
+        ("https://github.com/o/r", "main", ""),
+    ],
+)
+def test_blob_base(repo_url: str | None, commit: str, expected: str) -> None:
+    assert blob_base(repo_url, commit) == expected
+
+
+def test_html_structure() -> None:
+    html = render_html(sample_report(NARRATIVE), RUBRICS)
+    assert "<script" not in html.replace("&lt;script", "")  # repository text stays escaped
+    # issues first; passing checks folded away
+    security = html[html.index('id="m-security"') : html.index('id="m-testing"')]
+    assert security.index('id="f-sec-05"') < security.index("<details>")
+    assert security.index("<details>") < security.index('id="f-sec-01"')
+    # the summary links its finding id; code lines link to GitHub at the commit
+    assert f'<a href="#f-sec-05">SEC-05@{SHA[:12]}</a>' in html
+    assert (
+        f'href="https://github.com/example/tiny-service/blob/{SHA}/app/api/users.py#L34-L34"'
+        in html
+    )
+    assert '<span class="ln" data-n="34"></span>' in html
+    assert 'class="table-wrap"' in html
+
+
+def test_html_without_a_github_repo_has_no_links() -> None:
+    report = sample_report().model_copy(update={"repo_url": None})
+    assert "view on GitHub" not in render_html(report, RUBRICS)

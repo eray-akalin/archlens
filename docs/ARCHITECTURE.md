@@ -302,10 +302,10 @@ CORS). It holds no data and needs no key to load; the user types the API key, wh
 tab's `sessionStorage` and goes out only as `X-API-Key` to the routes above. The page submits
 `{repo_url, ref?, metrics?}`, polls `GET /assessments/{run_id}` every 4 s (retrying network errors
 and 5xx, stopping on other 4xx), lists stages with their durations and errors, and when the run
-is `done` loads `report.html` into a `srcdoc` iframe sandboxed without scripts (only
-`allow-same-origin`, so the page can size the frame to the report; a fully sandboxed frame runs in
-another process, which the in-app test browser didn't paint) with download buttons for the three
-artifacts. The run id sits in the URL fragment, so a reload or a
+is `done` loads `report.html` into a `srcdoc` iframe sandboxed without scripts
+(`allow-same-origin`, so the page can size the frame to the report — a fully sandboxed frame runs
+in another process, which the in-app test browser didn't paint — and popups, so the report's
+"view on GitHub" links open in a new tab) with download buttons for the artifacts. The run id sits in the URL fragment, so a reload or a
 bookmark follows the same run. Page CSP: scripts and styles from `'self'` only (plus inline
 styles, which the report iframe inherits), `connect-src 'self'`, `frame-ancestors 'none'`.
 

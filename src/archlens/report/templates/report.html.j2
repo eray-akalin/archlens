@@ -5,86 +5,176 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ArchLens report: {{ repo }}</title>
 <style>
-  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --code: #f6f8fa;
-          --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e; }
+  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #ffffff; --card: #f6f8fa;
+          --code: #f6f8fa; --accent: #0969da;
+          --pass: #1a7f37; --partial: #9a6700; --fail: #cf222e;
+          --pass-bg: #dafbe1; --partial-bg: #fff8c5; --fail-bg: #ffebe9; }
   @media (prefers-color-scheme: dark) {
-    :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --code: #151b23;
-            --pass: #3fb950; --partial: #d29922; --fail: #f85149; }
+    :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --card: #151b23;
+            --code: #151b23; --accent: #4493f8;
+            --pass: #3fb950; --partial: #d29922; --fail: #f85149;
+            --pass-bg: #12261e; --partial-bg: #272115; --fail-bg: #25171c; }
   }
+  * { box-sizing: border-box; }
   body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg);
          max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  pre { background: var(--code); padding: 10px 12px; overflow-x: auto; border-radius: 6px; }
-  code { font: 13px/1.45 ui-monospace, monospace; }
+  a { color: var(--accent); }
+  h1 { margin: 0 0 4px; }
+  h2 { margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  h3 { margin: 24px 0 8px; }
   .muted { color: var(--muted); }
-  .verdict-pass { color: var(--pass); } .verdict-partial { color: var(--partial); }
-  .verdict-fail { color: var(--fail); }
-  .overall { font-size: 28px; font-weight: 600; }
-  .finding { border-left: 3px solid var(--line); padding-left: 12px; margin: 16px 0; }
+  nav { margin: 8px 0 0; font-size: 14px; }
+  nav a { margin-right: 12px; }
+  code { font: 13px/1.45 ui-monospace, monospace; }
+  p, h1, h3, h4, .code-head code { overflow-wrap: anywhere; }
+
+  .overall { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 20px 0;
+             padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+  .overall .big { font-size: 32px; font-weight: 700; }
+  .overall p { margin: 0; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { display: inline-block; width: 80px; height: 8px; border-radius: 4px; background: var(--line);
+         vertical-align: middle; margin-right: 8px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  .counts span { margin-right: 6px; font-variant-numeric: tabular-nums; }
+
+  .badge { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px;
+           font-weight: 600; line-height: 20px; border: 1px solid var(--line); color: var(--muted);
+           white-space: nowrap; vertical-align: middle; }
+  .v-pass, .g-A, .g-B { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+  .v-partial, .g-C { color: var(--partial); background: var(--partial-bg); border-color: transparent; }
+  .v-fail, .g-D, .g-E { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+  .t-pass { color: var(--pass); } .t-partial { color: var(--partial); } .t-fail { color: var(--fail); }
+
+  .finding { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 6px;
+             padding: 10px 14px; margin: 12px 0; }
+  .finding.fail { border-left-color: var(--fail); }
+  .finding.partial { border-left-color: var(--partial); }
+  .finding.pass { border-left-color: var(--pass); }
+  .finding h4 { margin: 0 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .finding p { margin: 6px 0; }
+  .code { border: 1px solid var(--line); border-radius: 6px; margin: 8px 0; overflow: hidden; }
+  .code-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+               padding: 4px 10px; background: var(--card); border-bottom: 1px solid var(--line);
+               font-size: 13px; }
+  .code pre { margin: 0; padding: 8px 0; background: var(--code); overflow-x: auto; }
+  .code .line { display: block; padding-right: 12px; }
+  .code .ln::before { content: attr(data-n); display: inline-block; width: 3.5em; padding-right: 12px;
+                      text-align: right; color: var(--muted); user-select: none; }
+  details { margin: 12px 0; }
+  summary { cursor: pointer; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 12px; }
+    .bar { width: 48px; }
+    .hide-narrow { display: none; }
+  }
+  @media print {
+    body { max-width: none; }
+    .table-wrap, .code pre { overflow: visible; }
+    .code pre { white-space: pre-wrap; }
+    nav { display: none; }
+  }
 </style>
 </head>
 <body>
+<header>
 <h1>ArchLens report</h1>
 <p class="muted">{{ repo }} · commit <code>{{ commit }}</code> · run <code>{{ report.run_id }}</code> · {{ created }} · ArchLens {{ report.config.archlens_version }}</p>
+<nav><a href="#scores">Scores</a><a href="#findings">Verified findings</a><a href="#not-scored">Not scored</a><a href="#run">Run details</a></nav>
+</header>
 
+<section class="overall">
 {% if overall is not none %}
-<p class="overall">Overall {{ overall }} / 10 ({{ overall_grade }})</p>
+<span class="big">{{ overall }}</span><span class="badge g-{{ overall_grade }}">{{ overall_grade }}</span>
+<p class="muted">overall, out of 10</p>
 {% else %}
-<p class="overall">Overall not computed</p>
-<p>Fewer than 5 metrics have enough verified evidence for a score.</p>
+<span class="big">–</span>
+<p>Overall not computed: fewer than 5 metrics have enough verified evidence for a score.</p>
 {% endif %}
+</section>
 {% if summary %}
-<h2>Summary</h2>
-<p>{{ summary }}</p>
+
+<h2 id="summary">Summary</h2>
+<p>{{ summary | link_findings(finding_ids) }}</p>
 {% endif %}
 
-<h2>Scores</h2>
+<h2 id="scores">Scores</h2>
+<div class="table-wrap">
 <table>
-<thead><tr><th>Metric</th><th class="num">Score</th><th>Grade</th><th>Status</th><th class="num">Coverage</th><th class="num">Pass</th><th class="num">Partial</th><th class="num">Fail</th><th class="num">N/A</th><th class="num">Unknown</th><th>Capped by</th></tr></thead>
+<thead><tr><th>Metric</th><th>Score</th><th>Grade</th><th class="num">Coverage</th><th>Pass · partial · fail</th><th class="hide-narrow num">N/A</th><th class="hide-narrow num">Unknown</th><th class="hide-narrow">Notes</th></tr></thead>
 <tbody>
 {% for m in metrics %}
-<tr><td>{{ m.title }}</td><td class="num">{{ m.score }}</td><td>{{ m.grade }}</td><td>{{ m.status }}</td><td class="num">{{ m.coverage }}%</td>{% for n in m.counts %}<td class="num">{{ n }}</td>{% endfor %}<td>{{ m.capped_by | join(", ") }}</td></tr>
+<tr>
+<td><a href="#{{ m.anchor }}">{{ m.title }}</a></td>
+<td class="num">{% if m.value is not none %}<span class="bar"><span style="width: {{ (m.value * 10) | round(1) }}%"></span></span>{% endif %}{{ m.score }}</td>
+<td>{% if m.grade != "-" %}<span class="badge g-{{ m.grade }}">{{ m.grade }}</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+<td class="num">{{ m.coverage }}%</td>
+<td class="counts"><span class="t-pass">{{ m.counts[0] }}</span>·<span class="t-partial"> {{ m.counts[1] }}</span>·<span class="t-fail"> {{ m.counts[2] }}</span></td>
+<td class="hide-narrow num">{{ m.counts[3] }}</td>
+<td class="hide-narrow num">{{ m.counts[4] }}</td>
+<td class="hide-narrow">{% if m.status != "scored" %}<span class="muted">{{ m.status | replace("_", " ") }}</span>{% endif %}{% if m.capped_by %}capped by {{ m.capped_by | join(", ") }}{% endif %}</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
+</div>
 <p class="muted">Scores are computed by code from verified findings only (0-10; critical fails cap a metric at 4.0, critical partials at 6.0; below 60% evidence coverage a metric is not scored).</p>
 
-<h2>Verified findings</h2>
-{% for m in metrics %}
-{% if m.findings or m.narrative %}
-<h3>{{ m.title }}{% if m.status == "scored" %}: {{ m.score }}{% endif %}</h3>
-{% if m.narrative %}<p>{{ m.narrative }}</p>{% endif %}
-{% for f in m.findings %}
-<div class="finding">
-<h4>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %}: <span class="verdict-{{ f.verdict }}">{{ f.verdict }}</span></h4>
-<p>{% if f.severity %}<span class="muted">Severity {{ f.severity }}.</span> {% endif %}{{ f.claim }}</p>
+{% macro finding_card(f) %}
+<div class="finding {{ f.verdict }}" id="{{ f.anchor }}">
+<h4>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %} <span class="badge v-{{ f.verdict }}">{{ f.verdict }}</span>{% if f.severity %} <span class="badge">{{ f.severity }}</span>{% endif %}</h4>
+<p>{{ f.claim }}</p>
 {% for c in f.code %}
-<p class="muted"><code>{{ c.path }}:{{ c.start }}-{{ c.end }}</code></p>
-<pre><code{% if c.language %} class="language-{{ c.language }}"{% endif %}>{{ c.snippet }}</code></pre>
+<div class="code">
+<div class="code-head"><code>{{ c.path }}:{{ c.start }}-{{ c.end }}</code>{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">view on GitHub</a>{% endif %}</div>
+<pre><code{% if c.language %} class="language-{{ c.language }}"{% endif %}>{% for n, line in c.lines %}<span class="line"><span class="ln" data-n="{{ n }}"></span>{{ line }}</span>{% endfor %}</code></pre>
+</div>
 {% endfor %}
 {% for s in f.scans %}<p class="muted">{{ s }}</p>{% endfor %}
 </div>
-{% endfor %}
+{% endmacro %}
+
+<h2 id="findings">Verified findings</h2>
+{% for m in metrics %}
+
+<h3 id="{{ m.anchor }}">{{ m.title }}{% if m.status == "scored" %}: {{ m.score }} <span class="badge g-{{ m.grade }}">{{ m.grade }}</span>{% endif %}</h3>
+{% if m.narrative %}<p>{{ m.narrative }}</p>{% endif %}
+{% for f in m.issues %}{{ finding_card(f) }}{% endfor %}
+{% if m.passes %}
+<details>
+<summary>{{ m.passes | length }} passing check{{ "s" if m.passes | length != 1 else "" }}</summary>
+{% for f in m.passes %}{{ finding_card(f) }}{% endfor %}
+</details>
 {% endif %}
+{% if not m.findings %}<p class="muted">No verified findings.</p>{% endif %}
 {% endfor %}
 
-<h2>Not scored ({{ other | length }})</h2>
-<p class="muted">These results did not pass verification (or were unknown / not applicable) and do not affect scores.</p>
+<h2 id="not-scored">Not scored ({{ other | length }})</h2>
+<p class="muted">These results did not pass verification, or were unknown / not applicable. They are shown for transparency and do not affect any score.</p>
 {% if other %}
+<div class="table-wrap">
 <table>
 <thead><tr><th>Finding</th><th>Verdict</th><th>Verification</th><th>Why</th></tr></thead>
 <tbody>
 {% for f in other %}
-<tr><td>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %}</td><td>{{ f.verdict }}</td><td>{{ f.status }}</td><td>{{ f.why }}</td></tr>
+<tr id="{{ f.anchor }}"><td>{{ f.check_id }}{% if f.title %} {{ f.title }}{% endif %}</td><td><span class="badge v-{{ f.verdict }}">{{ f.verdict | replace("_", " ") }}</span></td><td>{{ f.status }}</td><td>{{ f.why }}</td></tr>
 {% endfor %}
 </tbody>
 </table>
+</div>
 {% endif %}
 
-<h2>Run</h2>
+<h2 id="run">Run details</h2>
 <p>LLM cost ${{ "%.4f" | format(cost.usd) }}: {{ cost.input_tokens }} input tokens ({{ cost.cached_input_tokens }} cached), {{ cost.output_tokens }} output tokens ({{ cost.reasoning_tokens }} reasoning).</p>
+<details>
+<summary>Tools ({{ tool_runs | length }}){% if timings %} and stage timings{% endif %}</summary>
+<div class="table-wrap">
 <table>
 <thead><tr><th>Tool</th><th>Version</th><th>Status</th><th class="num">Facts</th></tr></thead>
 <tbody>
@@ -93,8 +183,10 @@
 {% endfor %}
 </tbody>
 </table>
+</div>
 {% if timings %}
 <p class="muted">Timings: {% for stage, ms in timings %}{{ stage }} {{ ms }} ms{% if not loop.last %}, {% endif %}{% endfor %}.</p>
 {% endif %}
+</details>
 </body>
 </html>
