@@ -60,16 +60,14 @@ jobs:
           if [ -n "$PR" ]; then scope="archlens-pr-$PR"; else scope="archlens-$GITHUB_REF_NAME"; fi
           echo "key=$scope" >> "$GITHUB_OUTPUT"
           echo "fallback=archlens-$DEFAULT_BRANCH" >> "$GITHUB_OUTPUT"
-          install -d -m 0777 "$RUNNER_TEMP/archlens"  # written by the image's user
+          mkdir -p "$RUNNER_TEMP/archlens" "$RUNNER_TEMP/archlens-cache"
 
-      # cache.sqlite (LLM exact cache, metric results, embeddings) and base/assessment.json
+      # archlens-cache/: cache.sqlite (LLM exact cache, metric results, embeddings) and
+      # base/assessment.json; the run's data dir (checkpoints, index, outputs) is never cached
       - name: Restore the cache and the base report
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            ${{ runner.temp }}/archlens
-            !${{ runner.temp }}/archlens/runs
-            !${{ runner.temp }}/archlens/out
+          path: ${{ runner.temp }}/archlens-cache
           key: ${{ steps.scope.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ steps.scope.outputs.key }}-
@@ -81,7 +79,10 @@ jobs:
           curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
             | jq -r .value > "$RUNNER_TEMP/oidc/token"
-          chmod 0644 "$RUNNER_TEMP/oidc/token"  # read by the image's user; never cached
+          chmod 0600 "$RUNNER_TEMP/oidc/token"  # never cached or uploaded
+          if [ -f "$RUNNER_TEMP/archlens-cache/cache.sqlite" ]; then
+            cp "$RUNNER_TEMP/archlens-cache/cache.sqlite" "$RUNNER_TEMP/archlens/cache.sqlite"
+          fi
 
       - name: Assess
         id: assess
@@ -97,11 +98,14 @@ jobs:
           args=(assess "https://github.com/$GITHUB_REPOSITORY" --ref "$GITHUB_SHA" --out /data/out
                 --verbose)
           if [ -n "$METRICS" ]; then args+=(--metrics "$METRICS"); fi
-          if [ "$EVENT" = pull_request ] && [ -f "$RUNNER_TEMP/archlens/base/assessment.json" ]; then
-            args+=(--base /data/base/assessment.json)
+          if [ "$EVENT" = pull_request ] && [ -f "$RUNNER_TEMP/archlens-cache/base/assessment.json" ]; then
+            args+=(--base /cache/base/assessment.json)
           fi
-          docker run --rm \
-            -v "$RUNNER_TEMP/archlens:/data" -v "$RUNNER_TEMP/oidc:/oidc:ro" \
+          # the runner's uid, so every file it writes stays readable here (cache, artifacts)
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$RUNNER_TEMP/archlens:/data" -v "$RUNNER_TEMP/archlens-cache:/cache:ro" \
+            -v "$RUNNER_TEMP/oidc:/oidc:ro" \
+            -e HOME=/tmp -e ARCHLENS_TOOLS_DIR=/tmp/archlens-tools \
             -e ARCHLENS_STORAGE=local -e ARCHLENS_OTEL_ENABLED=false \
             -e ARCHLENS_LLM_BASE_URL="$LLM_BASE_URL" -e ARCHLENS_LLM_AUTH=entra \
             -e AZURE_CLIENT_ID="$CLIENT_ID" -e AZURE_TENANT_ID="$TENANT_ID" \
@@ -111,18 +115,19 @@ jobs:
           run_id=$(awk '$1 == "run" { print $2; exit }' "$RUNNER_TEMP/assess.log")
           echo "RUN_DIR=$RUNNER_TEMP/archlens/out/$run_id" >> "$GITHUB_ENV"
 
-      - name: Keep as the base report
-        if: github.event_name != 'pull_request'
-        run: install -D -m 0644 "$RUN_DIR/assessment.json" "$RUNNER_TEMP/archlens/base/assessment.json"
+      - name: Update the cache (and, off a pull request, the base report)
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          cp "$RUNNER_TEMP/archlens/cache.sqlite" "$RUNNER_TEMP/archlens-cache/cache.sqlite"
+          if [ "$EVENT" != pull_request ]; then
+            install -D -m 0644 "$RUN_DIR/assessment.json" "$RUNNER_TEMP/archlens-cache/base/assessment.json"
+          fi
 
       - name: Save the cache
-        if: steps.assess.outcome == 'success'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            ${{ runner.temp }}/archlens
-            !${{ runner.temp }}/archlens/runs
-            !${{ runner.temp }}/archlens/out
+          path: ${{ runner.temp }}/archlens-cache
           key: ${{ steps.scope.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload the report

@@ -144,9 +144,12 @@ listed for polandcentral, creation not tried. The gateway that was built for it 
   runs `ghcr.io/eray-akalin/archlens:latest` (`deploy.yml` also pushes `latest`) against the
   calling repository at `GITHUB_SHA`, then uploads the artifacts and `findings.sarif` (code
   scanning, category `archlens`) and, on a pull request, posts or updates one comment from
-  `pr_comment.md`. `$RUNNER_TEMP/archlens` (`cache.sqlite` and `base/assessment.json`, never the
-  OIDC token) goes through `actions/cache`: a default-branch run writes the base report, a PR
-  restores its own cache or else the default branch's. LLM auth is OIDC end to end: the job
+  `pr_comment.md`. Only `$RUNNER_TEMP/archlens-cache` (a copy of `cache.sqlite` and
+  `base/assessment.json`) goes through `actions/cache` — never the run's data dir or the OIDC
+  token: a default-branch run writes the base report, a PR restores its own cache or else the
+  default branch's. The container runs as the runner's uid, so everything it writes stays
+  readable for the cache and artifact steps (as uid 10001 its 0600 checkpoints broke the first
+  cache save, 2026-10-13). LLM auth is OIDC end to end: the job
   requests a GitHub token for `api://AzureADTokenExchange`, mounts it into the container as
   `AZURE_FEDERATED_TOKEN_FILE`, and azure-identity exchanges it for an Entra token of the
   identity in `infra/modules/github-oidc.bicep` (`archlens-github`: federated credentials for
