@@ -659,7 +659,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 - [x] **M4.6 Observability.** KQL queries in `infra/kql/` (cost per run, tokens per metric,
   verdict mix, verifier outcomes).
   AC: queries return data for the M4.4 run.
-- [ ] **M4.7 Web UI.** A page served by the API container (Static Web Apps isn't offered in the
+- [x] **M4.7 Web UI.** A page served by the API container (Static Web Apps isn't offered in the
   allowed regions): submit URL, poll status, render the HTML report.
   AC: end-to-end from the browser.
 
@@ -844,6 +844,19 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   so no reprovision is needed. Redis goes too (only APIM's semantic cache needed it); M5.4 keeps
   the Q&A route without a semantic cache. No APIM resource or soft-deleted service was left in
   Azure. Spend: $0.
+- 2026-10-13 — M4.7 done. Hosting: the API container serves the page (`archlens.api.ui`, files in
+  `archlens/api/static/`) — Static Web Apps isn't offered in the allowed regions, and one origin
+  needs no CORS; `/` and `/ui/*` need no key and hold no data. The page submits a URL (ref and
+  metrics optional), polls the run every 4 s, shows the stages, and renders `report.html` in a
+  script-less sandboxed `srcdoc` frame sized to the report, with downloads for the 3 artifacts.
+  AC, from the in-app browser against `archlens serve` on localhost (a test key from this
+  session, local storage): submitted fastapi/full-stack-fastapi-template with `security` →
+  queued (a second submit got 429) → `archlens worker --once` → the page followed it to `done`
+  and showed the report; 401/400/404 errors, a failed run and 375 px width checked too. Found on
+  the way: a fully sandboxed frame (opaque origin) stopped painting in the in-app browser, so the
+  frame is `sandbox="allow-same-origin"` (still no scripts). Hosted: image `ec1f3d8` provisioned;
+  `/` answers with the page CSP, `/ui/app.js` 200; the browser run there needs the real key, which
+  the user enters. Spend: $0.0331 (the local run).
 
 ---
 

@@ -1,7 +1,7 @@
 """The web UI (M4.7): one static page served by the API itself, so it needs no other host and no
 CORS. The page holds no data — everything it shows comes from the authenticated routes, with the
-API key the user types in. Reports render in a sandboxed `srcdoc` iframe (no scripts, opaque
-origin)."""
+API key the user types in. Reports render in a `srcdoc` iframe sandboxed without scripts
+(`allow-same-origin` only, so the page can size it; it inherits the page CSP)."""
 
 from pathlib import Path
 

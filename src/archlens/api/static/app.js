@@ -1,6 +1,7 @@
 // ArchLens web UI (M4.7): submit a repository, follow the run, show the report. It talks only to
 // the API that serves it; the API key stays in this browser tab (sessionStorage). Everything the
-// API returns is inserted as text; the report renders in a sandboxed iframe (no scripts).
+// API returns is inserted as text; the report renders in an iframe sandboxed without scripts
+// (`allow-same-origin` only, so this page can size it to the report).
 
 const POLL_MS = 4000;
 const KEY_SLOT = "archlens.apiKey";
@@ -83,6 +84,8 @@ $("open-form").addEventListener("submit", (event) => {
 });
 
 window.addEventListener("hashchange", () => follow(location.hash.slice(1)));
+$("report-frame").addEventListener("load", fitReport);
+window.addEventListener("resize", fitReport);
 
 function follow(runId) {
   runId = runId.trim().toUpperCase();
@@ -174,9 +177,18 @@ async function showReport(runId) {
     return;
   }
   if (runId !== current) return;
-  $("report-frame").srcdoc = html;
   $("downloads").replaceChildren(...DOWNLOADS.map(([name, label]) => download(runId, name, label)));
-  $("report").hidden = false;
+  $("report").hidden = false; // visible first, so the frame lays out at its real width
+  $("report-frame").srcdoc = html;
+}
+
+// Size the frame to the report, so the page scrolls instead of the frame.
+function fitReport() {
+  const frame = $("report-frame");
+  const root = frame.contentDocument?.documentElement;
+  if (!root) return;
+  const borders = frame.offsetHeight - frame.clientHeight; // height is border-box
+  frame.style.height = `${Math.ceil(root.getBoundingClientRect().height) + borders}px`;
 }
 
 function download(runId, name, label) {

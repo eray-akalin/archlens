@@ -58,8 +58,10 @@ def test_page_loads_only_its_own_assets() -> None:
 
 
 def test_report_frame_is_sandboxed_without_scripts() -> None:
+    """`allow-same-origin` alone is safe; with `allow-scripts` the frame could lift its sandbox."""
     frame = re.search(r"<iframe\b[^>]*>", (STATIC / "index.html").read_text())
-    assert frame is not None and re.search(r"\bsandbox\b(?!=)", frame.group(0))
+    sandbox = re.search(r'\bsandbox="([^"]*)"', frame.group(0)) if frame else None
+    assert sandbox is not None and sandbox[1] == "allow-same-origin"
 
 
 def test_ui_needs_a_configured_app() -> None:
