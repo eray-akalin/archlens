@@ -124,3 +124,11 @@ ArchLens must pass its own rubric: no secrets in git (`.env` is gitignored), pin
 minimal `permissions:`, OIDC for Azure, non-root container, pinned base image, Dependabot enabled.
 The image's build context is an allow-list (`.dockerignore`), so `.env`, data and results can't
 reach it; scanner binaries are checksum-verified at build time (AZURE.md §4).
+
+PR mode in GitHub Actions (`archlens.yml`, M5.2): the image comes from `main`, never from the
+pull request, and assesses a hardened clone of the commit (no checkout, nothing executed); the
+job's only credential for Azure is its short-lived OIDC token, accepted only for this
+repository's `main` and its pull requests, and the identity can do nothing but call models. Fork
+pull requests get no OIDC token. Runs cost money, so this repository's caller needs the
+`archlens` label (triage access) or a manual dispatch. The comment's repository-derived text is
+escaped so it can't mention users, link or embed images (ARCHITECTURE §2.7).

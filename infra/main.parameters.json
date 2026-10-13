@@ -7,6 +7,7 @@
     "aiAccountName": { "value": "${ARCHLENS_AI_ACCOUNT}" },
     "apiKeys": { "value": "${ARCHLENS_API_KEYS}" },
     "cosmosFreeTier": { "value": "${ARCHLENS_COSMOS_FREE_TIER=true}" },
-    "developerPrincipalId": { "value": "${ARCHLENS_DEVELOPER_PRINCIPAL_ID=}" }
+    "developerPrincipalId": { "value": "${ARCHLENS_DEVELOPER_PRINCIPAL_ID=}" },
+    "githubRepo": { "value": "${ARCHLENS_GITHUB_REPO=}" }
   }
 }

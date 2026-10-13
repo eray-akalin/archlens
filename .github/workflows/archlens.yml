@@ -1,0 +1,161 @@
+name: archlens
+
+# Reusable ArchLens assessment (M5.2; docs/ARCHITECTURE.md §2.7). Runs the published image against
+# the calling repository at the triggering commit — a hardened clone; nothing from the repository
+# is executed. LLM calls reach Azure OpenAI with the job's OIDC token (no secret anywhere;
+# infra/modules/github-oidc.bicep). On the default branch it refreshes the base report; on a pull
+# request it compares with that base, re-evaluates only the metrics whose inputs changed (the
+# metric result cache comes back from the Actions cache), comments the score delta and uploads
+# SARIF to code scanning. Public repositories only: the clone carries no credentials.
+
+on:
+  workflow_call:
+    inputs:
+      llm-base-url:
+        description: Azure OpenAI v1 endpoint, https://<account>.openai.azure.com/openai/v1/
+        type: string
+        required: true
+      azure-client-id:
+        description: Client ID of the identity that trusts this repository's OIDC tokens
+        type: string
+        required: true
+      azure-tenant-id:
+        description: Entra tenant of that identity
+        type: string
+        required: true
+      image:
+        description: ArchLens image (built from main; never from the pull request)
+        type: string
+        default: ghcr.io/eray-akalin/archlens:latest
+      metrics:
+        description: Comma-separated metrics; empty = every rubric
+        type: string
+        default: ""
+      budget-usd:
+        description: LLM budget per run (ARCHLENS_RUN_BUDGET_USD)
+        type: string
+        default: "1.00"
+
+permissions: {}
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # OIDC token → Entra token for Azure OpenAI
+      pull-requests: write # the PR comment
+      security-events: write # SARIF upload
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Cache scope
+        id: scope
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -n "$PR" ]; then scope="archlens-pr-$PR"; else scope="archlens-$GITHUB_REF_NAME"; fi
+          echo "key=$scope" >> "$GITHUB_OUTPUT"
+          echo "fallback=archlens-$DEFAULT_BRANCH" >> "$GITHUB_OUTPUT"
+          install -d -m 0777 "$RUNNER_TEMP/archlens"  # written by the image's user
+
+      # cache.sqlite (LLM exact cache, metric results, embeddings) and base/assessment.json
+      - name: Restore the cache and the base report
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/archlens
+            !${{ runner.temp }}/archlens/runs
+            !${{ runner.temp }}/archlens/out
+          key: ${{ steps.scope.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ steps.scope.outputs.key }}-
+            ${{ steps.scope.outputs.fallback }}-
+
+      - name: OIDC token for Azure
+        run: |
+          install -d -m 0755 "$RUNNER_TEMP/oidc"
+          curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
+            | jq -r .value > "$RUNNER_TEMP/oidc/token"
+          chmod 0644 "$RUNNER_TEMP/oidc/token"  # read by the image's user; never cached
+
+      - name: Assess
+        id: assess
+        env:
+          IMAGE: ${{ inputs.image }}
+          METRICS: ${{ inputs.metrics }}
+          LLM_BASE_URL: ${{ inputs.llm-base-url }}
+          CLIENT_ID: ${{ inputs.azure-client-id }}
+          TENANT_ID: ${{ inputs.azure-tenant-id }}
+          BUDGET: ${{ inputs.budget-usd }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          args=(assess "https://github.com/$GITHUB_REPOSITORY" --ref "$GITHUB_SHA" --out /data/out)
+          if [ -n "$METRICS" ]; then args+=(--metrics "$METRICS"); fi
+          if [ "$EVENT" = pull_request ] && [ -f "$RUNNER_TEMP/archlens/base/assessment.json" ]; then
+            args+=(--base /data/base/assessment.json)
+          fi
+          docker run --rm \
+            -v "$RUNNER_TEMP/archlens:/data" -v "$RUNNER_TEMP/oidc:/oidc:ro" \
+            -e ARCHLENS_STORAGE=local -e ARCHLENS_OTEL_ENABLED=false \
+            -e ARCHLENS_LLM_BASE_URL="$LLM_BASE_URL" -e ARCHLENS_LLM_AUTH=entra \
+            -e AZURE_CLIENT_ID="$CLIENT_ID" -e AZURE_TENANT_ID="$TENANT_ID" \
+            -e AZURE_FEDERATED_TOKEN_FILE=/oidc/token \
+            -e ARCHLENS_RUN_BUDGET_USD="$BUDGET" \
+            "$IMAGE" archlens "${args[@]}" | tee "$RUNNER_TEMP/assess.log"
+          run_id=$(awk '$1 == "run" { print $2; exit }' "$RUNNER_TEMP/assess.log")
+          echo "RUN_DIR=$RUNNER_TEMP/archlens/out/$run_id" >> "$GITHUB_ENV"
+
+      - name: Keep as the base report
+        if: github.event_name != 'pull_request'
+        run: install -D -m 0644 "$RUN_DIR/assessment.json" "$RUNNER_TEMP/archlens/base/assessment.json"
+
+      - name: Save the cache
+        if: steps.assess.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/archlens
+            !${{ runner.temp }}/archlens/runs
+            !${{ runner.temp }}/archlens/out
+          key: ${{ steps.scope.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload the report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archlens-report
+          path: ${{ env.RUN_DIR }}
+          retention-days: 14
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: ${{ env.RUN_DIR }}/findings.sarif
+          category: archlens
+
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          body="$RUN_DIR/pr_comment.md"
+          if [ ! -f "$body" ]; then
+            body="$RUNNER_TEMP/no-base.md"
+            printf '%s\n\n%s\n' '<!-- archlens:pr-comment -->' \
+              'ArchLens: no base report yet; run this workflow on the default branch first. The full report is in this run'"'"'s artifacts.' \
+              > "$body"
+          fi
+          cat "$body" >> "$GITHUB_STEP_SUMMARY"
+          # one comment per PR, updated in place (found by its marker)
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --jq '.[] | select(.body | startswith("<!-- archlens:pr-comment -->")) | .id' | tail -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$body" > /dev/null
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F "body=@$body" > /dev/null
+          fi

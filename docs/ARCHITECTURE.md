@@ -230,6 +230,11 @@ narrow scopes and are the ones a typical code change leaves cached.
 **Local CLI** — everything in-process, storage under `ARCHLENS_DATA_DIR`
 (`runs/<run_id>/{checkpoints,artifacts}`, `cache.sqlite`). Only LLM calls leave the machine.
 
+**PR mode** (M5.2) — the CLI in GitHub Actions (`.github/workflows/archlens.yml`, AZURE.md §4):
+`archlens assess https://github.com/<repo> --ref <sha> [--base base/assessment.json]` in the
+published image, with `cache.sqlite` and the base report carried between runs by the Actions
+cache, so a pull request re-evaluates only the metrics whose inputs changed.
+
 **Cloud** (M4) —
 ```
 client ─► API (Container Apps, scale-to-zero)

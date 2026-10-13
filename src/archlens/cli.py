@@ -109,6 +109,9 @@ def read_base_report(path: Path) -> AssessmentReport:
 def assess(
     target: Annotated[str, typer.Argument(help="Local path or https Git URL to assess.")],
     out: Annotated[Path, typer.Option(help="Directory for run outputs.")] = Path("runs"),
+    ref: Annotated[
+        str | None, typer.Option(help="Branch, tag or full commit SHA (remote targets only).")
+    ] = None,
     resume: Annotated[str | None, typer.Option(help="Resume a previous run by run_id.")] = None,
     no_cache: Annotated[
         bool,
@@ -177,8 +180,8 @@ def assess(
         rubrics=rubrics,
     )
     options = RunOptions(
-        target=target, metrics=selected, scanners=not no_scanners, metric_cache=not no_cache,
-        base=base_report,
+        target=target, ref=ref, metrics=selected, scanners=not no_scanners,
+        metric_cache=not no_cache, base=base_report,
     )  # fmt: skip
 
     pipeline = Pipeline(ctx, options)

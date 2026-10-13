@@ -1,0 +1,36 @@
+name: archlens-pr
+
+# ArchLens on ArchLens (M5.2) through the reusable workflow. Every run costs LLM money, so it runs
+# only on pull requests labelled `archlens` (adding a label needs triage access; fork PRs get no
+# OIDC token anyway) and by hand on main, which refreshes the base report. Repository variables
+# (azd outputs; none is a secret): ARCHLENS_LLM_BASE_URL, ARCHLENS_AZURE_CLIENT_ID,
+# ARCHLENS_AZURE_TENANT_ID.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: archlens-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false # a cancelled run has already spent its money
+
+jobs:
+  archlens:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.action == 'labeled' && github.event.label.name == 'archlens')
+      || (github.event.action == 'synchronize'
+          && contains(github.event.pull_request.labels.*.name, 'archlens'))
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      security-events: write
+    uses: ./.github/workflows/archlens.yml
+    with:
+      llm-base-url: ${{ vars.ARCHLENS_LLM_BASE_URL }}
+      azure-client-id: ${{ vars.ARCHLENS_AZURE_CLIENT_ID }}
+      azure-tenant-id: ${{ vars.ARCHLENS_AZURE_TENANT_ID }}

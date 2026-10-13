@@ -140,6 +140,22 @@ listed for polandcentral, creation not tried. The gateway that was built for it 
   the semgrep engine LGPL-2.1). The package came out public (it inherits the public repository's
   visibility; anonymous pulls verified 2026-10-11).
 
+- PR mode (M5.2): `.github/workflows/archlens.yml` is a reusable workflow (`workflow_call`) that
+  runs `ghcr.io/eray-akalin/archlens:latest` (`deploy.yml` also pushes `latest`) against the
+  calling repository at `GITHUB_SHA`, then uploads the artifacts and `findings.sarif` (code
+  scanning, category `archlens`) and, on a pull request, posts or updates one comment from
+  `pr_comment.md`. `$RUNNER_TEMP/archlens` (`cache.sqlite` and `base/assessment.json`, never the
+  OIDC token) goes through `actions/cache`: a default-branch run writes the base report, a PR
+  restores its own cache or else the default branch's. LLM auth is OIDC end to end: the job
+  requests a GitHub token for `api://AzureADTokenExchange`, mounts it into the container as
+  `AZURE_FEDERATED_TOKEN_FILE`, and azure-identity exchanges it for an Entra token of the
+  identity in `infra/modules/github-oidc.bicep` (`archlens-github`: federated credentials for
+  `repo:<repo>:ref:refs/heads/main` and `repo:<repo>:pull_request`, *Cognitive Services OpenAI
+  User* on the AI account only). It exists when the azd env has `ARCHLENS_GITHUB_REPO=owner/name`;
+  its outputs `GITHUB_OIDC_CLIENT_ID`, `AZURE_TENANT_ID` and `LLM_BASE_URL` become the repository
+  variables `ARCHLENS_AZURE_CLIENT_ID`, `ARCHLENS_AZURE_TENANT_ID`, `ARCHLENS_LLM_BASE_URL`.
+  `archlens-pr.yml` calls it for this repository on PRs labelled `archlens` and by hand on main.
+
 ## 5. Cost guardrails
 
 - Default parameters are the free/cheap ones (Cosmos free tier, Container Apps scaling to zero).
