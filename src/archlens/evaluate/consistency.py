@@ -3,8 +3,11 @@
 Checks with `self_consistency: n` (default 2 for critical checks) get n-1 extra sessions restricted
 to them. The usable runs (a run that failed for budget, model or output problems doesn't count)
 decide by strict majority. A check whose runs have no majority gets one tie-break session on the
-`tiebreak` role (a stronger setting, used only where the evaluator disagreed with itself); still
-no majority → `unknown`, `confidence="low"`, `reason="inconsistent"`, with every run's claim kept.
+`tiebreak` role (a stronger setting, used only where the evaluator disagreed with itself). Still
+no majority on the verdict, but a strict majority finds an issue (partial or fail, e.g. partial /
+pass / fail) → the issue stands, as the last such run said it (the tie-break's, when it found one),
+at `low` confidence: whether there is a problem matters more than its grade. Otherwise →
+`unknown`, `confidence="low"`, `reason="inconsistent"`, with every run's claim kept.
 
 Unanimous → the first usable result stands (low confidence if some run failed). Majority → the
 first result with the majority verdict stands, with its own citations and session (its citations
@@ -18,6 +21,7 @@ from archlens.evaluate.llm_session import Evaluator
 from archlens.models import CheckResult, CheckSpec, Rubric
 
 RUN_FAILURES = frozenset({"budget", "llm_error", "invalid_output"})
+ISSUES = frozenset({"partial", "fail"})
 
 
 async def evaluate_llm_checks(
@@ -78,6 +82,10 @@ def merge_runs(
             merged.append(result)
             continue
         verdict = _majority(usable)
+        issues = [r for r in usable if r.verdict in ISSUES]
+        if verdict is None and len(issues) * 2 > len(usable):
+            merged.append(issues[-1].model_copy(update={"confidence": "low"}))
+            continue
         if verdict is None:
             claim = " | ".join(f"run {i + 1} {r.verdict}: {r.claim}" for i, r in enumerate(runs))
             merged.append(

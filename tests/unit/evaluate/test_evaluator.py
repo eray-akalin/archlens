@@ -189,14 +189,25 @@ async def test_majority_can_come_from_the_reruns(tiny_env: TinyEnv) -> None:
     assert (sec05.verdict, sec05.attempt, sec05.confidence) == ("pass", 1, "medium")
 
 
-async def test_no_majority_after_the_tie_break_is_unknown(tiny_env: TinyEnv) -> None:
+async def test_an_issue_majority_stands_after_the_tie_break(tiny_env: TinyEnv) -> None:
+    """fail / pass / partial: two of three runs found a problem; the tie-break's grade stands."""
     rerun = MetricEvaluationOutput(results=[result("SEC-05", "pass", 33, 35)])
     third = MetricEvaluationOutput(results=[result("SEC-05", "partial")])
     results, _ = await run_consistency(tiny_env, rerun, third)
     sec05 = next(r for r in results if r.check_id == "SEC-05")
+    assert (sec05.verdict, sec05.attempt, sec05.confidence) == ("partial", 2, "low")
+    assert sec05.reason is None and sec05.claim == "SEC-05 partial"
+
+
+async def test_no_majority_after_the_tie_break_is_unknown(tiny_env: TinyEnv) -> None:
+    rerun = MetricEvaluationOutput(results=[result("SEC-05", "pass", 33, 35)])
+    third = MetricEvaluationOutput(results=[result("SEC-05", "not_applicable")])
+    results, _ = await run_consistency(tiny_env, rerun, third)
+    sec05 = next(r for r in results if r.check_id == "SEC-05")
     assert (sec05.verdict, sec05.reason, sec05.confidence) == ("unknown", "inconsistent", "low")
     assert sec05.claim == (
-        "run 1 fail: SEC-05 fail | run 2 pass: SEC-05 pass | run 3 partial: SEC-05 partial"
+        "run 1 fail: SEC-05 fail | run 2 pass: SEC-05 pass | "
+        "run 3 unknown: SEC-05 not_applicable"  # SEC-05 doesn't allow n/a: unknown
     )
     assert len(sec05.llm_call_ids) == 3
 
@@ -227,7 +238,10 @@ def test_merge_with_three_runs() -> None:
     (majority,) = merge_runs([base], [[same], [other]])
     assert (majority.verdict, majority.attempt, majority.confidence) == ("fail", 0, "medium")
     third = other.model_copy(update={"attempt": 3, "verdict": "pass", "claim": "c"})
-    (merged,) = merge_runs([base], [[other], [third]])
+    (issue,) = merge_runs([base], [[other], [third]])  # fail / partial / pass: an issue majority
+    assert (issue.verdict, issue.claim, issue.confidence) == ("partial", "b", "low")
+    na = third.model_copy(update={"verdict": "not_applicable"})
+    (merged,) = merge_runs([base], [[third], [na]])  # fail / pass / n/a: no majority of any kind
     assert merged.reason == "inconsistent" and merged.claim.count("run ") == 3
     failed = other.model_copy(update={"verdict": "unknown", "reason": "budget"})
     (alone,) = merge_runs([failed], [[same]])  # a failed first run doesn't count against a rerun

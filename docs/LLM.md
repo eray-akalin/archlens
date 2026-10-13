@@ -145,8 +145,12 @@ agree → the first result stands; no majority → one tie-break session for tho
 where the evaluator disagreed with itself — the first eval showed gpt-5-mini at low effort misread
 a `CurrentUser` handler and flagged constant migration SQL), after which
 the first result with the majority verdict stands (its own citations and session; `confidence` at
-most `medium`). Still no majority → `unknown`, `confidence="low"`, `reason="inconsistent"`, every
-run's claim kept. A run that failed (budget, provider, invalid output) doesn't count: the remaining
+most `medium`). Still no majority on the verdict but a strict majority finds an issue (partial or
+fail) → that issue stands as the last such run gave it (the tie-break's when it found one),
+`confidence="low"`; otherwise `unknown`, `confidence="low"`, `reason="inconsistent"`, every run's
+claim kept. (Found in the M5.1 ablation: on VI2 the runs said partial / pass / fail — the tie-break
+pinpointed the de-authenticated route — and an exact-verdict majority turned that into
+`unknown`.) A run that failed (budget, provider, invalid output) doesn't count: the remaining
 runs decide, with `confidence="low"`.
 
 Facts of kind `injection_attempt` (SECURITY.md §6) are added to every evaluator session whatever
