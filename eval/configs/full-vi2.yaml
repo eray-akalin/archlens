@@ -1,0 +1,15 @@
+# Re-measure of VI2 on `full` after the self-consistency merge fix (M5.1; approved 2026-10-13).
+# Same features as full.yaml; only the two VI2 runs (the second with the exact cache off).
+name: full-vi2
+budget_usd: 1.0
+seed: 0
+repos_file: eval/repos.yaml
+variants_file: eval/variants.yaml
+features:
+  facts_in_context: true
+  deterministic_rules: true
+  verifier: full
+  self_consistency: true
+  skeptic: true
+suite:
+  - {repo: primary, variant: VI2, runs: 2}

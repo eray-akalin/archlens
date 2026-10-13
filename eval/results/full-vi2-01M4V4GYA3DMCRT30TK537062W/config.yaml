@@ -1,0 +1,15 @@
+name: full-vi2
+budget_usd: 1.0
+seed: 0
+repos_file: eval/repos.yaml
+variants_file: eval/variants.yaml
+features:
+  facts_in_context: true
+  deterministic_rules: true
+  verifier: full
+  self_consistency: true
+  skeptic: true
+suite:
+- repo: primary
+  variant: VI2
+  runs: 2

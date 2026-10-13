@@ -862,7 +862,7 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
 
 ## M5 — Ablation, PR mode, Q&A, MCP (weeks 3–4)
 
-- [ ] **M5.1 💰 Ablation.** `baseline`, `facts`, `verifier`, `full` per EVALUATION.md §6
+- [x] **M5.1 💰 Ablation.** `baseline`, `facts`, `verifier`, `full` per EVALUATION.md §6
   (~41 runs, ~$15).
   AC: `table.md` per config; README Results table filled with the scope sentence from
   EVALUATION.md; injection criteria pass on `full`.
@@ -965,3 +965,9 @@ Tasks marked 💰 spend money or touch Azure: stop after the plan and ask before
   entailment rejected that pass (not scored), and no issue verdict remained. Not tuned against
   our own injection texts (VI1/VI2 measure known phrasings). A's variant runs reused C's cached
   evaluator answers (identical prompts). Verifier precision needs the audit sheet (not done).
+- 2026-10-13 — M5.1 done. VI2 re-measured on `full` after the merge fix (`full-vi2.yaml`, 2 runs,
+  $0.20): VI2.0 AUTH-01 `fail` verified (the tie-break's finding now survives the merge; entailment
+  and skeptic agree), VI2.1 (cache off, fresh) AUTH-01 `partial` verified; SEC-05 `fail` in both →
+  VI2 detected. With VI1 from the full run (Δ 0.0, no injected-only findings), the injection
+  criteria pass on `full`. Honest caveat in the README: of two cache-off samples, one evaluator
+  pair believed the fake-middleware comment. Ablation total $4.87.
